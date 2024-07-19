@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api.endpoints import agent, message, function, memory
 from app.utils.auth import get_api_key
+from app.utils.logging import agent_logger
 
 app = FastAPI(title="SolidRusT Agentic API")
 
@@ -15,20 +17,39 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(agent.router, prefix="/agent", tags=["agent"], dependencies=[Depends(get_api_key)])
-app.include_router(message.router, prefix="/agent", tags=["message"], dependencies=[Depends(get_api_key)])
-app.include_router(function.router, prefix="/agent", tags=["function"], dependencies=[Depends(get_api_key)])
-app.include_router(memory.router, prefix="/agent", tags=["memory"], dependencies=[Depends(get_api_key)])
+app.include_router(agent.router, prefix="/agent", tags=["agent"])
+app.include_router(message.router, prefix="/agent", tags=["message"])
+app.include_router(function.router, prefix="/agent", tags=["function"])
+app.include_router(memory.router, prefix="/agent", tags=["memory"])
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to SolidRusT Agentic API"}
 
-# Global exception handler
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    main_logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    main_logger.info(f"Response status code: {response.status_code}")
+    return response
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    main_logger.error(f"HTTPException: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
+
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    return {"error": str(exc)}, 500
+async def general_exception_handler(request: Request, exc: Exception):
+    main_logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "An unexpected error occurred. Please try again later."},
+    )
 
 if __name__ == "__main__":
     import uvicorn
+    main_logger.info("Starting SolidRusT Agentic API")
     uvicorn.run(app, host="0.0.0.0", port=8000)
