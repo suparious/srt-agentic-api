@@ -4,8 +4,10 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
+print("Python version:", sys.version)
 print("Python path:", sys.path)
 print("Current working directory:", os.getcwd())
+print("Contents of current directory:", os.listdir())
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

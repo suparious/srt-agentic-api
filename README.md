@@ -34,7 +34,7 @@ srt-agentic-api/
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/srt-agentic-api.git
+   git clone https://github.com/SolidRusT/srt-agentic-api.git
    cd srt-agentic-api
    ```
 
