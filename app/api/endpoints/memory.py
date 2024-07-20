@@ -1,13 +1,15 @@
 import asyncio
 from uuid import UUID
 from typing import Dict, Any, List, Optional
-import aioredis
+from redis import asyncio as aioredis
 import chromadb
 from chromadb.config import Settings
 from app.api.models.memory import MemoryEntry, MemoryType
 from app.config import settings
 from app.utils.logging import memory_logger
+from fastapi import APIRouter
 
+router = APIRouter()
 
 class RedisMemory:
     def __init__(self, redis_url: str):
@@ -161,3 +163,15 @@ async def retrieve_from_memory(agent_id: UUID, memory_type: MemoryType, memory_i
 async def search_memory(agent_id: UUID, memory_type: MemoryType, query: str, limit: int = 5) -> List[MemoryEntry]:
     memory_system = await get_memory_system(agent_id)
     return await memory_system.search(memory_type, query, limit)
+
+@router.post("/add")
+async def add_memory_endpoint(agent_id: UUID, memory_type: MemoryType, entry: MemoryEntry):
+    return await add_to_memory(agent_id, memory_type, entry)
+
+@router.get("/retrieve")
+async def retrieve_memory_endpoint(agent_id: UUID, memory_type: MemoryType, memory_id: str):
+    return await retrieve_from_memory(agent_id, memory_type, memory_id)
+
+@router.post("/search")
+async def search_memory_endpoint(agent_id: UUID, memory_type: MemoryType, query: str, limit: int = 5):
+    return await search_memory(agent_id, memory_type, query, limit)

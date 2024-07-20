@@ -1,3 +1,12 @@
+import os
+import sys
+
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+print("Python path:", sys.path)
+print("Current working directory:", os.getcwd())
+
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -6,6 +15,7 @@ from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
 
+print(sys.path)
 app = FastAPI(title="SolidRusT Agentic API")
 
 # CORS middleware setup

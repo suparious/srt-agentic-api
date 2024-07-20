@@ -1,7 +1,7 @@
 import asyncio
 from uuid import UUID
 from typing import Dict, Any, List
-import aioredis
+from redis import asyncio as aioredis
 import chromadb
 from chromadb.config import Settings
 from app.api.models.agent import MemoryConfig
