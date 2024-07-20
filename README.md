@@ -5,7 +5,7 @@ SolidRusT Agentic API is a powerful and flexible API for creating, managing, and
 ## Key Features
 
 - Agent creation and management
-- Short-term and long-term memory systems
+- Short-term (Redis) and long-term (ChromaDB) memory systems
 - Function calling capabilities
 - Flexible LLM provider integration
 - Scalable architecture
@@ -19,28 +19,11 @@ srt-agentic-api/
 │   ├── main.py
 │   ├── config.py
 │   ├── api/
-│   │   ├── __init__.py
 │   │   ├── endpoints/
-│   │   │   ├── __init__.py
-│   │   │   ├── agent.py
-│   │   │   ├── message.py
-│   │   │   ├── function.py
-│   │   │   └── memory.py
 │   │   └── models/
-│   │       ├── __init__.py
-│   │       ├── agent.py
-│   │       ├── message.py
-│   │       ├── function.py
-│   │       └── memory.py
 │   ├── core/
-│   │   ├── __init__.py
-│   │   ├── agent.py
-│   │   ├── llm_provider.py
-│   │   └── memory.py
 │   └── utils/
-│       ├── __init__.py
-│       ├── auth.py
-│       └── logging.py
+├── logs/
 ├── tests/
 ├── requirements.txt
 ├── Dockerfile
