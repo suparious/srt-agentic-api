@@ -12,13 +12,41 @@ print("Contents of current directory:", os.listdir())
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from app.api.endpoints import agent, message, function, memory
 from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
 
 print(sys.path)
-app = FastAPI(title="SolidRusT Agentic API")
+app = FastAPI(
+    title="SolidRusT Agentic API",
+    description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
+    version="1.0.0",
+    contact={
+        "name": "SolidRusT Team",
+        "url": "https://github.com/SolidRusT/srt-agentic-api",
+        "email": "support@solidrust.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+)
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="SolidRusT Agentic API",
+        version="1.0.0",
+        description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 # CORS middleware setup
 app.add_middleware(
