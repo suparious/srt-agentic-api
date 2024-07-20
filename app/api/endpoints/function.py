@@ -10,9 +10,18 @@ from app.api.models.function import (
     FunctionRegistrationRequest,
     FunctionRegistrationResponse,
     FunctionUpdateRequest,
-    FunctionUpdateResponse
+    FunctionUpdateResponse,
+    FunctionAssignmentRequest,
+    FunctionAssignmentResponse
 )
-from app.core.agent import execute_function, get_available_functions, register_function, update_function
+from app.core.agent import (
+    execute_function,
+    get_available_functions,
+    register_function,
+    update_function,
+    assign_function_to_agent,
+    remove_function_from_agent
+)
 from app.utils.auth import get_api_key
 from app.utils.logging import function_logger
 
@@ -121,3 +130,58 @@ async def update_function_endpoint(
     except Exception as e:
         function_logger.error(f"Error updating function: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while updating the function")
+
+@router.post("/assign", response_model=FunctionAssignmentResponse, summary="Assign a function to an agent")
+async def assign_function_endpoint(
+    request: FunctionAssignmentRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Assign a function to a specific agent.
+
+    - **agent_id**: The ID of the agent to assign the function to
+    - **function_id**: The ID of the function to assign
+    """
+    try:
+        function_logger.info(f"Assigning function {request.function_id} to agent: {request.agent_id}")
+        await assign_function_to_agent(request.agent_id, request.function_id)
+        function_logger.info(f"Successfully assigned function {request.function_id} to agent: {request.agent_id}")
+        return FunctionAssignmentResponse(
+            agent_id=request.agent_id,
+            function_id=request.function_id,
+            message="Function assigned successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function assignment: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error assigning function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while assigning the function")
+
+@router.delete("/remove", response_model=FunctionAssignmentResponse, summary="Remove a function from an agent")
+async def remove_function_endpoint(
+    agent_id: UUID,
+    function_id: str,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Remove a function from a specific agent.
+
+    - **agent_id**: The ID of the agent to remove the function from
+    - **function_id**: The ID of the function to remove
+    """
+    try:
+        function_logger.info(f"Removing function {function_id} from agent: {agent_id}")
+        await remove_function_from_agent(agent_id, function_id)
+        function_logger.info(f"Successfully removed function {function_id} from agent: {agent_id}")
+        return FunctionAssignmentResponse(
+            agent_id=agent_id,
+            function_id=function_id,
+            message="Function removed successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function removal: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error removing function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while removing the function")
