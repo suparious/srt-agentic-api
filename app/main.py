@@ -3,24 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.endpoints import agent, message, function, memory
 from app.utils.auth import get_api_key
-from app.utils.logging import agent_logger
+from app.utils.logging import main_logger
+from app.config import settings
 
 app = FastAPI(title="SolidRusT Agentic API")
 
 # CORS middleware setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
 app.include_router(agent.router, prefix="/agent", tags=["agent"])
-app.include_router(message.router, prefix="/agent", tags=["message"])
-app.include_router(function.router, prefix="/agent", tags=["function"])
-app.include_router(memory.router, prefix="/agent", tags=["memory"])
+app.include_router(message.router, prefix="/message", tags=["message"])
+app.include_router(function.router, prefix="/function", tags=["function"])
+app.include_router(memory.router, prefix="/memory", tags=["memory"])
 
 @app.get("/")
 async def root():
@@ -52,4 +53,4 @@ async def general_exception_handler(request: Request, exc: Exception):
 if __name__ == "__main__":
     import uvicorn
     main_logger.info("Starting SolidRusT Agentic API")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

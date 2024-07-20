@@ -1,6 +1,18 @@
-# SolidRusT Agentic API Project Structure
+# SolidRusT Agentic API
 
-```
+SolidRusT Agentic API is a powerful and flexible API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, including memory management, function execution, and message processing.
+
+## Key Features
+
+- Agent creation and management
+- Short-term and long-term memory systems
+- Function calling capabilities
+- Flexible LLM provider integration
+- Scalable architecture
+
+## Project Structure
+
+```plaintext
 srt-agentic-api/
 ├── app/
 │   ├── __init__.py
@@ -25,47 +37,85 @@ srt-agentic-api/
 │   │   ├── agent.py
 │   │   ├── llm_provider.py
 │   │   └── memory.py
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── redis_service.py
-│   │   └── vector_store_service.py
 │   └── utils/
 │       ├── __init__.py
 │       ├── auth.py
-│       └── error_handlers.py
+│       └── logging.py
 ├── tests/
-│   ├── __init__.py
-│   ├── test_api/
-│   │   ├── __init__.py
-│   │   ├── test_agent.py
-│   │   ├── test_message.py
-│   │   ├── test_function.py
-│   │   └── test_memory.py
-│   └── test_core/
-│       ├── __init__.py
-│       ├── test_agent.py
-│       ├── test_llm_provider.py
-│       └── test_memory.py
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
 ```
 
-## File Descriptions:
+## Setup Instructions
 
-1. `app/main.py`: Main FastAPI application file, contains the app initialization and includes all routes.
-2. `app/config.py`: Configuration settings for the application.
-3. `app/api/endpoints/*.py`: Individual files for each API endpoint (agent, message, function, memory).
-4. `app/api/models/*.py`: Pydantic models for request/response data structures.
-5. `app/core/agent.py`: Core agent logic implementation.
-6. `app/core/llm_provider.py`: LLM provider integration and management.
-7. `app/core/memory.py`: Memory system implementation.
-8. `app/services/redis_service.py`: Redis integration for caching and short-term memory.
-9. `app/services/vector_store_service.py`: Vector store (e.g., ChromaDB) integration for long-term memory.
-10. `app/utils/auth.py`: Authentication utilities.
-11. `app/utils/error_handlers.py`: Custom error handling functions.
-12. `tests/*`: Test files mirroring the structure of the `app` directory.
-13. `requirements.txt`: Project dependencies.
-14. `Dockerfile`: For containerizing the application.
-15. `README.md`: Project documentation and setup instructions.
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/srt-agentic-api.git
+   cd srt-agentic-api
+   ```
 
+2. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Copy the `.env.example` file to `.env` and update the values:
+   ```
+   cp .env.example .env
+   ```
+   Edit the `.env` file with your specific configuration values.
+
+5. Set up the database:
+   - Ensure Redis is running for short-term memory operations.
+   - Set up ChromaDB for long-term memory operations.
+
+## Running the Application
+
+To run the application locally:
+
+```
+uvicorn app.main:app --reload
+```
+
+The API will be available at `http://localhost:8000`. You can access the API documentation at `http://localhost:8000/docs`.
+
+## Development
+
+### Running Tests
+
+To run the test suite:
+
+```
+pytest
+```
+
+### Adding New Endpoints
+
+1. Create a new file in `app/api/endpoints/` for your endpoint.
+2. Define the necessary models in `app/api/models/`.
+3. Implement the core logic in `app/core/` if needed.
+4. Update `app/main.py` to include your new endpoint router.
+
+### Contributing
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and write tests if applicable.
+4. Run the test suite to ensure all tests pass.
+5. Submit a pull request with a clear description of your changes.
+
+## Docker
+
+To build and run the Docker container:
+
+```
+docker build -t srt-agentic-api .
+docker run -p 8000:8000 srt-agentic-api
+```
