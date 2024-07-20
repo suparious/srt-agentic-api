@@ -80,3 +80,18 @@ class FunctionUpdateResponse(BaseModel):
     """
     function_id: str = Field(..., description="The unique identifier of the updated function", example="func_01234567")
     message: str = Field(..., description="A message indicating the result of the update", example="Function updated successfully")
+
+class FunctionAssignmentRequest(BaseModel):
+    """
+    Represents a request to assign a function to an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to assign the function to", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_id: str = Field(..., description="The ID of the function to assign", example="func_01234567")
+
+class FunctionAssignmentResponse(BaseModel):
+    """
+    Represents the response after assigning or removing a function to/from an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_id: str = Field(..., description="The ID of the function", example="func_01234567")
+    message: str = Field(..., description="A message indicating the result of the operation", example="Function assigned successfully")
