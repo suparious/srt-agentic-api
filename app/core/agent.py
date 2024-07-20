@@ -6,6 +6,7 @@ from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
 
+
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
         self.id = agent_id
@@ -98,6 +99,10 @@ class Agent:
 # Global dictionary to store active agents
 agents: Dict[UUID, Agent] = {}
 
+# Global dictionary to store registered functions
+registered_functions: Dict[str, FunctionDefinition] = {}
+
+
 async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
     try:
         agent_id = uuid4()
@@ -148,3 +153,25 @@ async def get_available_functions(agent_id: UUID) -> List[FunctionDefinition]:
         agent_logger.error(f"No agent found with id: {agent_id}")
         raise ValueError(f"No agent found with id: {agent_id}")
     return agent.get_available_functions()
+
+
+async def register_function(function: FunctionDefinition) -> str:
+    function_id = str(uuid4())
+    registered_functions[function_id] = function
+    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
+    return function_id
+
+
+async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    registered_functions[function_id] = updated_function
+    agent_logger.info(f"Function with ID: {function_id} updated successfully")
+
+    # Update function for all agents that have it
+    for agent in agents.values():
+        if updated_function.name in agent.available_functions:
+            agent.add_function(updated_function)
+            agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")

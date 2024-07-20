@@ -19,7 +19,6 @@ from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
 
-print(sys.path)
 app = FastAPI(
     title="SolidRusT Agentic API",
     description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
@@ -44,6 +43,9 @@ def custom_openapi():
         description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
         routes=app.routes,
     )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -59,13 +61,16 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(agent.router, prefix="/agent", tags=["agent"])
-app.include_router(message.router, prefix="/message", tags=["message"])
-app.include_router(function.router, prefix="/function", tags=["function"])
-app.include_router(memory.router, prefix="/memory", tags=["memory"])
+app.include_router(agent.router, prefix="/agent", tags=["Agents"])
+app.include_router(message.router, prefix="/message", tags=["Messages"])
+app.include_router(function.router, prefix="/function", tags=["Functions"])
+app.include_router(memory.router, prefix="/memory", tags=["Memory"])
 
-@app.get("/")
+@app.get("/", tags=["Root"])
 async def root():
+    """
+    Root endpoint that welcomes users to the SolidRusT Agentic API.
+    """
     return {"message": "Welcome to SolidRusT Agentic API"}
 
 @app.middleware("http")

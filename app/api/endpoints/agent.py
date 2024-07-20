@@ -7,8 +7,16 @@ from app.utils.logging import agent_logger
 
 router = APIRouter()
 
-@router.post("/create", response_model=AgentCreationResponse)
+@router.post("/create", response_model=AgentCreationResponse, summary="Create a new agent")
 async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = Depends(get_api_key)):
+    """
+    Create a new agent with the given configuration.
+
+    - **agent_name**: Name of the agent
+    - **agent_config**: Configuration for the agent's LLM
+    - **memory_config**: Configuration for the agent's memory systems
+    - **initial_prompt**: The initial prompt to send to the agent upon creation
+    """
     try:
         agent_logger.info(f"Received request to create agent: {request.agent_name}")
         agent_id = await create_agent(request.agent_name, request.agent_config, request.memory_config, request.initial_prompt)
@@ -18,8 +26,13 @@ async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = De
         agent_logger.error(f"Error creating agent: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating agent: {str(e)}")
 
-@router.get("/{agent_id}", response_model=AgentInfoResponse)
+@router.get("/{agent_id}", response_model=AgentInfoResponse, summary="Get agent information")
 async def get_agent_info_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
+    """
+    Retrieve information about a specific agent.
+
+    - **agent_id**: The unique identifier of the agent
+    """
     try:
         agent_logger.info(f"Received request to get info for agent: {agent_id}")
         agent_info = await get_agent_info(agent_id)
@@ -34,5 +47,4 @@ async def get_agent_info_endpoint(agent_id: UUID, api_key: str = Depends(get_api
         agent_logger.error(f"Error retrieving agent info: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving agent info: {str(e)}")
 
-# Additional endpoints can be added here for updating agent configurations, 
-# listing all agents, or deleting agents as needed.
+# Additional endpoints can be added here
