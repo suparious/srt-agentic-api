@@ -1,177 +1,163 @@
-import asyncio
+from fastapi import APIRouter, HTTPException, Depends
 from uuid import UUID
-from typing import Dict, Any, List, Optional
-from redis import asyncio as aioredis
-import chromadb
-from chromadb.config import Settings
-from app.api.models.memory import MemoryEntry, MemoryType
-from app.config import settings
+from typing import List
+from app.api.models.memory import (
+    MemoryType,
+    MemoryEntry,
+    MemoryAddRequest,
+    MemoryAddResponse,
+    MemoryRetrieveRequest,
+    MemoryRetrieveResponse,
+    MemorySearchRequest,
+    MemorySearchResponse,
+    MemoryDeleteRequest,
+    MemoryDeleteResponse,
+    MemoryOperationRequest,
+    MemoryOperationResponse
+)
+from app.core.memory import (
+    add_to_memory,
+    retrieve_from_memory,
+    search_memory,
+    delete_from_memory,
+    perform_memory_operation
+)
+from app.core.agent import get_agent_memory_config  # Assuming this function exists to get MemoryConfig for an agent
+from app.utils.auth import get_api_key
 from app.utils.logging import memory_logger
-from fastapi import APIRouter
 
 router = APIRouter()
 
-class RedisMemory:
-    def __init__(self, redis_url: str):
-        self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-        memory_logger.info(f"Redis connection established: {redis_url}")
+@router.post("/add", response_model=MemoryAddResponse, summary="Add a memory entry")
+async def add_memory_endpoint(
+    request: MemoryAddRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Add a new memory entry for an agent.
 
-    async def add(self, key: str, value: str, expire: int = 3600):
-        try:
-            await self.redis.set(key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {key}. Error: {str(e)}")
-            raise
+    - **agent_id**: The ID of the agent to add the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **entry**: The memory entry to add
+    """
+    try:
+        memory_logger.info(f"Adding memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        memory_id = await add_to_memory(request.agent_id, request.memory_type, request.entry, memory_config)
+        memory_logger.info(f"Memory added successfully for agent: {request.agent_id}")
+        return MemoryAddResponse(
+            agent_id=request.agent_id,
+            memory_id=memory_id,
+            message="Memory added successfully"
+        )
+    except Exception as e:
+        memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    async def get(self, key: str) -> Optional[str]:
-        try:
-            value = await self.redis.get(key)
-            memory_logger.debug(f"Retrieved key from Redis: {key}")
-            return value
-        except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {key}. Error: {str(e)}")
-            raise
+@router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
+async def retrieve_memory_endpoint(
+    request: MemoryRetrieveRequest = Depends(),
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Retrieve a specific memory entry for an agent.
 
-    async def delete(self, key: str):
-        try:
-            await self.redis.delete(key)
-            memory_logger.debug(f"Deleted key from Redis: {key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {key}. Error: {str(e)}")
-            raise
+    - **agent_id**: The ID of the agent to retrieve the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **memory_id**: The unique identifier of the memory to retrieve
+    """
+    try:
+        memory_logger.info(f"Retrieving memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        memory = await retrieve_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
+        if memory is None:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        memory_logger.info(f"Memory retrieved successfully for agent: {request.agent_id}")
+        return MemoryRetrieveResponse(
+            agent_id=request.agent_id,
+            memory=memory
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/search", response_model=MemorySearchResponse, summary="Search memory entries")
+async def search_memory_endpoint(
+    request: MemorySearchRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Search memory entries for an agent.
 
-class VectorMemory:
-    def __init__(self, collection_name: str):
-        self.client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=settings.CHROMA_PERSIST_DIRECTORY
-        ))
-        self.collection = self.client.get_or_create_collection(collection_name)
-        memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
+    - **agent_id**: The ID of the agent to search memories for
+    - **memory_type**: The type of memory to search (short-term or long-term)
+    - **query**: The search query
+    - **limit**: The maximum number of results to return
+    """
+    try:
+        memory_logger.info(f"Searching memories for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        results = await search_memory(request.agent_id, request.memory_type, request.query, request.limit, memory_config)
+        memory_logger.info(f"Memory search completed for agent: {request.agent_id}")
+        return MemorySearchResponse(
+            agent_id=request.agent_id,
+            results=results
+        )
+    except Exception as e:
+        memory_logger.error(f"Error searching memories for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    async def add(self, id: str, content: str, metadata: Dict[str, Any] = {}):
-        try:
-            await asyncio.to_thread(self.collection.add,
-                                    documents=[content],
-                                    metadatas=[metadata],
-                                    ids=[id])
-            memory_logger.debug(f"Added document to ChromaDB: {id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add document to ChromaDB: {id}. Error: {str(e)}")
-            raise
+@router.delete("/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry")
+async def delete_memory_endpoint(
+    request: MemoryDeleteRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Delete a specific memory entry for an agent.
 
-    async def get(self, id: str) -> Optional[Dict[str, Any]]:
-        try:
-            result = await asyncio.to_thread(self.collection.get, ids=[id])
-            if result['documents']:
-                memory_logger.debug(f"Retrieved document from ChromaDB: {id}")
-                return {
-                    "content": result['documents'][0],
-                    "metadata": result['metadatas'][0]
-                }
-            return None
-        except Exception as e:
-            memory_logger.error(f"Failed to get document from ChromaDB: {id}. Error: {str(e)}")
-            raise
+    - **agent_id**: The ID of the agent to delete the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **memory_id**: The unique identifier of the memory to delete
+    """
+    try:
+        memory_logger.info(f"Deleting memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        await delete_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
+        memory_logger.info(f"Memory deleted successfully for agent: {request.agent_id}")
+        return MemoryDeleteResponse(
+            agent_id=request.agent_id,
+            message="Memory deleted successfully"
+        )
+    except Exception as e:
+        memory_logger.error(f"Error deleting memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    async def search(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        try:
-            results = await asyncio.to_thread(self.collection.query,
-                                              query_texts=[query],
-                                              n_results=n_results)
-            memory_logger.debug(f"Searched ChromaDB: {query}")
-            return [{"id": id, "content": doc, "metadata": meta}
-                    for id, doc, meta in zip(results['ids'][0], results['documents'][0], results['metadatas'][0])]
-        except Exception as e:
-            memory_logger.error(f"Failed to search ChromaDB: {query}. Error: {str(e)}")
-            raise
+@router.post("/operate", response_model=MemoryOperationResponse, summary="Perform a memory operation")
+async def memory_operation_endpoint(
+    request: MemoryOperationRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Perform a generic memory operation for an agent.
 
-
-class MemorySystem:
-    def __init__(self, agent_id: UUID):
-        self.agent_id = agent_id
-        self.short_term = RedisMemory(settings.REDIS_URL)
-        self.long_term = VectorMemory(f"agent_{agent_id}")
-        memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
-
-    async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
-        memory_id = str(UUID.uuid4())
-        try:
-            if memory_type == MemoryType.SHORT_TERM:
-                await self.short_term.add(memory_id, content)
-            elif memory_type == MemoryType.LONG_TERM:
-                await self.long_term.add(memory_id, content, metadata)
-            else:
-                raise ValueError(f"Invalid memory type: {memory_type}")
-
-            memory_logger.info(f"{memory_type.value} memory added for agent: {self.agent_id}")
-            return memory_id
-        except Exception as e:
-            memory_logger.error(f"Failed to add {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def retrieve(self, memory_type: MemoryType, memory_id: str) -> Optional[MemoryEntry]:
-        try:
-            if memory_type == MemoryType.SHORT_TERM:
-                content = await self.short_term.get(memory_id)
-                return MemoryEntry(content=content) if content else None
-            elif memory_type == MemoryType.LONG_TERM:
-                result = await self.long_term.get(memory_id)
-                return MemoryEntry(content=result['content'], metadata=result['metadata']) if result else None
-            else:
-                raise ValueError(f"Invalid memory type: {memory_type}")
-        except Exception as e:
-            memory_logger.error(
-                f"Failed to retrieve {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def search(self, memory_type: MemoryType, query: str, limit: int = 5) -> List[MemoryEntry]:
-        try:
-            if memory_type == MemoryType.LONG_TERM:
-                results = await self.long_term.search(query, limit)
-                return [MemoryEntry(content=result['content'], metadata=result['metadata']) for result in results]
-            else:
-                raise ValueError(f"Search is only supported for long-term memory")
-        except Exception as e:
-            memory_logger.error(
-                f"Failed to search {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-
-# Global dictionary to store active memory systems
-memory_systems: Dict[UUID, MemorySystem] = {}
-
-
-async def get_memory_system(agent_id: UUID) -> MemorySystem:
-    if agent_id not in memory_systems:
-        memory_systems[agent_id] = MemorySystem(agent_id)
-    return memory_systems[agent_id]
-
-
-async def add_to_memory(agent_id: UUID, memory_type: MemoryType, entry: MemoryEntry) -> str:
-    memory_system = await get_memory_system(agent_id)
-    return await memory_system.add(memory_type, entry.content, entry.metadata)
-
-
-async def retrieve_from_memory(agent_id: UUID, memory_type: MemoryType, memory_id: str) -> Optional[MemoryEntry]:
-    memory_system = await get_memory_system(agent_id)
-    return await memory_system.retrieve(memory_type, memory_id)
-
-
-async def search_memory(agent_id: UUID, memory_type: MemoryType, query: str, limit: int = 5) -> List[MemoryEntry]:
-    memory_system = await get_memory_system(agent_id)
-    return await memory_system.search(memory_type, query, limit)
-
-@router.post("/add")
-async def add_memory_endpoint(agent_id: UUID, memory_type: MemoryType, entry: MemoryEntry):
-    return await add_to_memory(agent_id, memory_type, entry)
-
-@router.get("/retrieve")
-async def retrieve_memory_endpoint(agent_id: UUID, memory_type: MemoryType, memory_id: str):
-    return await retrieve_from_memory(agent_id, memory_type, memory_id)
-
-@router.post("/search")
-async def search_memory_endpoint(agent_id: UUID, memory_type: MemoryType, query: str, limit: int = 5):
-    return await search_memory(agent_id, memory_type, query, limit)
+    - **agent_id**: The ID of the agent
+    - **operation**: The memory operation to perform
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **data**: Data required for the operation
+    """
+    try:
+        memory_logger.info(f"Performing {request.operation} operation for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        result = await perform_memory_operation(request.agent_id, request.operation, request.memory_type, request.data, memory_config)
+        memory_logger.info(f"{request.operation} operation completed for agent: {request.agent_id}")
+        return MemoryOperationResponse(
+            agent_id=request.agent_id,
+            operation=request.operation,
+            result=result,
+            message=f"{request.operation} operation completed successfully"
+        )
+    except Exception as e:
+        memory_logger.error(f"Error performing {request.operation} operation for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -50,7 +50,7 @@ class Agent:
                 raise ValueError(f"Unknown function: {function_name}")
 
             # Get the actual function implementation
-            func_impl = registered_functions[function.id].implementation
+            func_impl = registered_functions[get_function.id].implementation
 
             # Validate parameters
             sig = inspect.signature(func_impl)
@@ -96,6 +96,20 @@ class Agent:
             if func_id in registered_functions and registered_functions[func_id].name == function_name:
                 return registered_functions[func_id]
         return None
+
+    async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
+        agent = agents.get(agent_id)
+        if not agent:
+            agent_logger.error(f"No agent found with id: {agent_id}")
+            raise ValueError(f"No agent found with id: {agent_id}")
+
+        if function_id not in registered_functions:
+            agent_logger.error(f"No function found with id: {function_id}")
+            raise ValueError(f"No function found with id: {function_id}")
+
+        agent.add_function(function_id)
+        agent_logger.info(
+            f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
 
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
@@ -151,6 +165,24 @@ async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
         conversation_history_length=len(agent.conversation_history)
     )
 
+async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
+    """
+    Retrieve the memory configuration for a specific agent.
+
+    Args:
+        agent_id (UUID): The ID of the agent
+
+    Returns:
+        MemoryConfig: The memory configuration for the agent
+
+    Raises:
+        ValueError: If the agent is not found
+    """
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return agent.config.memory_config
 
 async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
     agent = agents.get(agent_id)
