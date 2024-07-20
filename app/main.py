@@ -8,6 +8,7 @@ print("Python version:", sys.version)
 print("Python path:", sys.path)
 print("Current working directory:", os.getcwd())
 print("Contents of current directory:", os.listdir())
+print("Initializing FastAPI app")
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
