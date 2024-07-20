@@ -1,3 +1,4 @@
+import inspect
 from uuid import UUID, uuid4
 from typing import Dict, Any, Tuple, List, Optional
 from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
@@ -18,7 +19,7 @@ class Agent:
         })
         self.memory = MemorySystem(agent_id, memory_config)
         self.conversation_history = []
-        self.available_functions: Dict[str, FunctionDefinition] = {}
+        self.available_function_ids: List[str] = []
         agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
 
     async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -44,34 +45,57 @@ class Agent:
     async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
         try:
             agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-            if function_name not in self.available_functions:
+            get_function = self.get_function_by_name(function_name)
+            if not get_function:
                 raise ValueError(f"Unknown function: {function_name}")
 
-            # Here you would implement the actual function execution logic
-            # For now, we'll just return a placeholder result
-            result = f"Executed {function_name} with parameters {parameters}"
+            # Get the actual function implementation
+            func_impl = registered_functions[function.id].implementation
+
+            # Validate parameters
+            sig = inspect.signature(func_impl)
+            bound_args = sig.bind(**parameters)
+            bound_args.apply_defaults()
+
+            # Execute the function
+            result = func_impl(**bound_args.arguments)
 
             agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
             return result
+        except ValueError as ve:
+            agent_logger.error(f"Value error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(ve)}")
+            raise
+        except TypeError as te:
+            agent_logger.error(f"Type error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(te)}")
+            raise ValueError(f"Invalid parameters for function {function_name}: {str(te)}")
         except Exception as e:
-            agent_logger.error(
-                f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
             raise
 
     def get_available_functions(self) -> List[FunctionDefinition]:
-        return list(self.available_functions.values())
+        return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
 
-    def add_function(self, function: FunctionDefinition):
-        self.available_functions[function.name] = function
-        agent_logger.info(f"Function {function.name} added for Agent {self.name} (ID: {self.id})")
-
-    def remove_function(self, function_name: str):
-        if function_name in self.available_functions:
-            del self.available_functions[function_name]
-            agent_logger.info(f"Function {function_name} removed from Agent {self.name} (ID: {self.id})")
+    def add_function(self, function_id: str):
+        if function_id not in registered_functions:
+            raise ValueError(f"Function with ID {function_id} is not registered")
+        if function_id not in self.available_function_ids:
+            self.available_function_ids.append(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
         else:
-            agent_logger.warning(
-                f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})")
+            agent_logger.warning(f"Function {registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
+
+    def remove_function(self, function_id: str):
+        if function_id in self.available_function_ids:
+            self.available_function_ids.remove(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
+
+    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
+        for func_id in self.available_function_ids:
+            if func_id in registered_functions and registered_functions[func_id].name == function_name:
+                return registered_functions[func_id]
+        return None
 
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
@@ -96,12 +120,9 @@ class Agent:
         return response, function_calls
 
 
-# Global dictionary to store active agents
+# Global dictionaries
 agents: Dict[UUID, Agent] = {}
-
-# Global dictionary to store registered functions
 registered_functions: Dict[str, FunctionDefinition] = {}
-
 
 async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
     try:
@@ -138,6 +159,11 @@ async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[
         raise ValueError(f"No agent found with id: {agent_id}")
     return await agent.process_message(message)
 
+async def register_function(function: FunctionDefinition) -> str:
+    function_id = str(uuid4())
+    registered_functions[function_id] = function
+    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
+    return function_id
 
 async def execute_function(agent_id: UUID, function_name: str, parameters: Dict[str, Any]) -> Any:
     agent = agents.get(agent_id)
