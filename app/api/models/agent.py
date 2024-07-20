@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from uuid import UUID
+from enum import Enum
 
 class AgentConfig(BaseModel):
     llm_provider: str
@@ -29,7 +30,7 @@ class AgentMessageRequest(BaseModel):
 class AgentMessageResponse(BaseModel):
     agent_id: UUID
     response: str
-    function_calls: Optional[list[Dict[str, Any]]]
+    function_calls: Optional[List[Dict[str, Any]]]
 
 class AgentFunctionRequest(BaseModel):
     agent_id: UUID
@@ -54,3 +55,22 @@ class AgentMemoryRequest(BaseModel):
 class AgentMemoryResponse(BaseModel):
     agent_id: UUID
     result: Any
+
+class AgentInfoResponse(BaseModel):
+    agent_id: UUID
+    name: str
+    config: AgentConfig
+    memory_config: MemoryConfig
+    conversation_history_length: int
+
+class AgentUpdateRequest(BaseModel):
+    agent_config: Optional[AgentConfig] = None
+    memory_config: Optional[MemoryConfig] = None
+
+class AgentUpdateResponse(BaseModel):
+    agent_id: UUID
+    message: str
+
+class AgentDeleteResponse(BaseModel):
+    agent_id: UUID
+    message: str

@@ -30,3 +30,4 @@ main_logger = setup_logger('main', settings.LOG_DIR + '/main.log')
 agent_logger = setup_logger('agent', settings.LOG_DIR + '/agent.log')
 memory_logger = setup_logger('memory', settings.LOG_DIR + '/memory.log')
 llm_logger = setup_logger('llm', settings.LOG_DIR + '/llm.log')
+function_logger = setup_logger('function', settings.LOG_DIR + '/function.log')  # New logger for function operations

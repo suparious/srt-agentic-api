@@ -1,10 +1,10 @@
-from uuid import UUID
-from typing import Dict, Any, Tuple, List
-from app.api.models.agent import AgentConfig, MemoryConfig
+from uuid import UUID, uuid4
+from typing import Dict, Any, Tuple, List, Optional
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
+from app.api.models.function import FunctionDefinition
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
-
 
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
@@ -17,6 +17,7 @@ class Agent:
         })
         self.memory = MemorySystem(agent_id, memory_config)
         self.conversation_history = []
+        self.available_functions: Dict[str, FunctionDefinition] = {}
         agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
 
     async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -42,15 +43,34 @@ class Agent:
     async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
         try:
             agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-            if function_name == "get_current_time":
-                from datetime import datetime
-                return str(datetime.now())
-            else:
+            if function_name not in self.available_functions:
                 raise ValueError(f"Unknown function: {function_name}")
+
+            # Here you would implement the actual function execution logic
+            # For now, we'll just return a placeholder result
+            result = f"Executed {function_name} with parameters {parameters}"
+
+            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+            return result
         except Exception as e:
             agent_logger.error(
                 f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
             raise
+
+    def get_available_functions(self) -> List[FunctionDefinition]:
+        return list(self.available_functions.values())
+
+    def add_function(self, function: FunctionDefinition):
+        self.available_functions[function.name] = function
+        agent_logger.info(f"Function {function.name} added for Agent {self.name} (ID: {self.id})")
+
+    def remove_function(self, function_name: str):
+        if function_name in self.available_functions:
+            del self.available_functions[function_name]
+            agent_logger.info(f"Function {function_name} removed from Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(
+                f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})")
 
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
@@ -78,17 +98,32 @@ class Agent:
 # Global dictionary to store active agents
 agents: Dict[UUID, Agent] = {}
 
-
-async def create_agent(agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig,
-                       initial_prompt: str) -> None:
+async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
     try:
+        agent_id = uuid4()
         agent = Agent(agent_id, name, config, memory_config)
         agents[agent_id] = agent
         await agent.process_message(initial_prompt)
         agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
+        return agent_id
     except Exception as e:
-        agent_logger.error(f"Error creating Agent {name} (ID: {agent_id}): {str(e)}")
+        agent_logger.error(f"Error creating Agent {name}: {str(e)}")
         raise
+
+
+async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id}")
+        return None
+
+    return AgentInfoResponse(
+        agent_id=agent.id,
+        name=agent.name,
+        config=agent.config,
+        memory_config=agent.memory.config,
+        conversation_history_length=len(agent.conversation_history)
+    )
 
 
 async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -105,3 +140,11 @@ async def execute_function(agent_id: UUID, function_name: str, parameters: Dict[
         agent_logger.error(f"No agent found with id: {agent_id}")
         raise ValueError(f"No agent found with id: {agent_id}")
     return await agent.execute_function(function_name, parameters)
+
+
+async def get_available_functions(agent_id: UUID) -> List[FunctionDefinition]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return agent.get_available_functions()
