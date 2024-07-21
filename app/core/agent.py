@@ -7,7 +7,6 @@ from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
 
-
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
         self.id = agent_id
@@ -49,15 +48,12 @@ class Agent:
             if not get_function:
                 raise ValueError(f"Unknown function: {function_name}")
 
-            # Get the actual function implementation
             func_impl = registered_functions[get_function.id].implementation
 
-            # Validate parameters
             sig = inspect.signature(func_impl)
             bound_args = sig.bind(**parameters)
             bound_args.apply_defaults()
 
-            # Execute the function
             result = func_impl(**bound_args.arguments)
 
             agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
@@ -97,20 +93,6 @@ class Agent:
                 return registered_functions[func_id]
         return None
 
-    async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
-        agent = agents.get(agent_id)
-        if not agent:
-            agent_logger.error(f"No agent found with id: {agent_id}")
-            raise ValueError(f"No agent found with id: {agent_id}")
-
-        if function_id not in registered_functions:
-            agent_logger.error(f"No function found with id: {function_id}")
-            raise ValueError(f"No function found with id: {function_id}")
-
-        agent.add_function(function_id)
-        agent_logger.info(
-            f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
-
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
         history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
@@ -133,11 +115,11 @@ class Agent:
                     agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
         return response, function_calls
 
-
 # Global dictionaries
 agents: Dict[UUID, Agent] = {}
 registered_functions: Dict[str, FunctionDefinition] = {}
 
+# Facade functions for interacting with agents
 async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
     try:
         agent_id = uuid4()
@@ -149,7 +131,6 @@ async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConf
     except Exception as e:
         agent_logger.error(f"Error creating Agent {name}: {str(e)}")
         raise
-
 
 async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
     agent = agents.get(agent_id)
@@ -166,18 +147,6 @@ async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
     )
 
 async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
-    """
-    Retrieve the memory configuration for a specific agent.
-
-    Args:
-        agent_id (UUID): The ID of the agent
-
-    Returns:
-        MemoryConfig: The memory configuration for the agent
-
-    Raises:
-        ValueError: If the agent is not found
-    """
     agent = agents.get(agent_id)
     if not agent:
         agent_logger.error(f"No agent found with id: {agent_id}")
@@ -204,21 +173,12 @@ async def execute_function(agent_id: UUID, function_name: str, parameters: Dict[
         raise ValueError(f"No agent found with id: {agent_id}")
     return await agent.execute_function(function_name, parameters)
 
-
 async def get_available_functions(agent_id: UUID) -> List[FunctionDefinition]:
     agent = agents.get(agent_id)
     if not agent:
         agent_logger.error(f"No agent found with id: {agent_id}")
         raise ValueError(f"No agent found with id: {agent_id}")
     return agent.get_available_functions()
-
-
-async def register_function(function: FunctionDefinition) -> str:
-    function_id = str(uuid4())
-    registered_functions[function_id] = function
-    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
-    return function_id
-
 
 async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
     if function_id not in registered_functions:
@@ -228,8 +188,33 @@ async def update_function(function_id: str, updated_function: FunctionDefinition
     registered_functions[function_id] = updated_function
     agent_logger.info(f"Function with ID: {function_id} updated successfully")
 
-    # Update function for all agents that have it
     for agent in agents.values():
-        if updated_function.name in agent.available_functions:
-            agent.add_function(updated_function)
+        if function_id in agent.available_function_ids:
+            agent.add_function(function_id)
             agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
+
+async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.add_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
+
+async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.remove_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
