@@ -47,10 +47,7 @@ class RedisMemory:
 class VectorMemory:
     def __init__(self, collection_name: str):
         try:
-            self.client = chromadb.Client(Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory="/path/to/persist"
-            ))
+            self.client = chromadb.Client()
             self.collection = self.client.get_or_create_collection(collection_name)
             memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
         except Exception as e:

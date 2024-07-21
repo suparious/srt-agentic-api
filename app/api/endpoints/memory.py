@@ -28,7 +28,7 @@ from app.utils.logging import memory_logger
 
 router = APIRouter()
 
-@router.post("/add", response_model=MemoryAddResponse, summary="Add a memory entry")
+@router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
 async def add_memory_endpoint(
     request: MemoryAddRequest,
     api_key: str = Depends(get_api_key)
@@ -41,15 +41,18 @@ async def add_memory_endpoint(
     - **entry**: The memory entry to add
     """
     try:
-        memory_logger.info(f"Adding memory for agent: {request.agent_id}")
-        memory_config = await get_agent_memory_config(request.agent_id)
-        memory_id = await add_to_memory(request.agent_id, request.memory_type, request.entry, memory_config)
-        memory_logger.info(f"Memory added successfully for agent: {request.agent_id}")
+        agent_id = UUID(request.agent_id)
+        memory_logger.info(f"Adding memory for agent: {agent_id}")
+        memory_config = await get_agent_memory_config(agent_id)
+        memory_id = await add_to_memory(agent_id, request.memory_type, request.entry, memory_config)
+        memory_logger.info(f"Memory added successfully for agent: {agent_id}")
         return MemoryAddResponse(
-            agent_id=request.agent_id,
+            agent_id=agent_id,
             memory_id=memory_id,
             message="Memory added successfully"
         )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

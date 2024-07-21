@@ -80,7 +80,7 @@ async def get_available_functions_endpoint(
         function_logger.error(f"Error retrieving available functions for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while retrieving available functions")
 
-@router.post("/register", response_model=FunctionRegistrationResponse, summary="Register a new function")
+@router.post("/register", response_model=FunctionRegistrationResponse, status_code=201, summary="Register a new function")
 async def register_function_endpoint(
     request: FunctionRegistrationRequest,
     api_key: str = Depends(get_api_key)

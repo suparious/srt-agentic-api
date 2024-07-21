@@ -1,4 +1,5 @@
 import inspect
+import asyncio
 from uuid import UUID, uuid4
 from typing import Dict, Any, Tuple, List, Optional
 from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
@@ -50,20 +51,10 @@ class Agent:
 
             func_impl = registered_functions[get_function.id].implementation
 
-            sig = inspect.signature(func_impl)
-            bound_args = sig.bind(**parameters)
-            bound_args.apply_defaults()
-
-            result = func_impl(**bound_args.arguments)
+            result = await func_impl(**parameters)
 
             agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
             return result
-        except ValueError as ve:
-            agent_logger.error(f"Value error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(ve)}")
-            raise
-        except TypeError as te:
-            agent_logger.error(f"Type error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(te)}")
-            raise ValueError(f"Invalid parameters for function {function_name}: {str(te)}")
         except Exception as e:
             agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
             raise

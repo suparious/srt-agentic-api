@@ -1,40 +1,74 @@
 import pytest
 from fastapi.testclient import TestClient
+from uuid import UUID
 
-def test_store_memory(test_client: TestClient, auth_headers):
+def test_add_memory(test_client: TestClient, auth_headers):
     memory_data = {
-        "agent_id": "test_agent_id",
-        "key": "test_key",
-        "value": "Test memory value"
+        "agent_id": str(UUID(int=0)),  # Using a dummy UUID for testing
+        "memory_type": "SHORT_TERM",
+        "entry": {
+            "content": "Test memory content",
+            "metadata": {"key": "value"}
+        }
     }
-    response = test_client.post("/memory/", json=memory_data, headers=auth_headers)
+    response = test_client.post("/memory/add", json=memory_data, headers=auth_headers)
     assert response.status_code == 201
-    stored_memory = response.json()
-    assert stored_memory["key"] == memory_data["key"]
-    return stored_memory["id"]
+    added_memory = response.json()
+    assert added_memory["message"] == "Memory added successfully"
+    assert "memory_id" in added_memory
+    return added_memory["memory_id"]
 
 def test_retrieve_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    response = test_client.get(f"/memory/{memory_id}", headers=auth_headers)
+    memory_id = test_add_memory(test_client, auth_headers)
+    retrieve_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "memory_id": memory_id
+    }
+    response = test_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
     assert response.status_code == 200
     memory = response.json()
-    assert memory["id"] == memory_id
+    assert memory["content"] == "Test memory content"
+    assert memory["metadata"] == {"key": "value"}
 
-def test_update_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    update_data = {"value": "Updated memory value"}
-    response = test_client.patch(f"/memory/{memory_id}", json=update_data, headers=auth_headers)
+def test_search_memory(test_client: TestClient, auth_headers):
+    test_add_memory(test_client, auth_headers)  # Add a memory to search for
+    search_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "query": "Test memory",
+        "limit": 5
+    }
+    response = test_client.post("/memory/search", json=search_data, headers=auth_headers)
     assert response.status_code == 200
-    updated_memory = response.json()
-    assert updated_memory["value"] == update_data["value"]
+    results = response.json()
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
 
 def test_delete_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    response = test_client.delete(f"/memory/{memory_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-def test_list_memories(test_client: TestClient, auth_headers):
-    response = test_client.get("/memory/", headers=auth_headers)
+    memory_id = test_add_memory(test_client, auth_headers)
+    delete_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "memory_id": memory_id
+    }
+    response = test_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
     assert response.status_code == 200
-    memories = response.json()
-    assert isinstance(memories, list)
+    result = response.json()
+    assert result["message"] == "Memory deleted successfully"
+
+def test_memory_operation(test_client: TestClient, auth_headers):
+    operation_data = {
+        "agent_id": str(UUID(int=0)),
+        "operation": "ADD",
+        "memory_type": "SHORT_TERM",
+        "data": {
+            "content": "Test operation memory content",
+            "metadata": {"operation": "test"}
+        }
+    }
+    response = test_client.post("/memory/operate", json=operation_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "ADD operation completed successfully"
+    assert "result" in result
