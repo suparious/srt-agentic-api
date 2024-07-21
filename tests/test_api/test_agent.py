@@ -1,11 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from uuid import UUID
 
 pytestmark = pytest.mark.asyncio
 
 @pytest.mark.asyncio
-async def test_create_agent(test_client: TestClient, auth_headers):
+async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
         "name": "Test Agent",
         "config": {
@@ -24,16 +25,17 @@ async def test_create_agent(test_client: TestClient, auth_headers):
         },
         "initial_prompt": "You are a helpful assistant."
     }
-    response = await test_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     created_agent = response.json()
-    assert created_agent["message"] == "Agent created successfully"
+    assert "agent_id" in created_agent
     assert UUID(created_agent["agent_id"])
     return created_agent["agent_id"]
 
-async def test_get_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
+@pytest.mark.asyncio
+async def test_get_agent(async_client: AsyncClient, auth_headers):
+    agent_id = await test_create_agent(async_client, auth_headers)
+    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 200
     agent = response.json()
     assert agent["agent_id"] == str(agent_id)

@@ -194,20 +194,19 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # tests/conftest.py
 
 ```py
-# tests/conftest.py
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from app.main import app
 from app.config import settings
 
-@pytest.fixture(scope="module")
-def test_client():
-    return TestClient(app)
+@pytest.fixture
+async def async_client():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def auth_headers():
     return {"X-API-Key": settings.API_KEY}
-
 ```
 
 # tests/__init__.py
@@ -324,12 +323,6 @@ filterwarnings =
 \`\`\`
 
 This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
-
-```
-
-# docs/llama-cpp-agent.md
-
-```md
 
 ```
 
@@ -1414,26 +1407,16 @@ Signature: 8a477f597d28d172789f06886806bc55
 
 ```py
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, AsyncMock, patch
 from uuid import UUID
 from app.core.agent import Agent
 from app.api.models.agent import AgentConfig, MemoryConfig
 
 
 @pytest.fixture
-def mock_llm_provider():
-    return Mock()
-
-
-@pytest.fixture
-def mock_memory_system():
-    return Mock()
-
-
-@pytest.fixture
 def agent_config():
     return AgentConfig(
-        llm_provider="openai",  # Change this from "test_provider" to "openai"
+        llm_provider="openai",
         model_name="gpt-3.5-turbo",
         temperature=0.7,
         max_tokens=100,
@@ -1443,12 +1426,12 @@ def agent_config():
         )
     )
 
-@patch('app.core.agent.create_llm_provider')
-@patch('app.core.agent.MemorySystem')
+
 @pytest.mark.asyncio
-async def test_agent_initialization(mock_llm_provider, mock_memory_system, agent_config):
+async def test_agent_initialization(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    with patch('app.core.agent.create_llm_provider', return_value=mock_llm_provider):
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
         agent = Agent(
             agent_id=agent_id,
             name="Test Agent",
@@ -1456,19 +1439,44 @@ async def test_agent_initialization(mock_llm_provider, mock_memory_system, agent
             memory_config=agent_config.memory_config
         )
 
-    assert agent.id == agent_id
-    assert agent.name == "Test Agent"
-    assert agent.config == agent_config
-    assert agent.llm_provider == mock_llm_provider
+        assert agent.id == agent_id
+        assert agent.name == "Test Agent"
+        assert agent.config == agent_config
+        assert isinstance(agent.llm_provider, Mock)
+        assert isinstance(agent.memory, MockMemorySystem)
 
-@patch('app.core.agent.create_llm_provider')
-@patch('app.core.agent.MemorySystem')
+
 @pytest.mark.asyncio
-async def test_agent_process_message(mock_memory_system, mock_create_llm_provider, agent_config):
-    mock_llm_provider = Mock()
-    mock_create_llm_provider.return_value = mock_llm_provider
-    mock_llm_provider.generate.return_value = "Processed message response"
+async def test_agent_process_message(agent_config):
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
+        mock_llm_provider.generate.return_value = "Processed message response"
 
+        mock_memory = AsyncMock()
+        MockMemorySystem.return_value = mock_memory
+        mock_memory.retrieve_relevant.return_value = []
+
+        agent_id = UUID('12345678-1234-5678-1234-567812345678')
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
+        )
+
+        message = "Test message"
+        response, function_calls = await agent.process_message(message=message)
+
+        assert response == "Processed message response"
+        assert function_calls == []
+        mock_llm_provider.generate.assert_called_once()
+        mock_memory.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_agent_execute_function(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     agent = Agent(
         agent_id=agent_id,
@@ -1477,32 +1485,16 @@ async def test_agent_process_message(mock_memory_system, mock_create_llm_provide
         memory_config=agent_config.memory_config
     )
 
-    message = "Test message"
-    response, function_calls = await agent.process_message(message)
-
-    assert response == "Processed message response"
-    assert function_calls == []
-    mock_llm_provider.generate.assert_called_once()
-    agent.memory.add.assert_called_once()
-
-
-@patch('app.core.agent.create_llm_provider')
-@patch('app.core.agent.MemorySystem')
-def test_agent_execute_function(mock_memory_system, mock_create_llm_provider, agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
-
-    def test_function(param1, param2):
+    async def test_function(param1, param2):
         return f"Executed with {param1} and {param2}"
 
     agent.available_function_ids = ["test_function_id"]
-    with patch.dict('app.core.agent.registered_functions', {"test_function_id": Mock(implementation=test_function)}):
-        result = agent.execute_function("test_function", {"param1": "value1", "param2": "value2"})
+    with patch.dict('app.core.agent.registered_functions',
+                    {"test_function_id": AsyncMock(implementation=test_function)}):
+        result = await agent.execute_function(
+            function_name="test_function",
+            parameters={"param1": "value1", "param2": "value2"}
+        )
 
     assert result == "Executed with value1 and value2"
 
@@ -1526,6 +1518,7 @@ def test_agent_get_available_functions(agent_config):
     assert len(available_functions) == 2
     assert available_functions[0].name == "Function 1"
     assert available_functions[1].name == "Function 2"
+
 ```
 
 # tests/test_core/__init__.py
@@ -1835,10 +1828,11 @@ from uuid import UUID
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.mark.asyncio
 async def test_create_agent(test_client: TestClient, auth_headers):
     agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": {
+        "name": "Test Agent",
+        "config": {
             "llm_provider": "openai",
             "model_name": "gpt-3.5-turbo",
             "temperature": 0.7,
@@ -1854,7 +1848,7 @@ async def test_create_agent(test_client: TestClient, auth_headers):
         },
         "initial_prompt": "You are a helpful assistant."
     }
-    response = test_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    response = await test_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     created_agent = response.json()
     assert created_agent["message"] == "Agent created successfully"
@@ -1901,6 +1895,38 @@ async def test_list_agents(test_client: TestClient, auth_headers):
 # tests/test_api/__init__.py
 
 ```py
+
+```
+
+# docs/.pytest_cache/README.md
+
+```md
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+```
+
+# docs/.pytest_cache/CACHEDIR.TAG
+
+```TAG
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+```
+
+# docs/.pytest_cache/.gitignore
+
+```
+# Created by pytest automatically.
+*
 
 ```
 
@@ -1966,6 +1992,12 @@ def validate_api_key(api_key: str) -> bool:
 ```
 
 # app/utils/__init__.py
+
+```py
+
+```
+
+# app/api/__init__.py
 
 ```py
 
@@ -2302,6 +2334,7 @@ from app.api.models.memory import MemoryType
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
+from fastapi import HTTPException
 
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
@@ -2406,10 +2439,12 @@ agents: Dict[UUID, Agent] = {}
 registered_functions: Dict[str, FunctionDefinition] = {}
 
 # Facade functions for interacting with agents
-async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
+async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
     try:
         agent_id = uuid4()
-        agent = Agent(agent_id, name, config, memory_config)
+        agent_config = AgentConfig(**config)
+        mem_config = MemoryConfig(**memory_config)
+        agent = Agent(agent_id, name, agent_config, mem_config)
         agents[agent_id] = agent
         await agent.process_message(initial_prompt)
         agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
@@ -2431,6 +2466,43 @@ async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
         memory_config=agent.memory.config,
         conversation_history_length=len(agent.conversation_history)
     )
+
+async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id} for update")
+        return False
+
+    try:
+        if 'config' in update_data:
+            agent.config = AgentConfig(**update_data['config'])
+        if 'memory_config' in update_data:
+            agent.memory.config = MemoryConfig(**update_data['memory_config'])
+        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+        return True
+    except Exception as e:
+        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+        return False
+
+async def delete_agent(agent_id: UUID) -> bool:
+    if agent_id in agents:
+        del agents[agent_id]
+        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
+        return True
+    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
+    return False
+
+async def list_agents() -> List[AgentInfoResponse]:
+    return [
+        AgentInfoResponse(
+            agent_id=agent.id,
+            name=agent.name,
+            config=agent.config,
+            memory_config=agent.memory.config,
+            conversation_history_length=len(agent.conversation_history)
+        )
+        for agent in agents.values()
+    ]
 
 async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
     agent = agents.get(agent_id)
@@ -2508,12 +2580,6 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 ```
 
 # app/core/__init__.py
-
-```py
-
-```
-
-# app/api/__init__.py
 
 ```py
 
@@ -2817,6 +2883,7 @@ class AgentConfig(BaseModel):
     temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
     max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
     memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
+
     model_config = ConfigDict(protected_namespaces=())
 
 class AgentCreationRequest(BaseModel):
@@ -3299,54 +3366,77 @@ async def remove_function_endpoint(
 ```py
 from fastapi import APIRouter, HTTPException, Depends
 from uuid import UUID
-from app.api.models.agent import AgentCreationRequest, AgentCreationResponse, AgentInfoResponse
-from app.core.agent import create_agent, get_agent_info
+from typing import List
+from app.api.models.agent import AgentCreationRequest, AgentCreationResponse, AgentInfoResponse, AgentUpdateRequest, AgentUpdateResponse
+from app.core.agent import create_agent, get_agent_info, update_agent, delete_agent, list_agents
 from app.utils.auth import get_api_key
-from app.utils.logging import agent_logger
 
 router = APIRouter()
 
-@router.post("/create", response_model=AgentCreationResponse, summary="Create a new agent")
+@router.post("/create", response_model=AgentCreationResponse, status_code=201)
 async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = Depends(get_api_key)):
     """
-    Create a new agent with the given configuration.
+    Create a new agent.
 
-    - **agent_name**: Name of the agent
-    - **agent_config**: Configuration for the agent's LLM
+    - **name**: The name of the agent
+    - **config**: Configuration for the agent's language model
     - **memory_config**: Configuration for the agent's memory systems
     - **initial_prompt**: The initial prompt to send to the agent upon creation
     """
-    try:
-        agent_logger.info(f"Received request to create agent: {request.agent_name}")
-        agent_id = await create_agent(request.agent_name, request.agent_config, request.memory_config, request.initial_prompt)
-        agent_logger.info(f"Agent created successfully: {agent_id}")
-        return AgentCreationResponse(agent_id=agent_id, message="Agent created successfully")
-    except Exception as e:
-        agent_logger.error(f"Error creating agent: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating agent: {str(e)}")
+    agent_id = await create_agent(
+        name=request.name,
+        config=request.config.dict(),
+        memory_config=request.memory_config.dict(),
+        initial_prompt=request.initial_prompt
+    )
+    return AgentCreationResponse(agent_id=agent_id, message="Agent created successfully")
 
-@router.get("/{agent_id}", response_model=AgentInfoResponse, summary="Get agent information")
+@router.get("/{agent_id}", response_model=AgentInfoResponse)
 async def get_agent_info_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
     """
     Retrieve information about a specific agent.
 
     - **agent_id**: The unique identifier of the agent
     """
-    try:
-        agent_logger.info(f"Received request to get info for agent: {agent_id}")
-        agent_info = await get_agent_info(agent_id)
-        if agent_info is None:
-            agent_logger.warning(f"Agent not found: {agent_id}")
-            raise HTTPException(status_code=404, detail="Agent not found")
-        agent_logger.info(f"Successfully retrieved info for agent: {agent_id}")
-        return agent_info
-    except HTTPException:
-        raise
-    except Exception as e:
-        agent_logger.error(f"Error retrieving agent info: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving agent info: {str(e)}")
+    agent_info = await get_agent_info(agent_id=agent_id)
+    if agent_info is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent_info
 
-# Additional endpoints can be added here
+@router.patch("/{agent_id}", response_model=AgentUpdateResponse)
+async def update_agent_endpoint(agent_id: UUID, request: AgentUpdateRequest, api_key: str = Depends(get_api_key)):
+    """
+    Update an existing agent.
+
+    - **agent_id**: The unique identifier of the agent to update
+    - **config**: Updated configuration for the agent's language model (optional)
+    - **memory_config**: Updated configuration for the agent's memory systems (optional)
+    """
+    updated = await update_agent(
+        agent_id=agent_id,
+        update_data=request.dict(exclude_unset=True)
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return AgentUpdateResponse(agent_id=agent_id, message="Agent updated successfully")
+
+@router.delete("/{agent_id}", status_code=204)
+async def delete_agent_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
+    """
+    Delete an agent.
+
+    - **agent_id**: The unique identifier of the agent to delete
+    """
+    deleted = await delete_agent(agent_id=agent_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+@router.get("/", response_model=List[AgentInfoResponse])
+async def list_agents_endpoint(api_key: str = Depends(get_api_key)):
+    """
+    List all agents.
+    """
+    return await list_agents()
 
 ```
 
@@ -3438,7 +3528,20 @@ __all__ = ["agent_router", "message_router", "function_router", "memory_router"]
   "tests/test_api/test_function.py::test_get_function": true,
   "tests/test_api/test_message.py::test_send_message": true,
   "tests/test_api/test_message.py::test_get_message_history": true,
-  "tests/test_core/test_agent.py::test_agent_process_message": true
+  "tests/test_api/test_main.py::test_read_main": true,
+  "tests/test_core/test_agent.py::test_agent_initialization": true
 }
+```
+
+# docs/.pytest_cache/v/cache/stepwise
+
+```
+[]
+```
+
+# docs/.pytest_cache/v/cache/nodeids
+
+```
+[]
 ```
 

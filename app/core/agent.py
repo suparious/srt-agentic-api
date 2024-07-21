@@ -8,6 +8,7 @@ from app.api.models.memory import MemoryType
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
+from fastapi import HTTPException
 
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
@@ -112,10 +113,12 @@ agents: Dict[UUID, Agent] = {}
 registered_functions: Dict[str, FunctionDefinition] = {}
 
 # Facade functions for interacting with agents
-async def create_agent(name: str, config: AgentConfig, memory_config: MemoryConfig, initial_prompt: str) -> UUID:
+async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
     try:
         agent_id = uuid4()
-        agent = Agent(agent_id, name, config, memory_config)
+        agent_config = AgentConfig(**config)
+        mem_config = MemoryConfig(**memory_config)
+        agent = Agent(agent_id, name, agent_config, mem_config)
         agents[agent_id] = agent
         await agent.process_message(initial_prompt)
         agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
@@ -137,6 +140,43 @@ async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
         memory_config=agent.memory.config,
         conversation_history_length=len(agent.conversation_history)
     )
+
+async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id} for update")
+        return False
+
+    try:
+        if 'config' in update_data:
+            agent.config = AgentConfig(**update_data['config'])
+        if 'memory_config' in update_data:
+            agent.memory.config = MemoryConfig(**update_data['memory_config'])
+        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+        return True
+    except Exception as e:
+        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+        return False
+
+async def delete_agent(agent_id: UUID) -> bool:
+    if agent_id in agents:
+        del agents[agent_id]
+        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
+        return True
+    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
+    return False
+
+async def list_agents() -> List[AgentInfoResponse]:
+    return [
+        AgentInfoResponse(
+            agent_id=agent.id,
+            name=agent.name,
+            config=agent.config,
+            memory_config=agent.memory.config,
+            conversation_history_length=len(agent.conversation_history)
+        )
+        for agent in agents.values()
+    ]
 
 async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
     agent = agents.get(agent_id)
