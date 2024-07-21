@@ -2,10 +2,13 @@ import pytest
 from fastapi.testclient import TestClient
 from uuid import UUID
 
-def test_create_agent(test_client: TestClient, auth_headers):
+pytestmark = pytest.mark.asyncio
+
+@pytest.mark.asyncio
+async def test_create_agent(test_client: TestClient, auth_headers):
     agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": {
+        "name": "Test Agent",
+        "config": {
             "llm_provider": "openai",
             "model_name": "gpt-3.5-turbo",
             "temperature": 0.7,
@@ -21,14 +24,14 @@ def test_create_agent(test_client: TestClient, auth_headers):
         },
         "initial_prompt": "You are a helpful assistant."
     }
-    response = test_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    response = await test_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     created_agent = response.json()
     assert created_agent["message"] == "Agent created successfully"
     assert UUID(created_agent["agent_id"])
     return created_agent["agent_id"]
 
-def test_get_agent(test_client: TestClient, auth_headers):
+async def test_get_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 200
@@ -36,7 +39,7 @@ def test_get_agent(test_client: TestClient, auth_headers):
     assert agent["agent_id"] == str(agent_id)
     assert agent["name"] == "Test Agent"
 
-def test_update_agent(test_client: TestClient, auth_headers):
+async def test_update_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     update_data = {
         "agent_config": {
@@ -48,12 +51,12 @@ def test_update_agent(test_client: TestClient, auth_headers):
     updated_agent = response.json()
     assert updated_agent["message"] == "Agent updated successfully"
 
-def test_delete_agent(test_client: TestClient, auth_headers):
+async def test_delete_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 204
 
-def test_list_agents(test_client: TestClient, auth_headers):
+async def test_list_agents(test_client: TestClient, auth_headers):
     # Create a couple of agents first
     test_create_agent(test_client, auth_headers)
     test_create_agent(test_client, auth_headers)

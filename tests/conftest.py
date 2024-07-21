@@ -1,13 +1,13 @@
-# tests/conftest.py
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from app.main import app
 from app.config import settings
 
-@pytest.fixture(scope="module")
-def test_client():
-    return TestClient(app)
+@pytest.fixture
+async def async_client():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def auth_headers():
     return {"X-API-Key": settings.API_KEY}

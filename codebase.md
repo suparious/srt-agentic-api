@@ -23,6 +23,7 @@ tenacity>=8.2.2,<9.0.0
 ```txt
 # additional unit testing requirements:
 pytest>=7.3.1,<8.0.0
+pytest-asyncio
 httpx>=0.24.1,<1.0.0
 
 ```
@@ -584,38 +585,6 @@ llm_provider = create_llm_provider(provider_config)
 
 ```
 
-# .pytest_cache/README.md
-
-```md
-# pytest cache directory #
-
-This directory contains data from the pytest's cache plugin,
-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
-
-**Do not** commit this to version control.
-
-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
-
-```
-
-# .pytest_cache/CACHEDIR.TAG
-
-```TAG
-Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag created by pytest.
-# For information about cache directory tags, see:
-#	https://bford.info/cachedir/spec.html
-
-```
-
-# .pytest_cache/.gitignore
-
-```
-# Created by pytest automatically.
-*
-
-```
-
 # app/main.py
 
 ```py
@@ -795,6 +764,38 @@ settings = Settings()
 # app/__init__.py
 
 ```py
+
+```
+
+# .pytest_cache/README.md
+
+```md
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+```
+
+# .pytest_cache/CACHEDIR.TAG
+
+```TAG
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+```
+
+# .pytest_cache/.gitignore
+
+```
+# Created by pytest automatically.
+*
 
 ```
 
@@ -1432,8 +1433,8 @@ def mock_memory_system():
 @pytest.fixture
 def agent_config():
     return AgentConfig(
-        llm_provider="test_provider",
-        model_name="test_model",
+        llm_provider="openai",  # Change this from "test_provider" to "openai"
+        model_name="gpt-3.5-turbo",
         temperature=0.7,
         max_tokens=100,
         memory_config=MemoryConfig(
@@ -1765,7 +1766,8 @@ async def test_get_function(test_client: AsyncClient, auth_headers):
     assert function["name"] == "test_function"
     assert function["description"] == "A test function"
 
-def test_update_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_update_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     update_data = {
         "updated_function": {
@@ -1787,14 +1789,16 @@ def test_update_function(test_client: TestClient, auth_headers):
     updated_function = response.json()
     assert updated_function["message"] == "Function updated successfully"
 
-def test_delete_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_delete_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     response = test_client.delete(f"/function/remove?agent_id=test_agent_id&function_id={function_id}", headers=auth_headers)
     assert response.status_code == 200
     result = response.json()
     assert result["message"] == "Function removed successfully"
 
-def test_list_functions(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_list_functions(test_client: TestClient, auth_headers):
     # Register a couple of functions first
     test_register_function(test_client, auth_headers)
     test_register_function(test_client, auth_headers)
@@ -1805,7 +1809,8 @@ def test_list_functions(test_client: TestClient, auth_headers):
     assert isinstance(functions["functions"], list)
     assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
 
-def test_execute_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_execute_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     execution_data = {
         "agent_id": "test_agent_id",
@@ -1828,7 +1833,9 @@ import pytest
 from fastapi.testclient import TestClient
 from uuid import UUID
 
-def test_create_agent(test_client: TestClient, auth_headers):
+pytestmark = pytest.mark.asyncio
+
+async def test_create_agent(test_client: TestClient, auth_headers):
     agent_data = {
         "agent_name": "Test Agent",
         "agent_config": {
@@ -1854,7 +1861,7 @@ def test_create_agent(test_client: TestClient, auth_headers):
     assert UUID(created_agent["agent_id"])
     return created_agent["agent_id"]
 
-def test_get_agent(test_client: TestClient, auth_headers):
+async def test_get_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 200
@@ -1862,7 +1869,7 @@ def test_get_agent(test_client: TestClient, auth_headers):
     assert agent["agent_id"] == str(agent_id)
     assert agent["name"] == "Test Agent"
 
-def test_update_agent(test_client: TestClient, auth_headers):
+async def test_update_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     update_data = {
         "agent_config": {
@@ -1874,12 +1881,12 @@ def test_update_agent(test_client: TestClient, auth_headers):
     updated_agent = response.json()
     assert updated_agent["message"] == "Agent updated successfully"
 
-def test_delete_agent(test_client: TestClient, auth_headers):
+async def test_delete_agent(test_client: TestClient, auth_headers):
     agent_id = test_create_agent(test_client, auth_headers)
     response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 204
 
-def test_list_agents(test_client: TestClient, auth_headers):
+async def test_list_agents(test_client: TestClient, auth_headers):
     # Create a couple of agents first
     test_create_agent(test_client, auth_headers)
     test_create_agent(test_client, auth_headers)
@@ -1968,7 +1975,8 @@ def validate_api_key(api_key: str) -> bool:
 
 ```py
 import asyncio
-from uuid import UUID
+import json
+from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
 from redis import asyncio as aioredis
 import chromadb
@@ -1979,39 +1987,56 @@ from app.utils.logging import memory_logger
 
 
 class RedisMemory:
-    def __init__(self, redis_url: str):
+    def __init__(self, redis_url: str, agent_id: UUID):
         try:
             self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            memory_logger.info(f"Redis connection established: {redis_url}")
+            self.agent_id = agent_id
+            memory_logger.info(f"Redis connection established: {redis_url} for agent: {agent_id}")
         except Exception as e:
             memory_logger.error(f"Failed to connect to Redis: {str(e)}")
             raise
 
     async def add(self, key: str, value: str, expire: int = 3600):
         try:
-            await self.redis.set(key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            await self.redis.set(full_key, value, ex=expire)
+            memory_logger.debug(f"Added key to Redis: {full_key}")
         except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to add key to Redis: {full_key}. Error: {str(e)}")
             raise
 
     async def get(self, key: str) -> str:
         try:
-            value = await self.redis.get(key)
-            memory_logger.debug(f"Retrieved key from Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            value = await self.redis.get(full_key)
+            memory_logger.debug(f"Retrieved key from Redis: {full_key}")
             return value
         except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to get key from Redis: {full_key}. Error: {str(e)}")
             raise
 
     async def delete(self, key: str):
         try:
-            await self.redis.delete(key)
-            memory_logger.debug(f"Deleted key from Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            await self.redis.delete(full_key)
+            memory_logger.debug(f"Deleted key from Redis: {full_key}")
         except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to delete key from Redis: {full_key}. Error: {str(e)}")
             raise
 
+    async def get_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
+        try:
+            pattern = f"agent:{self.agent_id}:*"
+            keys = await self.redis.keys(pattern)
+            recent_memories = []
+            for key in keys[-limit:]:
+                value = await self.redis.get(key)
+                if value:
+                    recent_memories.append(json.loads(value))
+            return recent_memories
+        except Exception as e:
+            memory_logger.error(f"Failed to get recent memories from Redis for agent {self.agent_id}: {str(e)}")
+            raise
 
 class VectorMemory:
     def __init__(self, collection_name: str):
@@ -2051,7 +2076,7 @@ class MemorySystem:
     def __init__(self, agent_id: UUID, config: MemoryConfig):
         self.agent_id = agent_id
         self.config = config
-        self.short_term = RedisMemory("redis://localhost:6379")
+        self.short_term = RedisMemory("redis://localhost:6379", agent_id)
         self.long_term = VectorMemory(f"agent_{agent_id}")
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
@@ -2114,6 +2139,26 @@ class MemorySystem:
         except Exception as e:
             memory_logger.error(
                 f"Failed to delete {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
+            raise
+
+    async def retrieve_relevant(self, context: str, limit: int = 5) -> List[Dict[str, Any]]:
+        try:
+            relevant_memories = []
+            if self.config.use_redis_cache:
+                # Retrieve recent memories from short-term memory
+                recent_memories = await self.short_term.get_recent(limit)
+                relevant_memories.extend(recent_memories)
+
+            if self.config.use_long_term_memory:
+                # Search long-term memory for relevant entries
+                long_term_results = await self.long_term.search(context, n_results=limit)
+                relevant_memories.extend(long_term_results)
+
+            # Sort and limit the combined results
+            relevant_memories.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+            return relevant_memories[:limit]
+        except Exception as e:
+            memory_logger.error(f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}")
             raise
 
 # Global dictionary to store active memory systems
@@ -2253,6 +2298,7 @@ from uuid import UUID, uuid4
 from typing import Dict, Any, Tuple, List, Optional
 from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
 from app.api.models.function import FunctionDefinition
+from app.api.models.memory import MemoryType
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
@@ -2276,14 +2322,14 @@ class Agent:
             agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
             self.conversation_history.append({"role": "user", "content": message})
 
-            context = await self.memory.retrieve_relevant(message)
-            prompt = self._prepare_prompt(context)
+            relevant_context = await self.memory.retrieve_relevant(message)
+            prompt = self._prepare_prompt(relevant_context)
 
             response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
             response_text, function_calls = self._parse_response(response)
 
             self.conversation_history.append({"role": "assistant", "content": response_text})
-            await self.memory.add(response_text, {"type": "assistant_response"})
+            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
 
             agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
             return response_text, function_calls
@@ -2473,81 +2519,6 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 
 ```
 
-# .pytest_cache/v/cache/stepwise
-
-```
-[]
-```
-
-# .pytest_cache/v/cache/nodeids
-
-```
-[
-  "tests/test_api/test_agent.py::test_create_agent",
-  "tests/test_api/test_agent.py::test_delete_agent",
-  "tests/test_api/test_agent.py::test_get_agent",
-  "tests/test_api/test_agent.py::test_list_agents",
-  "tests/test_api/test_agent.py::test_update_agent",
-  "tests/test_api/test_function.py::test_delete_function",
-  "tests/test_api/test_function.py::test_execute_function",
-  "tests/test_api/test_function.py::test_get_function",
-  "tests/test_api/test_function.py::test_list_functions",
-  "tests/test_api/test_function.py::test_register_function",
-  "tests/test_api/test_function.py::test_update_function",
-  "tests/test_api/test_main.py::test_read_main",
-  "tests/test_api/test_memory.py::test_add_memory",
-  "tests/test_api/test_memory.py::test_delete_memory",
-  "tests/test_api/test_memory.py::test_list_memories",
-  "tests/test_api/test_memory.py::test_memory_operation",
-  "tests/test_api/test_memory.py::test_retrieve_memory",
-  "tests/test_api/test_memory.py::test_search_memory",
-  "tests/test_api/test_memory.py::test_store_memory",
-  "tests/test_api/test_memory.py::test_update_memory",
-  "tests/test_api/test_message.py::test_clear_message_history",
-  "tests/test_api/test_message.py::test_create_message",
-  "tests/test_api/test_message.py::test_get_latest_message",
-  "tests/test_api/test_message.py::test_get_message",
-  "tests/test_api/test_message.py::test_get_message_history",
-  "tests/test_api/test_message.py::test_list_messages",
-  "tests/test_api/test_message.py::test_send_message",
-  "tests/test_core/test_agent.py::test_agent_execute_function",
-  "tests/test_core/test_agent.py::test_agent_get_available_functions",
-  "tests/test_core/test_agent.py::test_agent_initialization",
-  "tests/test_core/test_agent.py::test_agent_process_message"
-]
-```
-
-# .pytest_cache/v/cache/lastfailed
-
-```
-{
-  "tests/test_api/test_agent.py::test_create_agent": true,
-  "tests/test_api/test_agent.py::test_get_agent": true,
-  "tests/test_api/test_agent.py::test_update_agent": true,
-  "tests/test_api/test_agent.py::test_delete_agent": true,
-  "tests/test_api/test_agent.py::test_list_agents": true,
-  "tests/test_api/test_function.py::test_update_function": true,
-  "tests/test_api/test_function.py::test_delete_function": true,
-  "tests/test_api/test_function.py::test_list_functions": true,
-  "tests/test_api/test_memory.py::test_store_memory": true,
-  "tests/test_api/test_memory.py::test_retrieve_memory": true,
-  "tests/test_api/test_memory.py::test_update_memory": true,
-  "tests/test_api/test_memory.py::test_delete_memory": true,
-  "tests/test_api/test_memory.py::test_list_memories": true,
-  "tests/test_api/test_message.py::test_create_message": true,
-  "tests/test_api/test_message.py::test_get_message": true,
-  "tests/test_api/test_message.py::test_list_messages": true,
-  "tests/test_api/test_function.py::test_execute_function": true,
-  "tests/test_api/test_memory.py::test_add_memory": true,
-  "tests/test_api/test_memory.py::test_search_memory": true,
-  "tests/test_api/test_memory.py::test_memory_operation": true,
-  "tests/test_api/test_message.py::test_clear_message_history": true,
-  "tests/test_api/test_message.py::test_get_latest_message": true,
-  "tests/test_core/test_agent.py::test_agent_execute_function": true,
-  "tests/test_core/test_agent.py::test_agent_get_available_functions": true
-}
-```
-
 # .idea/inspectionProfiles/profiles_settings.xml
 
 ```xml
@@ -2557,6 +2528,365 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
     <version value="1.0" />
   </settings>
 </component>
+```
+
+# app/api/models/message.py
+
+```py
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+
+class MessageRequest(BaseModel):
+    """
+    Represents a request to send a message to an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to send the message to")
+    content: str = Field(..., description="The content of the message")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the message")
+
+class FunctionCall(BaseModel):
+    """
+    Represents a function call made by the agent.
+    """
+    name: str = Field(..., description="The name of the function to call")
+    arguments: Dict[str, Any] = Field(..., description="The arguments for the function call")
+
+class MessageResponse(BaseModel):
+    """
+    Represents the response from an agent after processing a message.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent that processed the message")
+    content: str = Field(..., description="The content of the agent's response")
+    function_calls: Optional[List[FunctionCall]] = Field(default=None, description="Any function calls the agent wants to make")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the response")
+
+class MessageHistoryRequest(BaseModel):
+    """
+    Represents a request to retrieve message history for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to retrieve history for")
+    limit: int = Field(default=10, ge=1, le=100, description="The maximum number of messages to retrieve")
+    before: Optional[str] = Field(default=None, description="Retrieve messages before this timestamp")
+
+class MessageHistoryItem(BaseModel):
+    """
+    Represents a single item in the message history.
+    """
+    id: str = Field(..., description="Unique identifier for the message")
+    timestamp: str = Field(..., description="Timestamp of when the message was sent or received")
+    sender: str = Field(..., description="Identifier of the sender (e.g., 'user' or 'agent')")
+    content: str = Field(..., description="Content of the message")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the message")
+
+class MessageHistoryResponse(BaseModel):
+    """
+    Represents the response containing message history for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    messages: List[MessageHistoryItem] = Field(..., description="List of messages in the history")
+    has_more: bool = Field(..., description="Indicates if there are more messages that can be retrieved")
+
+```
+
+# app/api/models/memory.py
+
+```py
+from pydantic import BaseModel, Field
+from typing import Dict, Any, List, Optional
+from uuid import UUID
+from enum import Enum
+
+class MemoryType(str, Enum):
+    SHORT_TERM = "short_term"
+    LONG_TERM = "long_term"
+
+class MemoryOperation(str, Enum):
+    ADD = "add"
+    RETRIEVE = "retrieve"
+    SEARCH = "search"
+    DELETE = "delete"
+
+class MemoryEntry(BaseModel):
+    """
+    Represents a single memory entry.
+    """
+    content: str = Field(..., description="The content of the memory")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the memory")
+
+class MemoryAddRequest(BaseModel):
+    """
+    Represents a request to add a memory for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to add the memory for")
+    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
+    entry: MemoryEntry = Field(..., description="The memory entry to add")
+
+class MemoryAddResponse(BaseModel):
+    """
+    Represents the response after adding a memory.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    memory_id: str = Field(..., description="The unique identifier assigned to the added memory")
+    message: str = Field(..., description="A message indicating the result of the operation")
+
+class MemoryRetrieveRequest(BaseModel):
+    """
+    Represents a request to retrieve a specific memory for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to retrieve the memory for")
+    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
+    memory_id: str = Field(..., description="The unique identifier of the memory to retrieve")
+
+class MemoryRetrieveResponse(BaseModel):
+    """
+    Represents the response containing a retrieved memory.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    memory: MemoryEntry = Field(..., description="The retrieved memory entry")
+
+class MemorySearchRequest(BaseModel):
+    """
+    Represents a request to search memories for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to search memories for")
+    memory_type: MemoryType = Field(..., description="The type of memory to search (short-term or long-term)")
+    query: str = Field(..., description="The search query")
+    limit: int = Field(default=10, ge=1, le=100, description="The maximum number of results to return")
+
+class MemorySearchResponse(BaseModel):
+    """
+    Represents the response containing search results from memory.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    results: List[MemoryEntry] = Field(..., description="The list of memory entries matching the search query")
+
+class MemoryDeleteRequest(BaseModel):
+    """
+    Represents a request to delete a specific memory for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to delete the memory for")
+    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
+    memory_id: str = Field(..., description="The unique identifier of the memory to delete")
+
+class MemoryDeleteResponse(BaseModel):
+    """
+    Represents the response after deleting a memory.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    message: str = Field(..., description="A message indicating the result of the deletion")
+
+class MemoryOperationRequest(BaseModel):
+    """
+    Represents a generic memory operation request.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    operation: MemoryOperation = Field(..., description="The memory operation to perform")
+    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
+    data: Optional[Dict[str, Any]] = Field(default=None, description="Data required for the operation")
+
+class MemoryOperationResponse(BaseModel):
+    """
+    Represents a generic memory operation response.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent")
+    operation: MemoryOperation = Field(..., description="The memory operation that was performed")
+    result: Any = Field(..., description="The result of the memory operation")
+    message: Optional[str] = Field(default=None, description="An optional message about the operation")
+
+```
+
+# app/api/models/function.py
+
+```py
+from pydantic import BaseModel, Field
+from typing import Dict, Any, List, Optional
+from uuid import UUID
+
+class FunctionDefinition(BaseModel):
+    """
+    Represents the definition of a function that can be called by an agent.
+    """
+    name: str = Field(..., description="The name of the function", example="calculate_sum")
+    description: str = Field(..., description="A brief description of what the function does", example="Calculates the sum of two numbers")
+    parameters: Dict[str, Any] = Field(..., description="The parameters the function accepts", example={"a": {"type": "number"}, "b": {"type": "number"}})
+    return_type: str = Field(..., description="The type of value the function returns", example="number")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "name": "calculate_sum",
+                "description": "Calculates the sum of two numbers",
+                "parameters": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}
+                },
+                "return_type": "number"
+            }
+        }
+
+class FunctionRegistrationRequest(BaseModel):
+    """
+    Represents a request to register a new function for use by agents.
+    """
+    function: FunctionDefinition = Field(..., description="The function to register")
+
+class FunctionRegistrationResponse(BaseModel):
+    """
+    Represents the response after registering a new function.
+    """
+    function_id: str = Field(..., description="The unique identifier assigned to the registered function", example="func_01234567")
+    message: str = Field(..., description="A message indicating the result of the registration", example="Function registered successfully")
+
+class FunctionExecutionRequest(BaseModel):
+    """
+    Represents a request to execute a function by an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent requesting the function execution", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_name: str = Field(..., description="The name of the function to execute", example="calculate_sum")
+    parameters: Dict[str, Any] = Field(..., description="The parameters to pass to the function", example={"a": 5, "b": 3})
+
+class FunctionExecutionResponse(BaseModel):
+    """
+    Represents the response after executing a function.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent that requested the function execution", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_name: str = Field(..., description="The name of the function that was executed", example="calculate_sum")
+    result: Any = Field(..., description="The result of the function execution", example=8)
+    error: Optional[str] = Field(default=None, description="Any error message if the function execution failed")
+
+class AvailableFunctionsRequest(BaseModel):
+    """
+    Represents a request to retrieve available functions for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to retrieve available functions for", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+
+class AvailableFunctionsResponse(BaseModel):
+    """
+    Represents the response containing available functions for an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    functions: List[FunctionDefinition] = Field(..., description="List of available functions for the agent")
+
+class FunctionUpdateRequest(BaseModel):
+    """
+    Represents a request to update an existing function definition.
+    """
+    function_id: str = Field(..., description="The unique identifier of the function to update", example="func_01234567")
+    updated_function: FunctionDefinition = Field(..., description="The updated function definition")
+
+class FunctionUpdateResponse(BaseModel):
+    """
+    Represents the response after updating a function definition.
+    """
+    function_id: str = Field(..., description="The unique identifier of the updated function", example="func_01234567")
+    message: str = Field(..., description="A message indicating the result of the update", example="Function updated successfully")
+
+class FunctionAssignmentRequest(BaseModel):
+    """
+    Represents a request to assign a function to an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent to assign the function to", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_id: str = Field(..., description="The ID of the function to assign", example="func_01234567")
+
+class FunctionAssignmentResponse(BaseModel):
+    """
+    Represents the response after assigning or removing a function to/from an agent.
+    """
+    agent_id: UUID = Field(..., description="The ID of the agent", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    function_id: str = Field(..., description="The ID of the function", example="func_01234567")
+    message: str = Field(..., description="A message indicating the result of the operation", example="Function assigned successfully")
+
+```
+
+# app/api/models/agent.py
+
+```py
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Dict, Any, List
+from uuid import UUID
+from enum import Enum
+
+class MemoryConfig(BaseModel):
+    use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
+    use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
+
+class AgentConfig(BaseModel):
+    llm_provider: str = Field(..., description="The LLM provider to use for this agent (e.g., 'openai', 'anthropic', 'huggingface')")
+    model_name: str = Field(..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')")
+    temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
+    max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
+    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
+    model_config = ConfigDict(protected_namespaces=())
+
+class AgentCreationRequest(BaseModel):
+    agent_name: str = Field(..., description="The name of the agent to be created")
+    agent_config: AgentConfig = Field(..., description="Configuration settings for the agent's language model")
+    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
+    initial_prompt: str = Field(..., description="The initial prompt or instructions to provide to the agent upon creation")
+
+class AgentCreationResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier assigned to the newly created agent")
+    message: str = Field(..., description="A message indicating the result of the agent creation process")
+
+class AgentMessageRequest(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent to send the message to")
+    message: str = Field(..., description="The message content to send to the agent")
+
+class AgentMessageResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent that processed the message")
+    response: str = Field(..., description="The agent's response to the input message")
+    function_calls: Optional[List[Dict[str, Any]]] = Field(None, description="Any function calls the agent wants to make in response to the message")
+
+class AgentFunctionRequest(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent to execute the function for")
+    function_name: str = Field(..., description="The name of the function to be executed")
+    parameters: Dict[str, Any] = Field(..., description="The parameters to be passed to the function")
+
+class AgentFunctionResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent that executed the function")
+    result: Any = Field(..., description="The result returned by the executed function")
+
+class MemoryOperation(str, Enum):
+    ADD = "add"
+    RETRIEVE = "retrieve"
+    SEARCH = "search"
+
+class AgentMemoryRequest(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent to perform the memory operation for")
+    operation: MemoryOperation = Field(..., description="The type of memory operation to perform")
+    data: Optional[Dict[str, Any]] = Field(None, description="The data to be added or retrieved in memory operations")
+    query: Optional[str] = Field(None, description="The search query for memory search operations")
+
+class AgentMemoryResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent the memory operation was performed for")
+    result: Any = Field(..., description="The result of the memory operation")
+
+class AgentInfoResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the agent")
+    name: str = Field(..., description="The name of the agent")
+    config: AgentConfig = Field(..., description="The current configuration of the agent's language model")
+    memory_config: MemoryConfig = Field(..., description="The current configuration of the agent's memory systems")
+    conversation_history_length: int = Field(..., description="The number of messages in the agent's conversation history")
+
+class AgentUpdateRequest(BaseModel):
+    agent_config: Optional[AgentConfig] = Field(None, description="Updated configuration for the agent's language model")
+    memory_config: Optional[MemoryConfig] = Field(None, description="Updated configuration for the agent's memory systems")
+
+class AgentUpdateResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the updated agent")
+    message: str = Field(..., description="A message indicating the result of the agent update process")
+
+class AgentDeleteResponse(BaseModel):
+    agent_id: UUID = Field(..., description="The unique identifier of the deleted agent")
+    message: str = Field(..., description="A message indicating the result of the agent deletion process")
+
+```
+
+# app/api/models/__init__.py
+
+```py
+
 ```
 
 # app/api/endpoints/message.py
@@ -3032,362 +3362,83 @@ __all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
 ```
 
-# app/api/models/message.py
-
-```py
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-from uuid import UUID
-
-class MessageRequest(BaseModel):
-    """
-    Represents a request to send a message to an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to send the message to")
-    content: str = Field(..., description="The content of the message")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the message")
-
-class FunctionCall(BaseModel):
-    """
-    Represents a function call made by the agent.
-    """
-    name: str = Field(..., description="The name of the function to call")
-    arguments: Dict[str, Any] = Field(..., description="The arguments for the function call")
-
-class MessageResponse(BaseModel):
-    """
-    Represents the response from an agent after processing a message.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent that processed the message")
-    content: str = Field(..., description="The content of the agent's response")
-    function_calls: Optional[List[FunctionCall]] = Field(default=None, description="Any function calls the agent wants to make")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the response")
-
-class MessageHistoryRequest(BaseModel):
-    """
-    Represents a request to retrieve message history for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to retrieve history for")
-    limit: int = Field(default=10, ge=1, le=100, description="The maximum number of messages to retrieve")
-    before: Optional[str] = Field(default=None, description="Retrieve messages before this timestamp")
-
-class MessageHistoryItem(BaseModel):
-    """
-    Represents a single item in the message history.
-    """
-    id: str = Field(..., description="Unique identifier for the message")
-    timestamp: str = Field(..., description="Timestamp of when the message was sent or received")
-    sender: str = Field(..., description="Identifier of the sender (e.g., 'user' or 'agent')")
-    content: str = Field(..., description="Content of the message")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the message")
-
-class MessageHistoryResponse(BaseModel):
-    """
-    Represents the response containing message history for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    messages: List[MessageHistoryItem] = Field(..., description="List of messages in the history")
-    has_more: bool = Field(..., description="Indicates if there are more messages that can be retrieved")
+# .pytest_cache/v/cache/stepwise
 
 ```
-
-# app/api/models/memory.py
-
-```py
-from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
-from uuid import UUID
-from enum import Enum
-
-class MemoryType(str, Enum):
-    SHORT_TERM = "short_term"
-    LONG_TERM = "long_term"
-
-class MemoryOperation(str, Enum):
-    ADD = "add"
-    RETRIEVE = "retrieve"
-    SEARCH = "search"
-    DELETE = "delete"
-
-class MemoryEntry(BaseModel):
-    """
-    Represents a single memory entry.
-    """
-    content: str = Field(..., description="The content of the memory")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the memory")
-
-class MemoryAddRequest(BaseModel):
-    """
-    Represents a request to add a memory for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to add the memory for")
-    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
-    entry: MemoryEntry = Field(..., description="The memory entry to add")
-
-class MemoryAddResponse(BaseModel):
-    """
-    Represents the response after adding a memory.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    memory_id: str = Field(..., description="The unique identifier assigned to the added memory")
-    message: str = Field(..., description="A message indicating the result of the operation")
-
-class MemoryRetrieveRequest(BaseModel):
-    """
-    Represents a request to retrieve a specific memory for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to retrieve the memory for")
-    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
-    memory_id: str = Field(..., description="The unique identifier of the memory to retrieve")
-
-class MemoryRetrieveResponse(BaseModel):
-    """
-    Represents the response containing a retrieved memory.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    memory: MemoryEntry = Field(..., description="The retrieved memory entry")
-
-class MemorySearchRequest(BaseModel):
-    """
-    Represents a request to search memories for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to search memories for")
-    memory_type: MemoryType = Field(..., description="The type of memory to search (short-term or long-term)")
-    query: str = Field(..., description="The search query")
-    limit: int = Field(default=10, ge=1, le=100, description="The maximum number of results to return")
-
-class MemorySearchResponse(BaseModel):
-    """
-    Represents the response containing search results from memory.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    results: List[MemoryEntry] = Field(..., description="The list of memory entries matching the search query")
-
-class MemoryDeleteRequest(BaseModel):
-    """
-    Represents a request to delete a specific memory for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to delete the memory for")
-    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
-    memory_id: str = Field(..., description="The unique identifier of the memory to delete")
-
-class MemoryDeleteResponse(BaseModel):
-    """
-    Represents the response after deleting a memory.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    message: str = Field(..., description="A message indicating the result of the deletion")
-
-class MemoryOperationRequest(BaseModel):
-    """
-    Represents a generic memory operation request.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    operation: MemoryOperation = Field(..., description="The memory operation to perform")
-    memory_type: MemoryType = Field(..., description="The type of memory (short-term or long-term)")
-    data: Optional[Dict[str, Any]] = Field(default=None, description="Data required for the operation")
-
-class MemoryOperationResponse(BaseModel):
-    """
-    Represents a generic memory operation response.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent")
-    operation: MemoryOperation = Field(..., description="The memory operation that was performed")
-    result: Any = Field(..., description="The result of the memory operation")
-    message: Optional[str] = Field(default=None, description="An optional message about the operation")
-
+[]
 ```
 
-# app/api/models/function.py
-
-```py
-from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
-from uuid import UUID
-
-class FunctionDefinition(BaseModel):
-    """
-    Represents the definition of a function that can be called by an agent.
-    """
-    name: str = Field(..., description="The name of the function", example="calculate_sum")
-    description: str = Field(..., description="A brief description of what the function does", example="Calculates the sum of two numbers")
-    parameters: Dict[str, Any] = Field(..., description="The parameters the function accepts", example={"a": {"type": "number"}, "b": {"type": "number"}})
-    return_type: str = Field(..., description="The type of value the function returns", example="number")
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "name": "calculate_sum",
-                "description": "Calculates the sum of two numbers",
-                "parameters": {
-                    "a": {"type": "number"},
-                    "b": {"type": "number"}
-                },
-                "return_type": "number"
-            }
-        }
-
-class FunctionRegistrationRequest(BaseModel):
-    """
-    Represents a request to register a new function for use by agents.
-    """
-    function: FunctionDefinition = Field(..., description="The function to register")
-
-class FunctionRegistrationResponse(BaseModel):
-    """
-    Represents the response after registering a new function.
-    """
-    function_id: str = Field(..., description="The unique identifier assigned to the registered function", example="func_01234567")
-    message: str = Field(..., description="A message indicating the result of the registration", example="Function registered successfully")
-
-class FunctionExecutionRequest(BaseModel):
-    """
-    Represents a request to execute a function by an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent requesting the function execution", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    function_name: str = Field(..., description="The name of the function to execute", example="calculate_sum")
-    parameters: Dict[str, Any] = Field(..., description="The parameters to pass to the function", example={"a": 5, "b": 3})
-
-class FunctionExecutionResponse(BaseModel):
-    """
-    Represents the response after executing a function.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent that requested the function execution", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    function_name: str = Field(..., description="The name of the function that was executed", example="calculate_sum")
-    result: Any = Field(..., description="The result of the function execution", example=8)
-    error: Optional[str] = Field(default=None, description="Any error message if the function execution failed")
-
-class AvailableFunctionsRequest(BaseModel):
-    """
-    Represents a request to retrieve available functions for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to retrieve available functions for", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-
-class AvailableFunctionsResponse(BaseModel):
-    """
-    Represents the response containing available functions for an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    functions: List[FunctionDefinition] = Field(..., description="List of available functions for the agent")
-
-class FunctionUpdateRequest(BaseModel):
-    """
-    Represents a request to update an existing function definition.
-    """
-    function_id: str = Field(..., description="The unique identifier of the function to update", example="func_01234567")
-    updated_function: FunctionDefinition = Field(..., description="The updated function definition")
-
-class FunctionUpdateResponse(BaseModel):
-    """
-    Represents the response after updating a function definition.
-    """
-    function_id: str = Field(..., description="The unique identifier of the updated function", example="func_01234567")
-    message: str = Field(..., description="A message indicating the result of the update", example="Function updated successfully")
-
-class FunctionAssignmentRequest(BaseModel):
-    """
-    Represents a request to assign a function to an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent to assign the function to", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    function_id: str = Field(..., description="The ID of the function to assign", example="func_01234567")
-
-class FunctionAssignmentResponse(BaseModel):
-    """
-    Represents the response after assigning or removing a function to/from an agent.
-    """
-    agent_id: UUID = Field(..., description="The ID of the agent", example="3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    function_id: str = Field(..., description="The ID of the function", example="func_01234567")
-    message: str = Field(..., description="A message indicating the result of the operation", example="Function assigned successfully")
+# .pytest_cache/v/cache/nodeids
 
 ```
-
-# app/api/models/agent.py
-
-```py
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any, List
-from uuid import UUID
-from enum import Enum
-
-class MemoryConfig(BaseModel):
-    use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
-    use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
-
-class AgentConfig(BaseModel):
-    llm_provider: str = Field(..., description="The LLM provider to use for this agent (e.g., 'openai', 'anthropic', 'huggingface')")
-    model_name: str = Field(..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')")
-    temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
-    max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
-    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
-    model_config = ConfigDict(protected_namespaces=())
-
-class AgentCreationRequest(BaseModel):
-    agent_name: str = Field(..., description="The name of the agent to be created")
-    agent_config: AgentConfig = Field(..., description="Configuration settings for the agent's language model")
-    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
-    initial_prompt: str = Field(..., description="The initial prompt or instructions to provide to the agent upon creation")
-
-class AgentCreationResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier assigned to the newly created agent")
-    message: str = Field(..., description="A message indicating the result of the agent creation process")
-
-class AgentMessageRequest(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent to send the message to")
-    message: str = Field(..., description="The message content to send to the agent")
-
-class AgentMessageResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent that processed the message")
-    response: str = Field(..., description="The agent's response to the input message")
-    function_calls: Optional[List[Dict[str, Any]]] = Field(None, description="Any function calls the agent wants to make in response to the message")
-
-class AgentFunctionRequest(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent to execute the function for")
-    function_name: str = Field(..., description="The name of the function to be executed")
-    parameters: Dict[str, Any] = Field(..., description="The parameters to be passed to the function")
-
-class AgentFunctionResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent that executed the function")
-    result: Any = Field(..., description="The result returned by the executed function")
-
-class MemoryOperation(str, Enum):
-    ADD = "add"
-    RETRIEVE = "retrieve"
-    SEARCH = "search"
-
-class AgentMemoryRequest(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent to perform the memory operation for")
-    operation: MemoryOperation = Field(..., description="The type of memory operation to perform")
-    data: Optional[Dict[str, Any]] = Field(None, description="The data to be added or retrieved in memory operations")
-    query: Optional[str] = Field(None, description="The search query for memory search operations")
-
-class AgentMemoryResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent the memory operation was performed for")
-    result: Any = Field(..., description="The result of the memory operation")
-
-class AgentInfoResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the agent")
-    name: str = Field(..., description="The name of the agent")
-    config: AgentConfig = Field(..., description="The current configuration of the agent's language model")
-    memory_config: MemoryConfig = Field(..., description="The current configuration of the agent's memory systems")
-    conversation_history_length: int = Field(..., description="The number of messages in the agent's conversation history")
-
-class AgentUpdateRequest(BaseModel):
-    agent_config: Optional[AgentConfig] = Field(None, description="Updated configuration for the agent's language model")
-    memory_config: Optional[MemoryConfig] = Field(None, description="Updated configuration for the agent's memory systems")
-
-class AgentUpdateResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the updated agent")
-    message: str = Field(..., description="A message indicating the result of the agent update process")
-
-class AgentDeleteResponse(BaseModel):
-    agent_id: UUID = Field(..., description="The unique identifier of the deleted agent")
-    message: str = Field(..., description="A message indicating the result of the agent deletion process")
-
+[
+  "tests/test_api/test_agent.py::test_create_agent",
+  "tests/test_api/test_agent.py::test_delete_agent",
+  "tests/test_api/test_agent.py::test_get_agent",
+  "tests/test_api/test_agent.py::test_list_agents",
+  "tests/test_api/test_agent.py::test_update_agent",
+  "tests/test_api/test_function.py::test_delete_function",
+  "tests/test_api/test_function.py::test_execute_function",
+  "tests/test_api/test_function.py::test_get_function",
+  "tests/test_api/test_function.py::test_list_functions",
+  "tests/test_api/test_function.py::test_register_function",
+  "tests/test_api/test_function.py::test_update_function",
+  "tests/test_api/test_main.py::test_read_main",
+  "tests/test_api/test_memory.py::test_add_memory",
+  "tests/test_api/test_memory.py::test_delete_memory",
+  "tests/test_api/test_memory.py::test_list_memories",
+  "tests/test_api/test_memory.py::test_memory_operation",
+  "tests/test_api/test_memory.py::test_retrieve_memory",
+  "tests/test_api/test_memory.py::test_search_memory",
+  "tests/test_api/test_memory.py::test_store_memory",
+  "tests/test_api/test_memory.py::test_update_memory",
+  "tests/test_api/test_message.py::test_clear_message_history",
+  "tests/test_api/test_message.py::test_create_message",
+  "tests/test_api/test_message.py::test_get_latest_message",
+  "tests/test_api/test_message.py::test_get_message",
+  "tests/test_api/test_message.py::test_get_message_history",
+  "tests/test_api/test_message.py::test_list_messages",
+  "tests/test_api/test_message.py::test_send_message",
+  "tests/test_core/test_agent.py::test_agent_execute_function",
+  "tests/test_core/test_agent.py::test_agent_get_available_functions",
+  "tests/test_core/test_agent.py::test_agent_initialization",
+  "tests/test_core/test_agent.py::test_agent_process_message"
+]
 ```
 
-# app/api/models/__init__.py
+# .pytest_cache/v/cache/lastfailed
 
-```py
-
+```
+{
+  "tests/test_api/test_agent.py::test_create_agent": true,
+  "tests/test_api/test_agent.py::test_get_agent": true,
+  "tests/test_api/test_agent.py::test_update_agent": true,
+  "tests/test_api/test_agent.py::test_delete_agent": true,
+  "tests/test_api/test_agent.py::test_list_agents": true,
+  "tests/test_api/test_function.py::test_update_function": true,
+  "tests/test_api/test_function.py::test_delete_function": true,
+  "tests/test_api/test_function.py::test_list_functions": true,
+  "tests/test_api/test_memory.py::test_store_memory": true,
+  "tests/test_api/test_memory.py::test_retrieve_memory": true,
+  "tests/test_api/test_memory.py::test_update_memory": true,
+  "tests/test_api/test_memory.py::test_delete_memory": true,
+  "tests/test_api/test_memory.py::test_list_memories": true,
+  "tests/test_api/test_message.py::test_create_message": true,
+  "tests/test_api/test_message.py::test_get_message": true,
+  "tests/test_api/test_message.py::test_list_messages": true,
+  "tests/test_api/test_function.py::test_execute_function": true,
+  "tests/test_api/test_memory.py::test_add_memory": true,
+  "tests/test_api/test_memory.py::test_search_memory": true,
+  "tests/test_api/test_memory.py::test_memory_operation": true,
+  "tests/test_api/test_message.py::test_clear_message_history": true,
+  "tests/test_api/test_message.py::test_get_latest_message": true,
+  "tests/test_core/test_agent.py::test_agent_execute_function": true,
+  "tests/test_core/test_agent.py::test_agent_get_available_functions": true,
+  "tests/test_api/test_function.py::test_register_function": true,
+  "tests/test_api/test_function.py::test_get_function": true,
+  "tests/test_api/test_message.py::test_send_message": true,
+  "tests/test_api/test_message.py::test_get_message_history": true,
+  "tests/test_core/test_agent.py::test_agent_process_message": true
+}
 ```
 

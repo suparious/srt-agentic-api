@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from typing import Dict, Any, Tuple, List, Optional
 from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
 from app.api.models.function import FunctionDefinition
+from app.api.models.memory import MemoryType
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
@@ -27,14 +28,14 @@ class Agent:
             agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
             self.conversation_history.append({"role": "user", "content": message})
 
-            context = await self.memory.retrieve_relevant(message)
-            prompt = self._prepare_prompt(context)
+            relevant_context = await self.memory.retrieve_relevant(message)
+            prompt = self._prepare_prompt(relevant_context)
 
             response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
             response_text, function_calls = self._parse_response(response)
 
             self.conversation_history.append({"role": "assistant", "content": response_text})
-            await self.memory.add(response_text, {"type": "assistant_response"})
+            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
 
             agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
             return response_text, function_calls

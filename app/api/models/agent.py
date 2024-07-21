@@ -13,6 +13,7 @@ class AgentConfig(BaseModel):
     temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
     max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
     memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
+
     model_config = ConfigDict(protected_namespaces=())
 
 class AgentCreationRequest(BaseModel):

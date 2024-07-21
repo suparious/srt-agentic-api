@@ -34,7 +34,8 @@ async def test_get_function(test_client: AsyncClient, auth_headers):
     assert function["name"] == "test_function"
     assert function["description"] == "A test function"
 
-def test_update_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_update_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     update_data = {
         "updated_function": {
@@ -56,14 +57,16 @@ def test_update_function(test_client: TestClient, auth_headers):
     updated_function = response.json()
     assert updated_function["message"] == "Function updated successfully"
 
-def test_delete_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_delete_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     response = test_client.delete(f"/function/remove?agent_id=test_agent_id&function_id={function_id}", headers=auth_headers)
     assert response.status_code == 200
     result = response.json()
     assert result["message"] == "Function removed successfully"
 
-def test_list_functions(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_list_functions(test_client: TestClient, auth_headers):
     # Register a couple of functions first
     test_register_function(test_client, auth_headers)
     test_register_function(test_client, auth_headers)
@@ -74,7 +77,8 @@ def test_list_functions(test_client: TestClient, auth_headers):
     assert isinstance(functions["functions"], list)
     assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
 
-def test_execute_function(test_client: TestClient, auth_headers):
+@pytest.mark.asyncio
+async def test_execute_function(test_client: TestClient, auth_headers):
     function_id = test_register_function(test_client, auth_headers)
     execution_data = {
         "agent_id": "test_agent_id",

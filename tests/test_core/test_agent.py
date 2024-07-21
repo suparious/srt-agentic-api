@@ -18,8 +18,8 @@ def mock_memory_system():
 @pytest.fixture
 def agent_config():
     return AgentConfig(
-        llm_provider="test_provider",
-        model_name="test_model",
+        llm_provider="openai",  # Change this from "test_provider" to "openai"
+        model_name="gpt-3.5-turbo",
         temperature=0.7,
         max_tokens=100,
         memory_config=MemoryConfig(

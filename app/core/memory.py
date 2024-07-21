@@ -1,5 +1,6 @@
 import asyncio
-from uuid import UUID
+import json
+from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
 from redis import asyncio as aioredis
 import chromadb
@@ -10,39 +11,56 @@ from app.utils.logging import memory_logger
 
 
 class RedisMemory:
-    def __init__(self, redis_url: str):
+    def __init__(self, redis_url: str, agent_id: UUID):
         try:
             self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            memory_logger.info(f"Redis connection established: {redis_url}")
+            self.agent_id = agent_id
+            memory_logger.info(f"Redis connection established: {redis_url} for agent: {agent_id}")
         except Exception as e:
             memory_logger.error(f"Failed to connect to Redis: {str(e)}")
             raise
 
     async def add(self, key: str, value: str, expire: int = 3600):
         try:
-            await self.redis.set(key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            await self.redis.set(full_key, value, ex=expire)
+            memory_logger.debug(f"Added key to Redis: {full_key}")
         except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to add key to Redis: {full_key}. Error: {str(e)}")
             raise
 
     async def get(self, key: str) -> str:
         try:
-            value = await self.redis.get(key)
-            memory_logger.debug(f"Retrieved key from Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            value = await self.redis.get(full_key)
+            memory_logger.debug(f"Retrieved key from Redis: {full_key}")
             return value
         except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to get key from Redis: {full_key}. Error: {str(e)}")
             raise
 
     async def delete(self, key: str):
         try:
-            await self.redis.delete(key)
-            memory_logger.debug(f"Deleted key from Redis: {key}")
+            full_key = f"agent:{self.agent_id}:{key}"
+            await self.redis.delete(full_key)
+            memory_logger.debug(f"Deleted key from Redis: {full_key}")
         except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {key}. Error: {str(e)}")
+            memory_logger.error(f"Failed to delete key from Redis: {full_key}. Error: {str(e)}")
             raise
 
+    async def get_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
+        try:
+            pattern = f"agent:{self.agent_id}:*"
+            keys = await self.redis.keys(pattern)
+            recent_memories = []
+            for key in keys[-limit:]:
+                value = await self.redis.get(key)
+                if value:
+                    recent_memories.append(json.loads(value))
+            return recent_memories
+        except Exception as e:
+            memory_logger.error(f"Failed to get recent memories from Redis for agent {self.agent_id}: {str(e)}")
+            raise
 
 class VectorMemory:
     def __init__(self, collection_name: str):
@@ -82,7 +100,7 @@ class MemorySystem:
     def __init__(self, agent_id: UUID, config: MemoryConfig):
         self.agent_id = agent_id
         self.config = config
-        self.short_term = RedisMemory("redis://localhost:6379")
+        self.short_term = RedisMemory("redis://localhost:6379", agent_id)
         self.long_term = VectorMemory(f"agent_{agent_id}")
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
@@ -145,6 +163,26 @@ class MemorySystem:
         except Exception as e:
             memory_logger.error(
                 f"Failed to delete {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
+            raise
+
+    async def retrieve_relevant(self, context: str, limit: int = 5) -> List[Dict[str, Any]]:
+        try:
+            relevant_memories = []
+            if self.config.use_redis_cache:
+                # Retrieve recent memories from short-term memory
+                recent_memories = await self.short_term.get_recent(limit)
+                relevant_memories.extend(recent_memories)
+
+            if self.config.use_long_term_memory:
+                # Search long-term memory for relevant entries
+                long_term_results = await self.long_term.search(context, n_results=limit)
+                relevant_memories.extend(long_term_results)
+
+            # Sort and limit the combined results
+            relevant_memories.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+            return relevant_memories[:limit]
+        except Exception as e:
+            memory_logger.error(f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}")
             raise
 
 # Global dictionary to store active memory systems
