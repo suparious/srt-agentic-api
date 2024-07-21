@@ -184,145 +184,13 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```
 .env
+/.git/
 /.venv/
 /__pycache__/
+/.pytest_cache/
+/.idea/
 /logs/
 /data/
-
-```
-
-# tests/conftest.py
-
-```py
-import pytest
-from httpx import AsyncClient
-from app.main import app
-from app.config import settings
-
-@pytest.fixture
-async def async_client():
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-@pytest.fixture
-def auth_headers():
-    return {"X-API-Key": settings.API_KEY}
-```
-
-# tests/__init__.py
-
-```py
-
-```
-
-# tests/README.md
-
-```md
-# SolidRusT Agentic API Tests
-
-This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
-
-## Directory Structure
-
-\`\`\`
-tests/
-├── __init__.py
-├── conftest.py
-├── README.md
-├── test_api/
-│   ├── __init__.py
-│   ├── test_agent.py
-│   ├── test_function.py
-│   ├── test_main.py
-│   ├── test_memory.py
-│   └── test_message.py
-└── test_core/
-    ├── __init__.py
-    ├── test_agent.py
-    └── test_memory.py
-\`\`\`
-
-- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
-- `test_api/`: Contains tests for the API endpoints.
-- `test_core/`: Contains tests for the core functionality of the application.
-
-## Running Tests
-
-To run all tests, use the following command from the root directory of the project:
-
-\`\`\`
-pytest
-\`\`\`
-
-To run tests in a specific file, use:
-
-\`\`\`
-pytest tests/path/to/test_file.py
-\`\`\`
-
-For example, to run the main API tests:
-
-\`\`\`
-pytest tests/test_api/test_main.py
-\`\`\`
-
-## Test Categories
-
-### API Tests
-
-These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
-
-### Core Tests
-
-These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
-
-## Writing New Tests
-
-When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
-
-1. Place API-related tests in the `test_api/` directory.
-2. Place core functionality tests in the `test_core/` directory.
-3. Use descriptive names for test functions, starting with `test_`.
-4. Use pytest fixtures where appropriate to set up test environments.
-5. Aim for high test coverage, including both happy paths and edge cases.
-
-## Continuous Integration
-
-These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
-
-
-## Comments
-
-Now, let's address the warnings we're seeing in the test output:
-
-1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
-
-2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
-
-3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
-
-To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
-
-\`\`\`python
-from pydantic import BaseModel, ConfigDict
-
-class YourModel(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())
-    
-    # Your model fields here
-    model_name: str  # This field name is now allowed
-\`\`\`
-
-To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
-
-\`\`\`ini
-[pytest]
-filterwarnings =
-    ignore::DeprecationWarning:google._upb._message:
-    ignore::pydantic.PydanticDeprecatedSince20
-\`\`\`
-
-This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
 
 ```
 
@@ -689,9 +557,10 @@ if __name__ == "__main__":
 # app/config.py
 
 ```py
-from typing import List, Dict
+import os
+from typing import List, Dict, Any
 from pydantic_settings import BaseSettings
-
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     # API settings
@@ -702,6 +571,25 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     ALLOWED_ORIGINS: List[str] = ["*"]
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: Any) -> List[str]:
+        print(f"Debug: ALLOWED_ORIGINS value received: {v}")
+        print(f"Debug: ALLOWED_ORIGINS type: {type(v)}")
+        print(f"Debug: ALLOWED_ORIGINS env var: {os.environ.get('ALLOWED_ORIGINS')}")
+
+        if isinstance(v, str):
+            # Handle comma-separated string
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        elif isinstance(v, list):
+            # Handle list of strings
+            return [str(origin) for origin in v if origin]
+        elif v is None:
+            # Default to allowing all origins if not set
+            return ["*"]
+        else:
+            raise ValueError(f"Invalid ALLOWED_ORIGINS format: {v}")
 
     # Database settings
     REDIS_URL: str = "redis://localhost:6379"
@@ -721,21 +609,26 @@ class Settings(BaseSettings):
     TGI_API_BASE: str = "http://tgi-server-endpoint"
 
     # LLM Provider configurations
-    LLM_PROVIDER_CONFIGS: Dict[str, Dict[str, str]] = {
-        "openai": {
-            "api_base": OPENAI_API_BASE,
-            "api_key": OPENAI_API_KEY,
-        },
-        "vllm": {
-            "api_base": VLLM_API_BASE,
-        },
-        "llamacpp": {
-            "api_base": LLAMACPP_API_BASE,
-        },
-        "tgi": {
-            "api_base": TGI_API_BASE,
-        },
-    }
+    LLM_PROVIDER_CONFIGS: Dict[str, Dict[str, str]] = {}
+
+    @field_validator("LLM_PROVIDER_CONFIGS", mode="before")
+    @classmethod
+    def set_llm_provider_configs(cls, v: Any, info: Any) -> Dict[str, Dict[str, str]]:
+        return {
+            "openai": {
+                "api_base": info.data.get("OPENAI_API_BASE"),
+                "api_key": info.data.get("OPENAI_API_KEY"),
+            },
+            "vllm": {
+                "api_base": info.data.get("VLLM_API_BASE"),
+            },
+            "llamacpp": {
+                "api_base": info.data.get("LLAMACPP_API_BASE"),
+            },
+            "tgi": {
+                "api_base": info.data.get("TGI_API_BASE"),
+            },
+        }
 
     # Agent settings
     MAX_AGENTS_PER_USER: int = 5
@@ -745,12 +638,14 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        "env_file_encoding": "utf-8",
+    }
 
 settings = Settings()
+print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
 
 ```
 
@@ -760,1141 +655,159 @@ settings = Settings()
 
 ```
 
-# .pytest_cache/README.md
+# tests/conftest.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from app.main import app
+from app.config import Settings
+
+@pytest.fixture
+def test_settings():
+    return Settings(
+        API_KEY="test_api_key",
+        ALLOWED_ORIGINS=["http://testserver", "http://localhost"],  # Set as a list
+        REDIS_URL="redis://localhost:6379/1",
+        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
+        OPENAI_API_KEY="test_openai_key",
+        ANTHROPIC_API_KEY="test_anthropic_key",
+        VLLM_API_BASE="http://test-vllm-api-endpoint",
+        LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
+        TGI_API_BASE="http://test-tgi-server-endpoint",
+    )
+
+@pytest.fixture
+def app_with_test_settings(test_settings):
+    app.dependency_overrides[Settings] = lambda: test_settings
+    yield app
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+async def async_client(app_with_test_settings):
+    async with AsyncClient(app=app_with_test_settings, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture
+def auth_headers(test_settings):
+    return {"X-API-Key": test_settings.API_KEY}
+
+```
+
+# tests/__init__.py
+
+```py
+
+```
+
+# tests/README.md
 
 ```md
-# pytest cache directory #
-
-This directory contains data from the pytest's cache plugin,
-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
-
-**Do not** commit this to version control.
-
-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
-
-```
-
-# .pytest_cache/CACHEDIR.TAG
-
-```TAG
-Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag created by pytest.
-# For information about cache directory tags, see:
-#	https://bford.info/cachedir/spec.html
-
-```
-
-# .pytest_cache/.gitignore
-
-```
-# Created by pytest automatically.
-*
-
-```
-
-# .idea/workspace.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="AutoImportSettings">
-    <option name="autoReloadType" value="SELECTIVE" />
-  </component>
-  <component name="ChangeListManager">
-    <list default="true" id="2f48750f-9426-4d1f-ba88-7ed8f614f74c" name="Changes" comment="Add a README" />
-    <option name="SHOW_DIALOG" value="false" />
-    <option name="HIGHLIGHT_CONFLICTS" value="true" />
-    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
-    <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-  </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6
-}]]></component>
-  <component name="ProjectId" id="2jTudosn1Mmw1POHbegMcMdJIfE" />
-  <component name="ProjectViewState">
-    <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showLibraryContents" value="true" />
-  </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "SONARLINT_PRECOMMIT_ANALYSIS": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/suparious/repos/srt-agentic-api",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.profiq.codexor.SettingsConfigurable",
-    "vue.rearranger.settings.migration": "true"
-  }
-}]]></component>
-  <component name="SharedIndexes">
-    <attachedChunks>
-      <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.17890.14" />
-        <option value="bundled-python-sdk-5b207ade9991-7e9c3bbb6e34-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.17890.14" />
-      </set>
-    </attachedChunks>
-  </component>
-  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
-  <component name="TaskManager">
-    <task active="true" id="Default" summary="Default task">
-      <changelist id="2f48750f-9426-4d1f-ba88-7ed8f614f74c" name="Changes" comment="" />
-      <created>1721423478316</created>
-      <option name="number" value="Default" />
-      <option name="presentableId" value="Default" />
-      <updated>1721423478316</updated>
-      <workItem from="1721423479759" duration="23091000" />
-    </task>
-    <task id="LOCAL-00001" summary="Setup project">
-      <option name="closed" value="true" />
-      <created>1721423992038</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1721423992039</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Phase 1 implementation">
-      <option name="closed" value="true" />
-      <created>1721432390190</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1721432390190</updated>
-    </task>
-    <task id="LOCAL-00003" summary="update logging and error messaging">
-      <option name="closed" value="true" />
-      <created>1721451294855</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1721451294855</updated>
-    </task>
-    <task id="LOCAL-00004" summary="Add a README">
-      <option name="closed" value="true" />
-      <created>1721454528301</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1721454528301</updated>
-    </task>
-    <option name="localTasksCounter" value="5" />
-    <servers />
-  </component>
-  <component name="TypeScriptGeneratedFilesManager">
-    <option name="version" value="3" />
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="Setup project" />
-    <MESSAGE value="Phase 1 implementation" />
-    <MESSAGE value="update logging and error messaging" />
-    <MESSAGE value="Add a README" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add a README" />
-  </component>
-</project>
-```
-
-# .idea/vcs.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="Git" />
-  </component>
-</project>
-```
-
-# .idea/srt-agentic-api.iml
-
-```iml
-<?xml version="1.0" encoding="UTF-8"?>
-<module type="PYTHON_MODULE" version="4">
-  <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/.venv" />
-    </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (srt-agentic-api)" jdkType="Python SDK" />
-    <orderEntry type="sourceFolder" forTests="false" />
-  </component>
-</module>
-```
-
-# .idea/modules.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/srt-agentic-api.iml" filepath="$PROJECT_DIR$/.idea/srt-agentic-api.iml" />
-    </modules>
-  </component>
-</project>
-```
-
-# .idea/misc.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="Black">
-    <option name="sdkName" value="Python 3.12 (srt-inference-perf)" />
-  </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (srt-agentic-api)" project-jdk-type="Python SDK" />
-</project>
-```
-
-# .idea/dbnavigator.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files />
-  </component>
-  <component name="DBNavigator.Project.Settings">
-    <connections />
-    <browser-settings>
-      <general>
-        <display-mode value="TABBED" />
-        <navigation-history-size value="100" />
-        <show-object-details value="false" />
-        <enable-sticky-paths value="true" />
-      </general>
-      <filters>
-        <object-type-filter>
-          <object-type name="SCHEMA" enabled="true" />
-          <object-type name="USER" enabled="true" />
-          <object-type name="ROLE" enabled="true" />
-          <object-type name="PRIVILEGE" enabled="true" />
-          <object-type name="CHARSET" enabled="true" />
-          <object-type name="TABLE" enabled="true" />
-          <object-type name="VIEW" enabled="true" />
-          <object-type name="MATERIALIZED_VIEW" enabled="true" />
-          <object-type name="NESTED_TABLE" enabled="true" />
-          <object-type name="COLUMN" enabled="true" />
-          <object-type name="INDEX" enabled="true" />
-          <object-type name="CONSTRAINT" enabled="true" />
-          <object-type name="DATASET_TRIGGER" enabled="true" />
-          <object-type name="DATABASE_TRIGGER" enabled="true" />
-          <object-type name="SYNONYM" enabled="true" />
-          <object-type name="SEQUENCE" enabled="true" />
-          <object-type name="PROCEDURE" enabled="true" />
-          <object-type name="FUNCTION" enabled="true" />
-          <object-type name="PACKAGE" enabled="true" />
-          <object-type name="TYPE" enabled="true" />
-          <object-type name="TYPE_ATTRIBUTE" enabled="true" />
-          <object-type name="ARGUMENT" enabled="true" />
-          <object-type name="DIMENSION" enabled="true" />
-          <object-type name="CLUSTER" enabled="true" />
-          <object-type name="DBLINK" enabled="true" />
-        </object-type-filter>
-      </filters>
-      <sorting>
-        <object-type name="COLUMN" sorting-type="NAME" />
-        <object-type name="FUNCTION" sorting-type="NAME" />
-        <object-type name="PROCEDURE" sorting-type="NAME" />
-        <object-type name="ARGUMENT" sorting-type="POSITION" />
-        <object-type name="TYPE ATTRIBUTE" sorting-type="POSITION" />
-      </sorting>
-      <default-editors>
-        <object-type name="VIEW" editor-type="SELECTION" />
-        <object-type name="PACKAGE" editor-type="SELECTION" />
-        <object-type name="TYPE" editor-type="SELECTION" />
-      </default-editors>
-    </browser-settings>
-    <navigation-settings>
-      <lookup-filters>
-        <lookup-objects>
-          <object-type name="SCHEMA" enabled="true" />
-          <object-type name="USER" enabled="false" />
-          <object-type name="ROLE" enabled="false" />
-          <object-type name="PRIVILEGE" enabled="false" />
-          <object-type name="CHARSET" enabled="false" />
-          <object-type name="TABLE" enabled="true" />
-          <object-type name="VIEW" enabled="true" />
-          <object-type name="MATERIALIZED VIEW" enabled="true" />
-          <object-type name="INDEX" enabled="true" />
-          <object-type name="CONSTRAINT" enabled="true" />
-          <object-type name="DATASET TRIGGER" enabled="true" />
-          <object-type name="DATABASE TRIGGER" enabled="true" />
-          <object-type name="SYNONYM" enabled="false" />
-          <object-type name="SEQUENCE" enabled="true" />
-          <object-type name="PROCEDURE" enabled="true" />
-          <object-type name="FUNCTION" enabled="true" />
-          <object-type name="PACKAGE" enabled="true" />
-          <object-type name="TYPE" enabled="true" />
-          <object-type name="DIMENSION" enabled="false" />
-          <object-type name="CLUSTER" enabled="false" />
-          <object-type name="DBLINK" enabled="true" />
-        </lookup-objects>
-        <force-database-load value="false" />
-        <prompt-connection-selection value="true" />
-        <prompt-schema-selection value="true" />
-      </lookup-filters>
-    </navigation-settings>
-    <dataset-grid-settings>
-      <general>
-        <enable-zooming value="true" />
-        <enable-column-tooltip value="true" />
-      </general>
-      <sorting>
-        <nulls-first value="true" />
-        <max-sorting-columns value="4" />
-      </sorting>
-      <audit-columns>
-        <column-names value="" />
-        <visible value="true" />
-        <editable value="false" />
-      </audit-columns>
-    </dataset-grid-settings>
-    <dataset-editor-settings>
-      <text-editor-popup>
-        <active value="false" />
-        <active-if-empty value="false" />
-        <data-length-threshold value="100" />
-        <popup-delay value="1000" />
-      </text-editor-popup>
-      <values-actions-popup>
-        <show-popup-button value="true" />
-        <element-count-threshold value="1000" />
-        <data-length-threshold value="250" />
-      </values-actions-popup>
-      <general>
-        <fetch-block-size value="100" />
-        <fetch-timeout value="30" />
-        <trim-whitespaces value="true" />
-        <convert-empty-strings-to-null value="true" />
-        <select-content-on-cell-edit value="true" />
-        <large-value-preview-active value="true" />
-      </general>
-      <filters>
-        <prompt-filter-dialog value="true" />
-        <default-filter-type value="BASIC" />
-      </filters>
-      <qualified-text-editor text-length-threshold="300">
-        <content-types>
-          <content-type name="Text" enabled="true" />
-          <content-type name="Properties" enabled="true" />
-          <content-type name="XML" enabled="true" />
-          <content-type name="DTD" enabled="true" />
-          <content-type name="HTML" enabled="true" />
-          <content-type name="XHTML" enabled="true" />
-          <content-type name="CSS" enabled="true" />
-          <content-type name="SQL" enabled="true" />
-          <content-type name="PL/SQL" enabled="true" />
-          <content-type name="JavaScript" enabled="true" />
-          <content-type name="JSON" enabled="true" />
-          <content-type name="JSON5" enabled="true" />
-          <content-type name="YAML" enabled="true" />
-        </content-types>
-      </qualified-text-editor>
-      <record-navigation>
-        <navigation-target value="VIEWER" />
-      </record-navigation>
-    </dataset-editor-settings>
-    <code-editor-settings>
-      <general>
-        <show-object-navigation-gutter value="false" />
-        <show-spec-declaration-navigation-gutter value="true" />
-        <enable-spellchecking value="true" />
-        <enable-reference-spellchecking value="false" />
-      </general>
-      <confirmations>
-        <save-changes value="false" />
-        <revert-changes value="true" />
-        <exit-on-changes value="ASK" />
-      </confirmations>
-    </code-editor-settings>
-    <code-completion-settings>
-      <filters>
-        <basic-filter>
-          <filter-element type="RESERVED_WORD" id="keyword" selected="true" />
-          <filter-element type="RESERVED_WORD" id="function" selected="true" />
-          <filter-element type="RESERVED_WORD" id="parameter" selected="true" />
-          <filter-element type="RESERVED_WORD" id="datatype" selected="true" />
-          <filter-element type="RESERVED_WORD" id="exception" selected="true" />
-          <filter-element type="OBJECT" id="schema" selected="true" />
-          <filter-element type="OBJECT" id="role" selected="true" />
-          <filter-element type="OBJECT" id="user" selected="true" />
-          <filter-element type="OBJECT" id="privilege" selected="true" />
-          <user-schema>
-            <filter-element type="OBJECT" id="table" selected="true" />
-            <filter-element type="OBJECT" id="view" selected="true" />
-            <filter-element type="OBJECT" id="materialized view" selected="true" />
-            <filter-element type="OBJECT" id="index" selected="true" />
-            <filter-element type="OBJECT" id="constraint" selected="true" />
-            <filter-element type="OBJECT" id="trigger" selected="true" />
-            <filter-element type="OBJECT" id="synonym" selected="false" />
-            <filter-element type="OBJECT" id="sequence" selected="true" />
-            <filter-element type="OBJECT" id="procedure" selected="true" />
-            <filter-element type="OBJECT" id="function" selected="true" />
-            <filter-element type="OBJECT" id="package" selected="true" />
-            <filter-element type="OBJECT" id="type" selected="true" />
-            <filter-element type="OBJECT" id="dimension" selected="true" />
-            <filter-element type="OBJECT" id="cluster" selected="true" />
-            <filter-element type="OBJECT" id="dblink" selected="true" />
-          </user-schema>
-          <public-schema>
-            <filter-element type="OBJECT" id="table" selected="false" />
-            <filter-element type="OBJECT" id="view" selected="false" />
-            <filter-element type="OBJECT" id="materialized view" selected="false" />
-            <filter-element type="OBJECT" id="index" selected="false" />
-            <filter-element type="OBJECT" id="constraint" selected="false" />
-            <filter-element type="OBJECT" id="trigger" selected="false" />
-            <filter-element type="OBJECT" id="synonym" selected="false" />
-            <filter-element type="OBJECT" id="sequence" selected="false" />
-            <filter-element type="OBJECT" id="procedure" selected="false" />
-            <filter-element type="OBJECT" id="function" selected="false" />
-            <filter-element type="OBJECT" id="package" selected="false" />
-            <filter-element type="OBJECT" id="type" selected="false" />
-            <filter-element type="OBJECT" id="dimension" selected="false" />
-            <filter-element type="OBJECT" id="cluster" selected="false" />
-            <filter-element type="OBJECT" id="dblink" selected="false" />
-          </public-schema>
-          <any-schema>
-            <filter-element type="OBJECT" id="table" selected="true" />
-            <filter-element type="OBJECT" id="view" selected="true" />
-            <filter-element type="OBJECT" id="materialized view" selected="true" />
-            <filter-element type="OBJECT" id="index" selected="true" />
-            <filter-element type="OBJECT" id="constraint" selected="true" />
-            <filter-element type="OBJECT" id="trigger" selected="true" />
-            <filter-element type="OBJECT" id="synonym" selected="true" />
-            <filter-element type="OBJECT" id="sequence" selected="true" />
-            <filter-element type="OBJECT" id="procedure" selected="true" />
-            <filter-element type="OBJECT" id="function" selected="true" />
-            <filter-element type="OBJECT" id="package" selected="true" />
-            <filter-element type="OBJECT" id="type" selected="true" />
-            <filter-element type="OBJECT" id="dimension" selected="true" />
-            <filter-element type="OBJECT" id="cluster" selected="true" />
-            <filter-element type="OBJECT" id="dblink" selected="true" />
-          </any-schema>
-        </basic-filter>
-        <extended-filter>
-          <filter-element type="RESERVED_WORD" id="keyword" selected="true" />
-          <filter-element type="RESERVED_WORD" id="function" selected="true" />
-          <filter-element type="RESERVED_WORD" id="parameter" selected="true" />
-          <filter-element type="RESERVED_WORD" id="datatype" selected="true" />
-          <filter-element type="RESERVED_WORD" id="exception" selected="true" />
-          <filter-element type="OBJECT" id="schema" selected="true" />
-          <filter-element type="OBJECT" id="user" selected="true" />
-          <filter-element type="OBJECT" id="role" selected="true" />
-          <filter-element type="OBJECT" id="privilege" selected="true" />
-          <user-schema>
-            <filter-element type="OBJECT" id="table" selected="true" />
-            <filter-element type="OBJECT" id="view" selected="true" />
-            <filter-element type="OBJECT" id="materialized view" selected="true" />
-            <filter-element type="OBJECT" id="index" selected="true" />
-            <filter-element type="OBJECT" id="constraint" selected="true" />
-            <filter-element type="OBJECT" id="trigger" selected="true" />
-            <filter-element type="OBJECT" id="synonym" selected="true" />
-            <filter-element type="OBJECT" id="sequence" selected="true" />
-            <filter-element type="OBJECT" id="procedure" selected="true" />
-            <filter-element type="OBJECT" id="function" selected="true" />
-            <filter-element type="OBJECT" id="package" selected="true" />
-            <filter-element type="OBJECT" id="type" selected="true" />
-            <filter-element type="OBJECT" id="dimension" selected="true" />
-            <filter-element type="OBJECT" id="cluster" selected="true" />
-            <filter-element type="OBJECT" id="dblink" selected="true" />
-          </user-schema>
-          <public-schema>
-            <filter-element type="OBJECT" id="table" selected="true" />
-            <filter-element type="OBJECT" id="view" selected="true" />
-            <filter-element type="OBJECT" id="materialized view" selected="true" />
-            <filter-element type="OBJECT" id="index" selected="true" />
-            <filter-element type="OBJECT" id="constraint" selected="true" />
-            <filter-element type="OBJECT" id="trigger" selected="true" />
-            <filter-element type="OBJECT" id="synonym" selected="true" />
-            <filter-element type="OBJECT" id="sequence" selected="true" />
-            <filter-element type="OBJECT" id="procedure" selected="true" />
-            <filter-element type="OBJECT" id="function" selected="true" />
-            <filter-element type="OBJECT" id="package" selected="true" />
-            <filter-element type="OBJECT" id="type" selected="true" />
-            <filter-element type="OBJECT" id="dimension" selected="true" />
-            <filter-element type="OBJECT" id="cluster" selected="true" />
-            <filter-element type="OBJECT" id="dblink" selected="true" />
-          </public-schema>
-          <any-schema>
-            <filter-element type="OBJECT" id="table" selected="true" />
-            <filter-element type="OBJECT" id="view" selected="true" />
-            <filter-element type="OBJECT" id="materialized view" selected="true" />
-            <filter-element type="OBJECT" id="index" selected="true" />
-            <filter-element type="OBJECT" id="constraint" selected="true" />
-            <filter-element type="OBJECT" id="trigger" selected="true" />
-            <filter-element type="OBJECT" id="synonym" selected="true" />
-            <filter-element type="OBJECT" id="sequence" selected="true" />
-            <filter-element type="OBJECT" id="procedure" selected="true" />
-            <filter-element type="OBJECT" id="function" selected="true" />
-            <filter-element type="OBJECT" id="package" selected="true" />
-            <filter-element type="OBJECT" id="type" selected="true" />
-            <filter-element type="OBJECT" id="dimension" selected="true" />
-            <filter-element type="OBJECT" id="cluster" selected="true" />
-            <filter-element type="OBJECT" id="dblink" selected="true" />
-          </any-schema>
-        </extended-filter>
-      </filters>
-      <sorting enabled="true">
-        <sorting-element type="RESERVED_WORD" id="keyword" />
-        <sorting-element type="RESERVED_WORD" id="datatype" />
-        <sorting-element type="OBJECT" id="column" />
-        <sorting-element type="OBJECT" id="table" />
-        <sorting-element type="OBJECT" id="view" />
-        <sorting-element type="OBJECT" id="materialized view" />
-        <sorting-element type="OBJECT" id="index" />
-        <sorting-element type="OBJECT" id="constraint" />
-        <sorting-element type="OBJECT" id="trigger" />
-        <sorting-element type="OBJECT" id="synonym" />
-        <sorting-element type="OBJECT" id="sequence" />
-        <sorting-element type="OBJECT" id="procedure" />
-        <sorting-element type="OBJECT" id="function" />
-        <sorting-element type="OBJECT" id="package" />
-        <sorting-element type="OBJECT" id="type" />
-        <sorting-element type="OBJECT" id="dimension" />
-        <sorting-element type="OBJECT" id="cluster" />
-        <sorting-element type="OBJECT" id="dblink" />
-        <sorting-element type="OBJECT" id="schema" />
-        <sorting-element type="OBJECT" id="role" />
-        <sorting-element type="OBJECT" id="user" />
-        <sorting-element type="RESERVED_WORD" id="function" />
-        <sorting-element type="RESERVED_WORD" id="parameter" />
-      </sorting>
-      <format>
-        <enforce-code-style-case value="true" />
-      </format>
-    </code-completion-settings>
-    <execution-engine-settings>
-      <statement-execution>
-        <fetch-block-size value="100" />
-        <execution-timeout value="20" />
-        <debug-execution-timeout value="600" />
-        <focus-result value="false" />
-        <prompt-execution value="false" />
-      </statement-execution>
-      <script-execution>
-        <command-line-interfaces />
-        <execution-timeout value="300" />
-      </script-execution>
-      <method-execution>
-        <execution-timeout value="30" />
-        <debug-execution-timeout value="600" />
-        <parameter-history-size value="10" />
-      </method-execution>
-    </execution-engine-settings>
-    <operation-settings>
-      <transactions>
-        <uncommitted-changes>
-          <on-project-close value="ASK" />
-          <on-disconnect value="ASK" />
-          <on-autocommit-toggle value="ASK" />
-        </uncommitted-changes>
-        <multiple-uncommitted-changes>
-          <on-commit value="ASK" />
-          <on-rollback value="ASK" />
-        </multiple-uncommitted-changes>
-      </transactions>
-      <session-browser>
-        <disconnect-session value="ASK" />
-        <kill-session value="ASK" />
-        <reload-on-filter-change value="false" />
-      </session-browser>
-      <compiler>
-        <compile-type value="KEEP" />
-        <compile-dependencies value="ASK" />
-        <always-show-controls value="false" />
-      </compiler>
-    </operation-settings>
-    <ddl-file-settings>
-      <extensions>
-        <mapping file-type-id="VIEW" extensions="vw" />
-        <mapping file-type-id="TRIGGER" extensions="trg" />
-        <mapping file-type-id="PROCEDURE" extensions="prc" />
-        <mapping file-type-id="FUNCTION" extensions="fnc" />
-        <mapping file-type-id="PACKAGE" extensions="pkg" />
-        <mapping file-type-id="PACKAGE_SPEC" extensions="pks" />
-        <mapping file-type-id="PACKAGE_BODY" extensions="pkb" />
-        <mapping file-type-id="TYPE" extensions="tpe" />
-        <mapping file-type-id="TYPE_SPEC" extensions="tps" />
-        <mapping file-type-id="TYPE_BODY" extensions="tpb" />
-      </extensions>
-      <general>
-        <lookup-ddl-files value="true" />
-        <create-ddl-files value="false" />
-        <synchronize-ddl-files value="true" />
-        <use-qualified-names value="false" />
-        <make-scripts-rerunnable value="true" />
-      </general>
-    </ddl-file-settings>
-    <general-settings>
-      <regional-settings>
-        <date-format value="MEDIUM" />
-        <number-format value="UNGROUPED" />
-        <locale value="SYSTEM_DEFAULT" />
-        <use-custom-formats value="false" />
-      </regional-settings>
-      <environment>
-        <environment-types>
-          <environment-type id="development" name="Development" description="Development environment" color="-2430209/-12296320" readonly-code="false" readonly-data="false" />
-          <environment-type id="integration" name="Integration" description="Integration environment" color="-2621494/-12163514" readonly-code="true" readonly-data="false" />
-          <environment-type id="production" name="Production" description="Productive environment" color="-11574/-10271420" readonly-code="true" readonly-data="true" />
-          <environment-type id="other" name="Other" description="" color="-1576/-10724543" readonly-code="false" readonly-data="false" />
-        </environment-types>
-        <visibility-settings>
-          <connection-tabs value="true" />
-          <dialog-headers value="true" />
-          <object-editor-tabs value="true" />
-          <script-editor-tabs value="false" />
-          <execution-result-tabs value="true" />
-        </visibility-settings>
-      </environment>
-    </general-settings>
-  </component>
-</project>
-```
-
-# .idea/aws.xml
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="accountSettings">
-    <option name="activeProfile" value="profile:default" />
-    <option name="activeRegion" value="us-west-2" />
-    <option name="recentlyUsedProfiles">
-      <list>
-        <option value="profile:default" />
-      </list>
-    </option>
-    <option name="recentlyUsedRegions">
-      <list>
-        <option value="us-west-2" />
-      </list>
-    </option>
-  </component>
-</project>
-```
-
-# .idea/.gitignore
-
-```
-# Default ignored files
-/shelf/
-/workspace.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
-# Zeppelin ignored files
-/ZeppelinRemoteNotebooks/
-
-```
-
-# tests/test_core/test_memory.py
-
-```py
-
-```
-
-# tests/test_core/test_agent.py
-
-```py
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from uuid import UUID
-from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-
-@pytest.fixture
-def agent_config():
-    return AgentConfig(
-        llm_provider="openai",
-        model_name="gpt-3.5-turbo",
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        )
-    )
-
-
-@pytest.mark.asyncio
-async def test_agent_initialization(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        agent = Agent(
-            agent_id=agent_id,
-            name="Test Agent",
-            config=agent_config,
-            memory_config=agent_config.memory_config
-        )
-
-        assert agent.id == agent_id
-        assert agent.name == "Test Agent"
-        assert agent.config == agent_config
-        assert isinstance(agent.llm_provider, Mock)
-        assert isinstance(agent.memory, MockMemorySystem)
-
-
-@pytest.mark.asyncio
-async def test_agent_process_message(agent_config):
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-        mock_llm_provider.generate.return_value = "Processed message response"
-
-        mock_memory = AsyncMock()
-        MockMemorySystem.return_value = mock_memory
-        mock_memory.retrieve_relevant.return_value = []
-
-        agent_id = UUID('12345678-1234-5678-1234-567812345678')
-        agent = Agent(
-            agent_id=agent_id,
-            name="Test Agent",
-            config=agent_config,
-            memory_config=agent_config.memory_config
-        )
-
-        message = "Test message"
-        response, function_calls = await agent.process_message(message=message)
-
-        assert response == "Processed message response"
-        assert function_calls == []
-        mock_llm_provider.generate.assert_called_once()
-        mock_memory.add.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_agent_execute_function(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
-
-    async def test_function(param1, param2):
-        return f"Executed with {param1} and {param2}"
-
-    agent.available_function_ids = ["test_function_id"]
-    with patch.dict('app.core.agent.registered_functions',
-                    {"test_function_id": AsyncMock(implementation=test_function)}):
-        result = await agent.execute_function(
-            function_name="test_function",
-            parameters={"param1": "value1", "param2": "value2"}
-        )
-
-    assert result == "Executed with value1 and value2"
-
-
-def test_agent_get_available_functions(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
-
-    agent.available_function_ids = ["function1", "function2"]
-    with patch.dict('app.core.agent.registered_functions', {
-        "function1": Mock(name="Function 1"),
-        "function2": Mock(name="Function 2")
-    }):
-        available_functions = agent.get_available_functions()
-
-    assert len(available_functions) == 2
-    assert available_functions[0].name == "Function 1"
-    assert available_functions[1].name == "Function 2"
-
-```
-
-# tests/test_core/__init__.py
-
-```py
-
-```
-
-# tests/test_api/test_message.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from uuid import UUID
-from app.core.agent import create_agent
-from httpx import AsyncClient
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-@pytest.fixture
-async def test_agent(test_client: TestClient, auth_headers):
-    agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": AgentConfig(
-            llm_provider="openai",
-            model_name="gpt-3.5-turbo",
-            temperature=0.7,
-            max_tokens=150,
-            memory_config=MemoryConfig(
-                use_long_term_memory=True,
-                use_redis_cache=True
-            )
-        ),
-        "memory_config": MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        ),
-        "initial_prompt": "You are a helpful assistant."
-    }
-    agent_id = await create_agent(**agent_data)
-    return agent_id
-
-@pytest.mark.asyncio
-async def test_send_message(test_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    message_data = {
-        "agent_id": str(agent_id),
-        "message": "Hello, agent!"
-    }
-    response = await test_client.post("/message/send", json=message_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "agent_id" in result
-    assert "response" in result
-    assert isinstance(result.get("function_calls"), list) or result.get("function_calls") is None
-    return result
-
-@pytest.mark.asyncio
-async def test_get_message_history(test_client: AsyncClient, auth_headers, test_agent):
-    # First, send a message to ensure there's some history
-    sent_message = await test_send_message(test_client, auth_headers, test_agent)
-
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = await test_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert isinstance(history["messages"], list)
-    assert len(history["messages"]) > 0
-    assert history["messages"][0]["content"] == "Hello, agent!"
-
-
-def test_clear_message_history(test_client: TestClient, auth_headers):
-    # First, send a message to ensure there's some history
-    sent_message = test_send_message(test_client, auth_headers)
-
-    clear_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = test_client.post("/message/clear", json=clear_request, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Message history cleared successfully"
-
-    # Verify that the history is indeed cleared
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = test_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert len(history["messages"]) == 0
-
-
-def test_get_latest_message(test_client: TestClient, auth_headers):
-    # First, send a message
-    sent_message = test_send_message(test_client, auth_headers)
-
-    latest_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = test_client.get("/message/latest", params=latest_request, headers=auth_headers)
-    assert response.status_code == 200
-    latest_message = response.json()
-    assert latest_message["content"] == "Hello, agent!"
-
-```
-
-# tests/test_api/test_memory.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from uuid import UUID
-
-def test_add_memory(test_client: TestClient, auth_headers):
-    memory_data = {
-        "agent_id": str(UUID(int=0)),  # Using a dummy UUID for testing
-        "memory_type": "SHORT_TERM",
-        "entry": {
-            "content": "Test memory content",
-            "metadata": {"key": "value"}
-        }
-    }
-    response = test_client.post("/memory/add", json=memory_data, headers=auth_headers)
-    assert response.status_code == 201
-    added_memory = response.json()
-    assert added_memory["message"] == "Memory added successfully"
-    assert "memory_id" in added_memory
-    return added_memory["memory_id"]
-
-def test_retrieve_memory(test_client: TestClient, auth_headers):
-    memory_id = test_add_memory(test_client, auth_headers)
-    retrieve_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "memory_id": memory_id
-    }
-    response = test_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
-    assert response.status_code == 200
-    memory = response.json()
-    assert memory["content"] == "Test memory content"
-    assert memory["metadata"] == {"key": "value"}
-
-def test_search_memory(test_client: TestClient, auth_headers):
-    test_add_memory(test_client, auth_headers)  # Add a memory to search for
-    search_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "query": "Test memory",
-        "limit": 5
-    }
-    response = test_client.post("/memory/search", json=search_data, headers=auth_headers)
-    assert response.status_code == 200
-    results = response.json()
-    assert isinstance(results["results"], list)
-    assert len(results["results"]) > 0
-
-def test_delete_memory(test_client: TestClient, auth_headers):
-    memory_id = test_add_memory(test_client, auth_headers)
-    delete_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "memory_id": memory_id
-    }
-    response = test_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Memory deleted successfully"
-
-def test_memory_operation(test_client: TestClient, auth_headers):
-    operation_data = {
-        "agent_id": str(UUID(int=0)),
-        "operation": "ADD",
-        "memory_type": "SHORT_TERM",
-        "data": {
-            "content": "Test operation memory content",
-            "metadata": {"operation": "test"}
-        }
-    }
-    response = test_client.post("/memory/operate", json=operation_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "ADD operation completed successfully"
-    assert "result" in result
-```
-
-# tests/test_api/test_main.py
-
-```py
-from fastapi.testclient import TestClient
-
-def test_read_main(test_client):
-    response = test_client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
-
-```
-
-# tests/test_api/test_function.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-
-@pytest.mark.asyncio
-async def test_register_function(test_client: AsyncClient, auth_headers):
-    function_data = {
-        "function": {
-            "name": "test_function",
-            "description": "A test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await test_client.post("/function/register", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    registered_function = response.json()
-    assert registered_function["message"] == "Function registered successfully"
-    assert "function_id" in registered_function
-    return registered_function["function_id"]
-
-@pytest.mark.asyncio
-async def test_get_function(test_client: AsyncClient, auth_headers):
-    function_id = await test_register_function(test_client, auth_headers)
-    response = await test_client.get(f"/function/{function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    function = response.json()
-    assert function["name"] == "test_function"
-    assert function["description"] == "A test function"
-
-@pytest.mark.asyncio
-async def test_update_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    update_data = {
-        "updated_function": {
-            "name": "updated_test_function",
-            "description": "An updated test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"},
-                    "param3": {"type": "boolean"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = test_client.put(f"/function/update", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_function = response.json()
-    assert updated_function["message"] == "Function updated successfully"
-
-@pytest.mark.asyncio
-async def test_delete_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    response = test_client.delete(f"/function/remove?agent_id=test_agent_id&function_id={function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Function removed successfully"
-
-@pytest.mark.asyncio
-async def test_list_functions(test_client: TestClient, auth_headers):
-    # Register a couple of functions first
-    test_register_function(test_client, auth_headers)
-    test_register_function(test_client, auth_headers)
-
-    response = test_client.get("/function/available?agent_id=test_agent_id", headers=auth_headers)
-    assert response.status_code == 200
-    functions = response.json()
-    assert isinstance(functions["functions"], list)
-    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
-
-@pytest.mark.asyncio
-async def test_execute_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    execution_data = {
-        "agent_id": "test_agent_id",
-        "function_name": "test_function",
-        "parameters": {
-            "param1": "test",
-            "param2": 123
-        }
-    }
-    response = test_client.post("/function/execute", json=execution_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "result" in result
-```
-
-# tests/test_api/test_agent.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from uuid import UUID
-
-pytestmark = pytest.mark.asyncio
-
-@pytest.mark.asyncio
-async def test_create_agent(test_client: TestClient, auth_headers):
-    agent_data = {
-        "name": "Test Agent",
-        "config": {
-            "llm_provider": "openai",
-            "model_name": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "max_tokens": 150,
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            }
-        },
-        "memory_config": {
-            "use_long_term_memory": True,
-            "use_redis_cache": True
-        },
-        "initial_prompt": "You are a helpful assistant."
-    }
-    response = await test_client.post("/agent/create", json=agent_data, headers=auth_headers)
-    assert response.status_code == 201
-    created_agent = response.json()
-    assert created_agent["message"] == "Agent created successfully"
-    assert UUID(created_agent["agent_id"])
-    return created_agent["agent_id"]
-
-async def test_get_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 200
-    agent = response.json()
-    assert agent["agent_id"] == str(agent_id)
-    assert agent["name"] == "Test Agent"
-
-async def test_update_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    update_data = {
-        "agent_config": {
-            "temperature": 0.8
-        }
-    }
-    response = test_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_agent = response.json()
-    assert updated_agent["message"] == "Agent updated successfully"
-
-async def test_delete_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-async def test_list_agents(test_client: TestClient, auth_headers):
-    # Create a couple of agents first
-    test_create_agent(test_client, auth_headers)
-    test_create_agent(test_client, auth_headers)
-
-    response = test_client.get("/agent/", headers=auth_headers)
-    assert response.status_code == 200
-    agents = response.json()
-    assert isinstance(agents, list)
-    assert len(agents) >= 2  # We should have at least the two agents we just created
-```
-
-# tests/test_api/__init__.py
-
-```py
+# SolidRusT Agentic API Tests
+
+This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
+
+## Directory Structure
+
+\`\`\`
+tests/
+├── __init__.py
+├── conftest.py
+├── README.md
+├── test_api/
+│   ├── __init__.py
+│   ├── test_agent.py
+│   ├── test_function.py
+│   ├── test_main.py
+│   ├── test_memory.py
+│   └── test_message.py
+└── test_core/
+    ├── __init__.py
+    ├── test_agent.py
+    └── test_memory.py
+\`\`\`
+
+- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
+- `test_api/`: Contains tests for the API endpoints.
+- `test_core/`: Contains tests for the core functionality of the application.
+
+## Running Tests
+
+To run all tests, use the following command from the root directory of the project:
+
+\`\`\`
+pytest
+\`\`\`
+
+To run tests in a specific file, use:
+
+\`\`\`
+pytest tests/path/to/test_file.py
+\`\`\`
+
+For example, to run the main API tests:
+
+\`\`\`
+pytest tests/test_api/test_main.py
+\`\`\`
+
+## Test Categories
+
+### API Tests
+
+These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
+
+### Core Tests
+
+These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
+
+## Writing New Tests
+
+When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
+
+1. Place API-related tests in the `test_api/` directory.
+2. Place core functionality tests in the `test_core/` directory.
+3. Use descriptive names for test functions, starting with `test_`.
+4. Use pytest fixtures where appropriate to set up test environments.
+5. Aim for high test coverage, including both happy paths and edge cases.
+
+## Continuous Integration
+
+These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
+
+
+## Comments
+
+Now, let's address the warnings we're seeing in the test output:
+
+1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
+
+2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
+
+3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
+
+To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class YourModel(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    # Your model fields here
+    model_name: str  # This field name is now allowed
+\`\`\`
+
+To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
+
+\`\`\`ini
+[pytest]
+filterwarnings =
+    ignore::DeprecationWarning:google._upb._message:
+    ignore::pydantic.PydanticDeprecatedSince20
+\`\`\`
+
+This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
 
 ```
 
@@ -1992,12 +905,6 @@ def validate_api_key(api_key: str) -> bool:
 ```
 
 # app/utils/__init__.py
-
-```py
-
-```
-
-# app/api/__init__.py
 
 ```py
 
@@ -2585,15 +1492,513 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 
 ```
 
-# .idea/inspectionProfiles/profiles_settings.xml
+# app/api/__init__.py
 
-```xml
-<component name="InspectionProjectProfileManager">
-  <settings>
-    <option name="USE_PROJECT_PROFILE" value="false" />
-    <version value="1.0" />
-  </settings>
-</component>
+```py
+
+```
+
+# tests/test_core/test_memory.py
+
+```py
+
+```
+
+# tests/test_core/test_agent.py
+
+```py
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from uuid import UUID
+from app.core.agent import Agent
+from app.api.models.agent import AgentConfig, MemoryConfig
+
+
+@pytest.fixture
+def agent_config():
+    return AgentConfig(
+        llm_provider="openai",
+        model_name="gpt-3.5-turbo",
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_agent_initialization(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
+        )
+
+        assert agent.id == agent_id
+        assert agent.name == "Test Agent"
+        assert agent.config == agent_config
+        assert isinstance(agent.llm_provider, Mock)
+        assert isinstance(agent.memory, MockMemorySystem)
+
+
+@pytest.mark.asyncio
+async def test_agent_process_message(agent_config):
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
+        mock_llm_provider.generate.return_value = "Processed message response"
+
+        mock_memory = AsyncMock()
+        MockMemorySystem.return_value = mock_memory
+        mock_memory.retrieve_relevant.return_value = []
+
+        agent_id = UUID('12345678-1234-5678-1234-567812345678')
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
+        )
+
+        message = "Test message"
+        response, function_calls = await agent.process_message(message=message)
+
+        assert response == "Processed message response"
+        assert function_calls == []
+        mock_llm_provider.generate.assert_called_once()
+        mock_memory.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_agent_execute_function(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent = Agent(
+        agent_id=agent_id,
+        name="Test Agent",
+        config=agent_config,
+        memory_config=agent_config.memory_config
+    )
+
+    async def test_function(param1, param2):
+        return f"Executed with {param1} and {param2}"
+
+    agent.available_function_ids = ["test_function_id"]
+    with patch.dict('app.core.agent.registered_functions',
+                    {"test_function_id": AsyncMock(implementation=test_function)}):
+        result = await agent.execute_function(
+            function_name="test_function",
+            parameters={"param1": "value1", "param2": "value2"}
+        )
+
+    assert result == "Executed with value1 and value2"
+
+
+def test_agent_get_available_functions(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent = Agent(
+        agent_id=agent_id,
+        name="Test Agent",
+        config=agent_config,
+        memory_config=agent_config.memory_config
+    )
+
+    agent.available_function_ids = ["function1", "function2"]
+    with patch.dict('app.core.agent.registered_functions', {
+        "function1": Mock(name="Function 1"),
+        "function2": Mock(name="Function 2")
+    }):
+        available_functions = agent.get_available_functions()
+
+    assert len(available_functions) == 2
+    assert available_functions[0].name == "Function 1"
+    assert available_functions[1].name == "Function 2"
+
+```
+
+# tests/test_core/__init__.py
+
+```py
+
+```
+
+# tests/test_api/test_message.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+from uuid import UUID
+from app.core.agent import create_agent
+from httpx import AsyncClient
+from app.api.models.agent import AgentConfig, MemoryConfig
+
+@pytest.fixture
+async def test_agent(test_client: TestClient, auth_headers):
+    agent_data = {
+        "agent_name": "Test Agent",
+        "agent_config": AgentConfig(
+            llm_provider="openai",
+            model_name="gpt-3.5-turbo",
+            temperature=0.7,
+            max_tokens=150,
+            memory_config=MemoryConfig(
+                use_long_term_memory=True,
+                use_redis_cache=True
+            )
+        ),
+        "memory_config": MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        ),
+        "initial_prompt": "You are a helpful assistant."
+    }
+    agent_id = await create_agent(**agent_data)
+    return agent_id
+
+@pytest.mark.asyncio
+async def test_send_message(test_client: AsyncClient, auth_headers, test_agent):
+    agent_id = await test_agent
+    message_data = {
+        "agent_id": str(agent_id),
+        "message": "Hello, agent!"
+    }
+    response = await test_client.post("/message/send", json=message_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "agent_id" in result
+    assert "response" in result
+    assert isinstance(result.get("function_calls"), list) or result.get("function_calls") is None
+    return result
+
+@pytest.mark.asyncio
+async def test_get_message_history(test_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message to ensure there's some history
+    sent_message = await test_send_message(test_client, auth_headers, test_agent)
+
+    history_request = {
+        "agent_id": sent_message["agent_id"],
+        "limit": 10
+    }
+    response = await test_client.get("/message/history", params=history_request, headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert isinstance(history["messages"], list)
+    assert len(history["messages"]) > 0
+    assert history["messages"][0]["content"] == "Hello, agent!"
+
+
+def test_clear_message_history(test_client: TestClient, auth_headers):
+    # First, send a message to ensure there's some history
+    sent_message = test_send_message(test_client, auth_headers)
+
+    clear_request = {
+        "agent_id": sent_message["agent_id"]
+    }
+    response = test_client.post("/message/clear", json=clear_request, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Message history cleared successfully"
+
+    # Verify that the history is indeed cleared
+    history_request = {
+        "agent_id": sent_message["agent_id"],
+        "limit": 10
+    }
+    response = test_client.get("/message/history", params=history_request, headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert len(history["messages"]) == 0
+
+
+def test_get_latest_message(test_client: TestClient, auth_headers):
+    # First, send a message
+    sent_message = test_send_message(test_client, auth_headers)
+
+    latest_request = {
+        "agent_id": sent_message["agent_id"]
+    }
+    response = test_client.get("/message/latest", params=latest_request, headers=auth_headers)
+    assert response.status_code == 200
+    latest_message = response.json()
+    assert latest_message["content"] == "Hello, agent!"
+
+```
+
+# tests/test_api/test_memory.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+from uuid import UUID
+
+def test_add_memory(test_client: TestClient, auth_headers):
+    memory_data = {
+        "agent_id": str(UUID(int=0)),  # Using a dummy UUID for testing
+        "memory_type": "SHORT_TERM",
+        "entry": {
+            "content": "Test memory content",
+            "metadata": {"key": "value"}
+        }
+    }
+    response = test_client.post("/memory/add", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    added_memory = response.json()
+    assert added_memory["message"] == "Memory added successfully"
+    assert "memory_id" in added_memory
+    return added_memory["memory_id"]
+
+def test_retrieve_memory(test_client: TestClient, auth_headers):
+    memory_id = test_add_memory(test_client, auth_headers)
+    retrieve_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "memory_id": memory_id
+    }
+    response = test_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
+    assert response.status_code == 200
+    memory = response.json()
+    assert memory["content"] == "Test memory content"
+    assert memory["metadata"] == {"key": "value"}
+
+def test_search_memory(test_client: TestClient, auth_headers):
+    test_add_memory(test_client, auth_headers)  # Add a memory to search for
+    search_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "query": "Test memory",
+        "limit": 5
+    }
+    response = test_client.post("/memory/search", json=search_data, headers=auth_headers)
+    assert response.status_code == 200
+    results = response.json()
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
+
+def test_delete_memory(test_client: TestClient, auth_headers):
+    memory_id = test_add_memory(test_client, auth_headers)
+    delete_data = {
+        "agent_id": str(UUID(int=0)),
+        "memory_type": "SHORT_TERM",
+        "memory_id": memory_id
+    }
+    response = test_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Memory deleted successfully"
+
+def test_memory_operation(test_client: TestClient, auth_headers):
+    operation_data = {
+        "agent_id": str(UUID(int=0)),
+        "operation": "ADD",
+        "memory_type": "SHORT_TERM",
+        "data": {
+            "content": "Test operation memory content",
+            "metadata": {"operation": "test"}
+        }
+    }
+    response = test_client.post("/memory/operate", json=operation_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "ADD operation completed successfully"
+    assert "result" in result
+```
+
+# tests/test_api/test_main.py
+
+```py
+from fastapi.testclient import TestClient
+
+def test_read_main(test_client):
+    response = test_client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
+
+```
+
+# tests/test_api/test_function.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+async def test_register_function(test_client: AsyncClient, auth_headers):
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await test_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    registered_function = response.json()
+    assert registered_function["message"] == "Function registered successfully"
+    assert "function_id" in registered_function
+    return registered_function["function_id"]
+
+@pytest.mark.asyncio
+async def test_get_function(test_client: AsyncClient, auth_headers):
+    function_id = await test_register_function(test_client, auth_headers)
+    response = await test_client.get(f"/function/{function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    function = response.json()
+    assert function["name"] == "test_function"
+    assert function["description"] == "A test function"
+
+@pytest.mark.asyncio
+async def test_update_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    update_data = {
+        "updated_function": {
+            "name": "updated_test_function",
+            "description": "An updated test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"},
+                    "param3": {"type": "boolean"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = test_client.put(f"/function/update", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_function = response.json()
+    assert updated_function["message"] == "Function updated successfully"
+
+@pytest.mark.asyncio
+async def test_delete_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    response = test_client.delete(f"/function/remove?agent_id=test_agent_id&function_id={function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Function removed successfully"
+
+@pytest.mark.asyncio
+async def test_list_functions(test_client: TestClient, auth_headers):
+    # Register a couple of functions first
+    test_register_function(test_client, auth_headers)
+    test_register_function(test_client, auth_headers)
+
+    response = test_client.get("/function/available?agent_id=test_agent_id", headers=auth_headers)
+    assert response.status_code == 200
+    functions = response.json()
+    assert isinstance(functions["functions"], list)
+    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
+
+@pytest.mark.asyncio
+async def test_execute_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    execution_data = {
+        "agent_id": "test_agent_id",
+        "function_name": "test_function",
+        "parameters": {
+            "param1": "test",
+            "param2": 123
+        }
+    }
+    response = test_client.post("/function/execute", json=execution_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "result" in result
+```
+
+# tests/test_api/test_agent.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+from uuid import UUID
+
+pytestmark = pytest.mark.asyncio
+
+@pytest.mark.asyncio
+async def test_create_agent(async_client: AsyncClient, auth_headers):
+    agent_data = {
+        "name": "Test Agent",
+        "config": {
+            "llm_provider": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 150,
+            "memory_config": {
+                "use_long_term_memory": True,
+                "use_redis_cache": True
+            }
+        },
+        "memory_config": {
+            "use_long_term_memory": True,
+            "use_redis_cache": True
+        },
+        "initial_prompt": "You are a helpful assistant."
+    }
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    created_agent = response.json()
+    assert "agent_id" in created_agent
+    assert UUID(created_agent["agent_id"])
+    return created_agent["agent_id"]
+
+@pytest.mark.asyncio
+async def test_get_agent(async_client: AsyncClient, auth_headers):
+    agent_id = await test_create_agent(async_client, auth_headers)
+    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 200
+    agent = response.json()
+    assert agent["agent_id"] == str(agent_id)
+    assert agent["name"] == "Test Agent"
+
+async def test_update_agent(test_client: TestClient, auth_headers):
+    agent_id = test_create_agent(test_client, auth_headers)
+    update_data = {
+        "agent_config": {
+            "temperature": 0.8
+        }
+    }
+    response = test_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_agent = response.json()
+    assert updated_agent["message"] == "Agent updated successfully"
+
+async def test_delete_agent(test_client: TestClient, auth_headers):
+    agent_id = test_create_agent(test_client, auth_headers)
+    response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 204
+
+async def test_list_agents(test_client: TestClient, auth_headers):
+    # Create a couple of agents first
+    test_create_agent(test_client, auth_headers)
+    test_create_agent(test_client, auth_headers)
+
+    response = test_client.get("/agent/", headers=auth_headers)
+    assert response.status_code == 200
+    agents = response.json()
+    assert isinstance(agents, list)
+    assert len(agents) >= 2  # We should have at least the two agents we just created
+```
+
+# tests/test_api/__init__.py
+
+```py
+
 ```
 
 # app/api/models/message.py
@@ -3450,87 +2855,6 @@ from .memory import router as memory_router
 
 __all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
-```
-
-# .pytest_cache/v/cache/stepwise
-
-```
-[]
-```
-
-# .pytest_cache/v/cache/nodeids
-
-```
-[
-  "tests/test_api/test_agent.py::test_create_agent",
-  "tests/test_api/test_agent.py::test_delete_agent",
-  "tests/test_api/test_agent.py::test_get_agent",
-  "tests/test_api/test_agent.py::test_list_agents",
-  "tests/test_api/test_agent.py::test_update_agent",
-  "tests/test_api/test_function.py::test_delete_function",
-  "tests/test_api/test_function.py::test_execute_function",
-  "tests/test_api/test_function.py::test_get_function",
-  "tests/test_api/test_function.py::test_list_functions",
-  "tests/test_api/test_function.py::test_register_function",
-  "tests/test_api/test_function.py::test_update_function",
-  "tests/test_api/test_main.py::test_read_main",
-  "tests/test_api/test_memory.py::test_add_memory",
-  "tests/test_api/test_memory.py::test_delete_memory",
-  "tests/test_api/test_memory.py::test_list_memories",
-  "tests/test_api/test_memory.py::test_memory_operation",
-  "tests/test_api/test_memory.py::test_retrieve_memory",
-  "tests/test_api/test_memory.py::test_search_memory",
-  "tests/test_api/test_memory.py::test_store_memory",
-  "tests/test_api/test_memory.py::test_update_memory",
-  "tests/test_api/test_message.py::test_clear_message_history",
-  "tests/test_api/test_message.py::test_create_message",
-  "tests/test_api/test_message.py::test_get_latest_message",
-  "tests/test_api/test_message.py::test_get_message",
-  "tests/test_api/test_message.py::test_get_message_history",
-  "tests/test_api/test_message.py::test_list_messages",
-  "tests/test_api/test_message.py::test_send_message",
-  "tests/test_core/test_agent.py::test_agent_execute_function",
-  "tests/test_core/test_agent.py::test_agent_get_available_functions",
-  "tests/test_core/test_agent.py::test_agent_initialization",
-  "tests/test_core/test_agent.py::test_agent_process_message"
-]
-```
-
-# .pytest_cache/v/cache/lastfailed
-
-```
-{
-  "tests/test_api/test_agent.py::test_create_agent": true,
-  "tests/test_api/test_agent.py::test_get_agent": true,
-  "tests/test_api/test_agent.py::test_update_agent": true,
-  "tests/test_api/test_agent.py::test_delete_agent": true,
-  "tests/test_api/test_agent.py::test_list_agents": true,
-  "tests/test_api/test_function.py::test_update_function": true,
-  "tests/test_api/test_function.py::test_delete_function": true,
-  "tests/test_api/test_function.py::test_list_functions": true,
-  "tests/test_api/test_memory.py::test_store_memory": true,
-  "tests/test_api/test_memory.py::test_retrieve_memory": true,
-  "tests/test_api/test_memory.py::test_update_memory": true,
-  "tests/test_api/test_memory.py::test_delete_memory": true,
-  "tests/test_api/test_memory.py::test_list_memories": true,
-  "tests/test_api/test_message.py::test_create_message": true,
-  "tests/test_api/test_message.py::test_get_message": true,
-  "tests/test_api/test_message.py::test_list_messages": true,
-  "tests/test_api/test_function.py::test_execute_function": true,
-  "tests/test_api/test_memory.py::test_add_memory": true,
-  "tests/test_api/test_memory.py::test_search_memory": true,
-  "tests/test_api/test_memory.py::test_memory_operation": true,
-  "tests/test_api/test_message.py::test_clear_message_history": true,
-  "tests/test_api/test_message.py::test_get_latest_message": true,
-  "tests/test_core/test_agent.py::test_agent_execute_function": true,
-  "tests/test_core/test_agent.py::test_agent_get_available_functions": true,
-  "tests/test_api/test_function.py::test_register_function": true,
-  "tests/test_api/test_function.py::test_get_function": true,
-  "tests/test_api/test_message.py::test_send_message": true,
-  "tests/test_api/test_message.py::test_get_message_history": true,
-  "tests/test_api/test_main.py::test_read_main": true,
-  "tests/test_core/test_agent.py::test_agent_initialization": true
-}
 ```
 
 # docs/.pytest_cache/v/cache/stepwise
