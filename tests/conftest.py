@@ -3,7 +3,6 @@ from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import Settings
-from app.core.agent import create_agent
 from app.api.models.agent import AgentConfig, MemoryConfig
 
 @pytest.fixture
@@ -43,22 +42,42 @@ def auth_headers(test_settings):
 async def test_agent(async_client, auth_headers):
     agent_data = {
         "name": "Test Agent",
-        "config": AgentConfig(
-            llm_provider="openai",
-            model_name="gpt-3.5-turbo",
-            temperature=0.7,
-            max_tokens=150,
-            memory_config=MemoryConfig(
-                use_long_term_memory=True,
-                use_redis_cache=True
-            )
-        ),
-        "memory_config": MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        ),
+        "config": {
+            "llm_provider": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 150,
+            "memory_config": {
+                "use_long_term_memory": True,
+                "use_redis_cache": True
+            }
+        },
+        "memory_config": {
+            "use_long_term_memory": True,
+            "use_redis_cache": True
+        },
         "initial_prompt": "You are a helpful assistant."
     }
     response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     return response.json()["agent_id"]
+
+@pytest.fixture
+async def test_function(async_client, auth_headers):
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    return response.json()["function_id"]
