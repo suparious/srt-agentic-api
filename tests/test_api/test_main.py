@@ -1,6 +1,9 @@
-from fastapi.testclient import TestClient
+import pytest
+from httpx import AsyncClient
 
-def test_read_main(test_client):
-    response = test_client.get("/")
+pytestmark = pytest.mark.asyncio
+
+async def test_read_main(async_client: AsyncClient):
+    response = await async_client.get("/")
     assert response.status_code == 200
     assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
