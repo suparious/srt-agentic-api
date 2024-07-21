@@ -23,6 +23,7 @@ srt-agentic-api/
 │   │   └── models/
 │   ├── core/
 │   └── utils/
+├── docs/
 ├── logs/
 ├── tests/
 ├── requirements.txt

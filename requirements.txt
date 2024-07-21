@@ -12,6 +12,3 @@ PyJWT>=2.7.0,<3.0.0
 bcrypt>=4.0.1,<5.0.0
 loguru>=0.7.0,<1.0.0
 tenacity>=8.2.2,<9.0.0
-# unit testing requirements
-pytest>=7.3.1,<8.0.0
-httpx>=0.24.1,<1.0.0

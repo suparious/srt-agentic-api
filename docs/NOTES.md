@@ -1,4 +1,7 @@
-# Function registration
+
+## Function registration
+
+Example of how to register a new function.
 
 ```python
 def calculate_sum(a: int, b: int) -> int:
@@ -16,6 +19,8 @@ function_id = await register_function(function_def)
 ```
 
 ## Formatting for summary
+
+How to generate the `codebase.md` file.
 
 ```bash
 npx ai-digest

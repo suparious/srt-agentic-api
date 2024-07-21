@@ -15,131 +15,15 @@ PyJWT>=2.7.0,<3.0.0
 bcrypt>=4.0.1,<5.0.0
 loguru>=0.7.0,<1.0.0
 tenacity>=8.2.2,<9.0.0
-# unit testing requirements
+
+```
+
+# requirements-testing.txt
+
+```txt
+# additional unit testing requirements:
 pytest>=7.3.1,<8.0.0
 httpx>=0.24.1,<1.0.0
-
-```
-
-# ROADMAP.md
-
-```md
-# SolidRusT Agentic API Development Roadmap
-
-## Completed Tasks
-1. Set up basic project structure
-2. Implemented core agent logic (`app/core/agent.py`)
-3. Created API models for agent, message, function, and memory
-4. Implemented agent, message, function, and memory endpoints
-5. Set up logging utility
-6. Implemented basic authentication
-7. Created and updated `requirements.txt`
-8. Updated `README.md` with setup instructions
-9. Implemented memory system with Redis and ChromaDB integration
-10. Successfully ran the application with a welcome message
-11. Enhanced API documentation using Swagger UI
-12. Implemented function registration and management system
-13. Added function assignment and removal capabilities for agents
-14. Implemented actual function execution logic in the `Agent` class
-
-## Current Phase: API Refinement and Advanced Features
-
-1. **Function System Enhancements**
-   - [ ] Implement asynchronous function support
-   - [ ] Add more robust type checking and conversion for function parameters
-   - [ ] Implement function versioning system
-   - [ ] Create a set of built-in functions available to all agents
-
-2. **Agent System Improvements**
-   - [ ] Implement agent state persistence
-   - [ ] Add support for agent templates or archetypes
-   - [ ] Develop a system for inter-agent communication
-
-3. **Memory System Optimization**
-   - [ ] Implement more sophisticated memory retrieval algorithms
-   - [ ] Add support for hierarchical memory structures
-   - [ ] Optimize long-term memory storage and retrieval
-
-4. **LLM Integration Enhancements**
-   - [ ] Add support for multiple LLM providers
-   - [ ] Implement fallback mechanisms for LLM failures
-   - [ ] Develop a system for LLM output parsing and validation
-
-5. **Security and Access Control**
-   - [ ] Implement role-based access control for API endpoints
-   - [ ] Develop a comprehensive authentication system
-   - [ ] Implement rate limiting and usage quotas
-
-6. **Monitoring and Observability**
-   - [ ] Set up comprehensive logging and monitoring
-   - [ ] Implement performance tracking and analytics
-   - [ ] Develop a dashboard for system health and usage statistics
-
-## Next Phase: Scaling and Production Readiness
-
-7. **Scalability Enhancements**
-   - [ ] Implement horizontal scaling strategies
-   - [ ] Optimize database queries and caching
-   - [ ] Develop load balancing mechanisms
-
-8. **Testing and Quality Assurance**
-   - [ ] Develop comprehensive unit test suite
-   - [ ] Implement integration tests for all major components
-   - [ ] Set up continuous integration and deployment pipeline
-
-9. **Documentation and User Guide**
-   - [ ] Create detailed API documentation
-   - [ ] Develop user guide and tutorials
-   - [ ] Create SDK for popular programming languages
-
-10. **Deployment and Operations**
-    - [ ] Finalize Dockerfile and docker-compose setup
-    - [ ] Prepare deployment scripts for various cloud providers
-    - [ ] Implement backup and disaster recovery strategies
-
-## Future Considerations
-
-11. **Advanced AI Features**
-    - [ ] Implement multi-agent collaboration systems
-    - [ ] Develop advanced reasoning and planning capabilities
-    - [ ] Explore integration with other AI technologies (e.g., computer vision, speech recognition)
-
-12. **Ecosystem Development**
-    - [ ] Create a marketplace for custom functions and agent templates
-    - [ ] Develop tools for visual agent and workflow design
-    - [ ] Foster a community of developers and researchers around the platform
-
-13. **Ethical AI and Governance**
-    - [ ] Implement safeguards against misuse
-    - [ ] Develop transparency and explainability features
-    - [ ] Create governance structures for responsible AI development
-```
-
-# REGISTER.md
-
-```md
-# Function registration
-
-\`\`\`python
-def calculate_sum(a: int, b: int) -> int:
-    return a + b
-
-function_def = FunctionDefinition(
-    name="calculate_sum",
-    description="Calculates the sum of two numbers",
-    parameters={"a": {"type": "integer"}, "b": {"type": "integer"}},
-    return_type="integer",
-    implementation=calculate_sum
-)
-
-function_id = await register_function(function_def)
-\`\`\`
-
-## Formatting for summary
-
-\`\`\`bash
-npx ai-digest
-\`\`\`
 
 ```
 
@@ -171,6 +55,7 @@ srt-agentic-api/
 │   │   └── models/
 │   ├── core/
 │   └── utils/
+├── docs/
 ├── logs/
 ├── tests/
 ├── requirements.txt
@@ -438,6 +323,300 @@ filterwarnings =
 \`\`\`
 
 This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
+
+```
+
+# docs/llama-cpp-agent.md
+
+```md
+
+```
+
+# docs/ROADMAP.md
+
+```md
+# SolidRusT Agentic API Development Roadmap
+
+## Completed Tasks
+1. Set up basic project structure
+2. Implemented core agent logic (`app/core/agent.py`)
+3. Created API models for agent, message, function, and memory
+4. Implemented agent, message, function, and memory endpoints
+5. Set up logging utility
+6. Implemented basic authentication
+7. Created and updated `requirements.txt`
+8. Updated `README.md` with setup instructions
+9. Implemented memory system with Redis and ChromaDB integration
+10. Successfully ran the application with a welcome message
+11. Enhanced API documentation using Swagger UI
+12. Implemented function registration and management system
+13. Added function assignment and removal capabilities for agents
+14. Implemented actual function execution logic in the `Agent` class
+
+## Current Phase: API Refinement and Advanced Features
+
+1. **Function System Enhancements**
+   - [ ] Implement asynchronous function support
+   - [ ] Add more robust type checking and conversion for function parameters
+   - [ ] Implement function versioning system
+   - [ ] Create a set of built-in functions available to all agents
+
+2. **Agent System Improvements**
+   - [ ] Implement agent state persistence
+   - [ ] Add support for agent templates or archetypes
+   - [ ] Develop a system for inter-agent communication
+
+3. **Memory System Optimization**
+   - [ ] Implement more sophisticated memory retrieval algorithms
+   - [ ] Add support for hierarchical memory structures
+   - [ ] Optimize long-term memory storage and retrieval
+
+4. **LLM Integration Enhancements**
+   - [ ] Add support for multiple LLM providers
+   - [ ] Implement fallback mechanisms for LLM failures
+   - [ ] Develop a system for LLM output parsing and validation
+
+5. **Security and Access Control**
+   - [ ] Implement role-based access control for API endpoints
+   - [ ] Develop a comprehensive authentication system
+   - [ ] Implement rate limiting and usage quotas
+
+6. **Monitoring and Observability**
+   - [ ] Set up comprehensive logging and monitoring
+   - [ ] Implement performance tracking and analytics
+   - [ ] Develop a dashboard for system health and usage statistics
+
+## Next Phase: Scaling and Production Readiness
+
+7. **Scalability Enhancements**
+   - [ ] Implement horizontal scaling strategies
+   - [ ] Optimize database queries and caching
+   - [ ] Develop load balancing mechanisms
+
+8. **Testing and Quality Assurance**
+   - [ ] Develop comprehensive unit test suite
+   - [ ] Implement integration tests for all major components
+   - [ ] Set up continuous integration and deployment pipeline
+
+9. **Documentation and User Guide**
+   - [ ] Create detailed API documentation
+   - [ ] Develop user guide and tutorials
+   - [ ] Create SDK for popular programming languages
+
+10. **Deployment and Operations**
+    - [ ] Finalize Dockerfile and docker-compose setup
+    - [ ] Prepare deployment scripts for various cloud providers
+    - [ ] Implement backup and disaster recovery strategies
+
+## Future Considerations
+
+11. **Advanced AI Features**
+    - [ ] Implement multi-agent collaboration systems
+    - [ ] Develop advanced reasoning and planning capabilities
+    - [ ] Explore integration with other AI technologies (e.g., computer vision, speech recognition)
+
+12. **Ecosystem Development**
+    - [ ] Create a marketplace for custom functions and agent templates
+    - [ ] Develop tools for visual agent and workflow design
+    - [ ] Foster a community of developers and researchers around the platform
+
+13. **Ethical AI and Governance**
+    - [ ] Implement safeguards against misuse
+    - [ ] Develop transparency and explainability features
+    - [ ] Create governance structures for responsible AI development
+```
+
+# docs/NOTES.md
+
+```md
+
+## Function registration
+
+Example of how to register a new function.
+
+\`\`\`python
+def calculate_sum(a: int, b: int) -> int:
+    return a + b
+
+function_def = FunctionDefinition(
+    name="calculate_sum",
+    description="Calculates the sum of two numbers",
+    parameters={"a": {"type": "integer"}, "b": {"type": "integer"}},
+    return_type="integer",
+    implementation=calculate_sum
+)
+
+function_id = await register_function(function_def)
+\`\`\`
+
+## Formatting for summary
+
+How to generate the `codebase.md` file.
+
+\`\`\`bash
+npx ai-digest
+\`\`\`
+
+```
+
+# app/main.py
+
+```py
+import os
+import sys
+
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+print("Python version:", sys.version)
+print("Python path:", sys.path)
+print("Current working directory:", os.getcwd())
+print("Contents of current directory:", os.listdir())
+print("Initializing FastAPI app")
+
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
+from app.api.endpoints import agent, message, function, memory
+from app.utils.auth import get_api_key
+from app.utils.logging import main_logger
+from app.config import settings
+
+app = FastAPI(
+    title="SolidRusT Agentic API",
+    description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
+    version="1.0.0",
+    contact={
+        "name": "SolidRusT Team",
+        "url": "https://github.com/SolidRusT/srt-agentic-api",
+        "email": "support@solidrust.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    }
+)
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="SolidRusT Agentic API",
+        version="1.0.0",
+        description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
+        routes=app.routes,
+    )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+# CORS middleware setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(agent.router, prefix="/agent", tags=["Agents"])
+app.include_router(message.router, prefix="/message", tags=["Messages"])
+app.include_router(function.router, prefix="/function", tags=["Functions"])
+app.include_router(memory.router, prefix="/memory", tags=["Memory"])
+
+@app.get("/", tags=["Root"])
+async def root():
+    """
+    Root endpoint that welcomes users to the SolidRusT Agentic API.
+    """
+    return {"message": "Welcome to SolidRusT Agentic API"}
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    main_logger.info(f"Incoming request: {request.method} {request.url}")
+    response = await call_next(request)
+    main_logger.info(f"Response status code: {response.status_code}")
+    return response
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    main_logger.error(f"HTTPException: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    main_logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "An unexpected error occurred. Please try again later."},
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    main_logger.info("Starting SolidRusT Agentic API")
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)
+
+```
+
+# app/config.py
+
+```py
+from typing import List
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    # API settings
+    API_KEY: str
+    API_VERSION: str = "v1"
+
+    # Server settings
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    ALLOWED_ORIGINS: List[str] = ["*"]
+
+    # Database settings
+    REDIS_URL: str = "redis://localhost:6379"
+    CHROMA_PERSIST_DIRECTORY: str = "/path/to/persist"
+
+    # Logging settings
+    LOG_DIR: str = "/path/to/logs"
+    LOG_LEVEL: str = "INFO"
+
+    # LLM Provider settings
+    DEFAULT_LLM_PROVIDER: str = "openai"
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+
+    # Agent settings
+    MAX_AGENTS_PER_USER: int = 5
+    DEFAULT_AGENT_MEMORY_LIMIT: int = 1000
+
+    # Memory settings
+    SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
+    LONG_TERM_MEMORY_LIMIT: int = 10000
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()
+
+```
+
+# app/__init__.py
+
+```py
 
 ```
 
@@ -1078,176 +1257,235 @@ Signature: 8a477f597d28d172789f06886806bc55
 
 ```
 
-# app/main.py
+# tests/test_core/test_memory.py
 
 ```py
-import os
-import sys
 
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
+```
 
-print("Python version:", sys.version)
-print("Python path:", sys.path)
-print("Current working directory:", os.getcwd())
-print("Contents of current directory:", os.listdir())
-print("Initializing FastAPI app")
+# tests/test_core/test_agent.py
 
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.openapi.utils import get_openapi
-from app.api.endpoints import agent, message, function, memory
-from app.utils.auth import get_api_key
-from app.utils.logging import main_logger
-from app.config import settings
+```py
+# tests/test_core/test_agent.py
+import pytest
+from unittest.mock import Mock, patch
+from app.core.agent import Agent  # Import your Agent class
 
-app = FastAPI(
-    title="SolidRusT Agentic API",
-    description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
-    version="1.0.0",
-    contact={
-        "name": "SolidRusT Team",
-        "url": "https://github.com/SolidRusT/srt-agentic-api",
-        "email": "support@solidrust.com",
-    },
-    license_info={
-        "name": "Apache 2.0",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+@pytest.fixture
+def mock_memory():
+    return Mock()
+
+@pytest.fixture
+def mock_llm_provider():
+    return Mock()
+
+def test_agent_initialization(mock_memory, mock_llm_provider):
+    agent = Agent(memory=mock_memory, llm_provider=mock_llm_provider)
+    assert agent.memory == mock_memory
+    assert agent.llm_provider == mock_llm_provider
+
+# Add more tests for Agent methods
+```
+
+# tests/test_core/__init__.py
+
+```py
+
+```
+
+# tests/test_api/test_message.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+
+def test_create_message(test_client: TestClient, auth_headers):
+    message_data = {
+        "agent_id": "test_agent_id",
+        "content": "Hello, agent!",
+        "role": "user"
     }
-)
+    response = test_client.post("/message/", json=message_data, headers=auth_headers)
+    assert response.status_code == 201
+    created_message = response.json()
+    assert created_message["content"] == message_data["content"]
+    return created_message["id"]
 
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title="SolidRusT Agentic API",
-        version="1.0.0",
-        description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
-        routes=app.routes,
-    )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+def test_get_message(test_client: TestClient, auth_headers):
+    message_id = test_create_message(test_client, auth_headers)
+    response = test_client.get(f"/message/{message_id}", headers=auth_headers)
+    assert response.status_code == 200
+    message = response.json()
+    assert message["id"] == message_id
+
+def test_list_messages(test_client: TestClient, auth_headers):
+    response = test_client.get("/message/", headers=auth_headers)
+    assert response.status_code == 200
+    messages = response.json()
+    assert isinstance(messages, list)
+
+```
+
+# tests/test_api/test_memory.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+
+def test_store_memory(test_client: TestClient, auth_headers):
+    memory_data = {
+        "agent_id": "test_agent_id",
+        "key": "test_key",
+        "value": "Test memory value"
     }
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
+    response = test_client.post("/memory/", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    stored_memory = response.json()
+    assert stored_memory["key"] == memory_data["key"]
+    return stored_memory["id"]
 
-app.openapi = custom_openapi
+def test_retrieve_memory(test_client: TestClient, auth_headers):
+    memory_id = test_store_memory(test_client, auth_headers)
+    response = test_client.get(f"/memory/{memory_id}", headers=auth_headers)
+    assert response.status_code == 200
+    memory = response.json()
+    assert memory["id"] == memory_id
 
-# CORS middleware setup
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def test_update_memory(test_client: TestClient, auth_headers):
+    memory_id = test_store_memory(test_client, auth_headers)
+    update_data = {"value": "Updated memory value"}
+    response = test_client.patch(f"/memory/{memory_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_memory = response.json()
+    assert updated_memory["value"] == update_data["value"]
 
-# Include routers
-app.include_router(agent.router, prefix="/agent", tags=["Agents"])
-app.include_router(message.router, prefix="/message", tags=["Messages"])
-app.include_router(function.router, prefix="/function", tags=["Functions"])
-app.include_router(memory.router, prefix="/memory", tags=["Memory"])
+def test_delete_memory(test_client: TestClient, auth_headers):
+    memory_id = test_store_memory(test_client, auth_headers)
+    response = test_client.delete(f"/memory/{memory_id}", headers=auth_headers)
+    assert response.status_code == 204
 
-@app.get("/", tags=["Root"])
-async def root():
-    """
-    Root endpoint that welcomes users to the SolidRusT Agentic API.
-    """
-    return {"message": "Welcome to SolidRusT Agentic API"}
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    main_logger.info(f"Incoming request: {request.method} {request.url}")
-    response = await call_next(request)
-    main_logger.info(f"Response status code: {response.status_code}")
-    return response
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    main_logger.error(f"HTTPException: {exc.status_code} - {exc.detail}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"message": exc.detail},
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    main_logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"message": "An unexpected error occurred. Please try again later."},
-    )
-
-if __name__ == "__main__":
-    import uvicorn
-    main_logger.info("Starting SolidRusT Agentic API")
-    uvicorn.run(app, host=settings.HOST, port=settings.PORT)
+def test_list_memories(test_client: TestClient, auth_headers):
+    response = test_client.get("/memory/", headers=auth_headers)
+    assert response.status_code == 200
+    memories = response.json()
+    assert isinstance(memories, list)
 
 ```
 
-# app/config.py
+# tests/test_api/test_main.py
 
 ```py
-from typing import List
-from pydantic_settings import BaseSettings
+from fastapi.testclient import TestClient
 
-
-class Settings(BaseSettings):
-    # API settings
-    API_KEY: str
-    API_VERSION: str = "v1"
-
-    # Server settings
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    ALLOWED_ORIGINS: List[str] = ["*"]
-
-    # Database settings
-    REDIS_URL: str = "redis://localhost:6379"
-    CHROMA_PERSIST_DIRECTORY: str = "/path/to/persist"
-
-    # Logging settings
-    LOG_DIR: str = "/path/to/logs"
-    LOG_LEVEL: str = "INFO"
-
-    # LLM Provider settings
-    DEFAULT_LLM_PROVIDER: str = "openai"
-    OPENAI_API_KEY: str = ""
-    ANTHROPIC_API_KEY: str = ""
-
-    # Agent settings
-    MAX_AGENTS_PER_USER: int = 5
-    DEFAULT_AGENT_MEMORY_LIMIT: int = 1000
-
-    # Memory settings
-    SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
-    LONG_TERM_MEMORY_LIMIT: int = 10000
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
-
-settings = Settings()
+def test_read_main(test_client):
+    response = test_client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
 
 ```
 
-# app/__init__.py
+# tests/test_api/test_function.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+
+def test_register_function(test_client: TestClient, auth_headers):
+    function_data = {
+        "name": "test_function",
+        "description": "A test function",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "param1": {"type": "string"},
+                "param2": {"type": "integer"}
+            }
+        }
+    }
+    response = test_client.post("/function/", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    registered_function = response.json()
+    assert registered_function["name"] == function_data["name"]
+    return registered_function["id"]
+
+def test_get_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    response = test_client.get(f"/function/{function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    get_function = response.json()
+    assert get_function["id"] == function_id
+
+def test_update_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    update_data = {"description": "Updated test function"}
+    response = test_client.patch(f"/function/{function_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_function = response.json()
+    assert updated_function["description"] == update_data["description"]
+
+def test_delete_function(test_client: TestClient, auth_headers):
+    function_id = test_register_function(test_client, auth_headers)
+    response = test_client.delete(f"/function/{function_id}", headers=auth_headers)
+    assert response.status_code == 204
+
+def test_list_functions(test_client: TestClient, auth_headers):
+    response = test_client.get("/function/", headers=auth_headers)
+    assert response.status_code == 200
+    functions = response.json()
+    assert isinstance(functions, list)
+
+```
+
+# tests/test_api/test_agent.py
+
+```py
+import pytest
+from fastapi.testclient import TestClient
+
+def test_create_agent(test_client: TestClient, auth_headers):
+    agent_data = {
+        "name": "Test Agent",
+        "description": "A test agent",
+        "model_name": "gpt-3.5-turbo"
+    }
+    response = test_client.post("/agent/", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    created_agent = response.json()
+    assert created_agent["name"] == agent_data["name"]
+    return created_agent["id"]
+
+def test_get_agent(test_client: TestClient, auth_headers):
+    agent_id = test_create_agent(test_client, auth_headers)
+    response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 200
+    agent = response.json()
+    assert agent["id"] == agent_id
+
+def test_update_agent(test_client: TestClient, auth_headers):
+    agent_id = test_create_agent(test_client, auth_headers)
+    update_data = {"description": "Updated test agent"}
+    response = test_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_agent = response.json()
+    assert updated_agent["description"] == update_data["description"]
+
+def test_delete_agent(test_client: TestClient, auth_headers):
+    agent_id = test_create_agent(test_client, auth_headers)
+    response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 204
+
+def test_list_agents(test_client: TestClient, auth_headers):
+    response = test_client.get("/agent/", headers=auth_headers)
+    assert response.status_code == 200
+    agents = response.json()
+    assert isinstance(agents, list)
+
+```
+
+# tests/test_api/__init__.py
 
 ```py
 
-```
-
-# .idea/inspectionProfiles/profiles_settings.xml
-
-```xml
-<component name="InspectionProjectProfileManager">
-  <settings>
-    <option name="USE_PROJECT_PROFILE" value="false" />
-    <version value="1.0" />
-  </settings>
-</component>
 ```
 
 # app/utils/logging.py
@@ -1830,300 +2068,21 @@ async def update_function(function_id: str, updated_function: FunctionDefinition
 
 ```
 
-# tests/test_core/test_memory.py
-
-```py
-
-```
-
-# tests/test_core/test_agent.py
-
-```py
-# tests/test_core/test_agent.py
-import pytest
-from unittest.mock import Mock, patch
-from app.core.agent import Agent  # Import your Agent class
-
-@pytest.fixture
-def mock_memory():
-    return Mock()
-
-@pytest.fixture
-def mock_llm_provider():
-    return Mock()
-
-def test_agent_initialization(mock_memory, mock_llm_provider):
-    agent = Agent(memory=mock_memory, llm_provider=mock_llm_provider)
-    assert agent.memory == mock_memory
-    assert agent.llm_provider == mock_llm_provider
-
-# Add more tests for Agent methods
-```
-
-# tests/test_core/__init__.py
-
-```py
-
-```
-
-# tests/test_api/test_message.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-
-def test_create_message(test_client: TestClient, auth_headers):
-    message_data = {
-        "agent_id": "test_agent_id",
-        "content": "Hello, agent!",
-        "role": "user"
-    }
-    response = test_client.post("/message/", json=message_data, headers=auth_headers)
-    assert response.status_code == 201
-    created_message = response.json()
-    assert created_message["content"] == message_data["content"]
-    return created_message["id"]
-
-def test_get_message(test_client: TestClient, auth_headers):
-    message_id = test_create_message(test_client, auth_headers)
-    response = test_client.get(f"/message/{message_id}", headers=auth_headers)
-    assert response.status_code == 200
-    message = response.json()
-    assert message["id"] == message_id
-
-def test_list_messages(test_client: TestClient, auth_headers):
-    response = test_client.get("/message/", headers=auth_headers)
-    assert response.status_code == 200
-    messages = response.json()
-    assert isinstance(messages, list)
-
-```
-
-# tests/test_api/test_memory.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-
-def test_store_memory(test_client: TestClient, auth_headers):
-    memory_data = {
-        "agent_id": "test_agent_id",
-        "key": "test_key",
-        "value": "Test memory value"
-    }
-    response = test_client.post("/memory/", json=memory_data, headers=auth_headers)
-    assert response.status_code == 201
-    stored_memory = response.json()
-    assert stored_memory["key"] == memory_data["key"]
-    return stored_memory["id"]
-
-def test_retrieve_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    response = test_client.get(f"/memory/{memory_id}", headers=auth_headers)
-    assert response.status_code == 200
-    memory = response.json()
-    assert memory["id"] == memory_id
-
-def test_update_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    update_data = {"value": "Updated memory value"}
-    response = test_client.patch(f"/memory/{memory_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_memory = response.json()
-    assert updated_memory["value"] == update_data["value"]
-
-def test_delete_memory(test_client: TestClient, auth_headers):
-    memory_id = test_store_memory(test_client, auth_headers)
-    response = test_client.delete(f"/memory/{memory_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-def test_list_memories(test_client: TestClient, auth_headers):
-    response = test_client.get("/memory/", headers=auth_headers)
-    assert response.status_code == 200
-    memories = response.json()
-    assert isinstance(memories, list)
-
-```
-
-# tests/test_api/test_main.py
-
-```py
-from fastapi.testclient import TestClient
-
-def test_read_main(test_client):
-    response = test_client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
-
-```
-
-# tests/test_api/test_function.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-
-def test_register_function(test_client: TestClient, auth_headers):
-    function_data = {
-        "name": "test_function",
-        "description": "A test function",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "param1": {"type": "string"},
-                "param2": {"type": "integer"}
-            }
-        }
-    }
-    response = test_client.post("/function/", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    registered_function = response.json()
-    assert registered_function["name"] == function_data["name"]
-    return registered_function["id"]
-
-def test_get_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    response = test_client.get(f"/function/{function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    get_function = response.json()
-    assert get_function["id"] == function_id
-
-def test_update_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    update_data = {"description": "Updated test function"}
-    response = test_client.patch(f"/function/{function_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_function = response.json()
-    assert updated_function["description"] == update_data["description"]
-
-def test_delete_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    response = test_client.delete(f"/function/{function_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-def test_list_functions(test_client: TestClient, auth_headers):
-    response = test_client.get("/function/", headers=auth_headers)
-    assert response.status_code == 200
-    functions = response.json()
-    assert isinstance(functions, list)
-
-```
-
-# tests/test_api/test_agent.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-
-def test_create_agent(test_client: TestClient, auth_headers):
-    agent_data = {
-        "name": "Test Agent",
-        "description": "A test agent",
-        "model_name": "gpt-3.5-turbo"
-    }
-    response = test_client.post("/agent/", json=agent_data, headers=auth_headers)
-    assert response.status_code == 201
-    created_agent = response.json()
-    assert created_agent["name"] == agent_data["name"]
-    return created_agent["id"]
-
-def test_get_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.get(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 200
-    agent = response.json()
-    assert agent["id"] == agent_id
-
-def test_update_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    update_data = {"description": "Updated test agent"}
-    response = test_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_agent = response.json()
-    assert updated_agent["description"] == update_data["description"]
-
-def test_delete_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-def test_list_agents(test_client: TestClient, auth_headers):
-    response = test_client.get("/agent/", headers=auth_headers)
-    assert response.status_code == 200
-    agents = response.json()
-    assert isinstance(agents, list)
-
-```
-
-# tests/test_api/__init__.py
-
-```py
-
-```
-
 # app/api/__init__.py
 
 ```py
 
 ```
 
-# .pytest_cache/v/cache/stepwise
+# .idea/inspectionProfiles/profiles_settings.xml
 
-```
-[]
-```
-
-# .pytest_cache/v/cache/nodeids
-
-```
-[
-  "tests/test_api/test_agent.py::test_create_agent",
-  "tests/test_api/test_agent.py::test_delete_agent",
-  "tests/test_api/test_agent.py::test_get_agent",
-  "tests/test_api/test_agent.py::test_list_agents",
-  "tests/test_api/test_agent.py::test_update_agent",
-  "tests/test_api/test_function.py::test_delete_function",
-  "tests/test_api/test_function.py::test_get_function",
-  "tests/test_api/test_function.py::test_list_functions",
-  "tests/test_api/test_function.py::test_register_function",
-  "tests/test_api/test_function.py::test_update_function",
-  "tests/test_api/test_main.py::test_read_main",
-  "tests/test_api/test_memory.py::test_delete_memory",
-  "tests/test_api/test_memory.py::test_list_memories",
-  "tests/test_api/test_memory.py::test_retrieve_memory",
-  "tests/test_api/test_memory.py::test_store_memory",
-  "tests/test_api/test_memory.py::test_update_memory",
-  "tests/test_api/test_message.py::test_create_message",
-  "tests/test_api/test_message.py::test_get_message",
-  "tests/test_api/test_message.py::test_list_messages",
-  "tests/test_core/test_agent.py::test_agent_initialization"
-]
-```
-
-# .pytest_cache/v/cache/lastfailed
-
-```
-{
-  "tests/test_api/test_agent.py::test_create_agent": true,
-  "tests/test_api/test_agent.py::test_get_agent": true,
-  "tests/test_api/test_agent.py::test_update_agent": true,
-  "tests/test_api/test_agent.py::test_delete_agent": true,
-  "tests/test_api/test_agent.py::test_list_agents": true,
-  "tests/test_api/test_function.py::test_register_function": true,
-  "tests/test_api/test_function.py::test_get_function": true,
-  "tests/test_api/test_function.py::test_update_function": true,
-  "tests/test_api/test_function.py::test_delete_function": true,
-  "tests/test_api/test_function.py::test_list_functions": true,
-  "tests/test_api/test_memory.py::test_store_memory": true,
-  "tests/test_api/test_memory.py::test_retrieve_memory": true,
-  "tests/test_api/test_memory.py::test_update_memory": true,
-  "tests/test_api/test_memory.py::test_delete_memory": true,
-  "tests/test_api/test_memory.py::test_list_memories": true,
-  "tests/test_api/test_message.py::test_create_message": true,
-  "tests/test_api/test_message.py::test_get_message": true,
-  "tests/test_api/test_message.py::test_list_messages": true,
-  "tests/test_core/test_agent.py::test_agent_initialization": true
-}
+```xml
+<component name="InspectionProjectProfileManager">
+  <settings>
+    <option name="USE_PROJECT_PROFILE" value="false" />
+    <version value="1.0" />
+  </settings>
+</component>
 ```
 
 # app/api/models/message.py
@@ -2952,5 +2911,64 @@ from .memory import router as memory_router
 
 __all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
+```
+
+# .pytest_cache/v/cache/stepwise
+
+```
+[]
+```
+
+# .pytest_cache/v/cache/nodeids
+
+```
+[
+  "tests/test_api/test_agent.py::test_create_agent",
+  "tests/test_api/test_agent.py::test_delete_agent",
+  "tests/test_api/test_agent.py::test_get_agent",
+  "tests/test_api/test_agent.py::test_list_agents",
+  "tests/test_api/test_agent.py::test_update_agent",
+  "tests/test_api/test_function.py::test_delete_function",
+  "tests/test_api/test_function.py::test_get_function",
+  "tests/test_api/test_function.py::test_list_functions",
+  "tests/test_api/test_function.py::test_register_function",
+  "tests/test_api/test_function.py::test_update_function",
+  "tests/test_api/test_main.py::test_read_main",
+  "tests/test_api/test_memory.py::test_delete_memory",
+  "tests/test_api/test_memory.py::test_list_memories",
+  "tests/test_api/test_memory.py::test_retrieve_memory",
+  "tests/test_api/test_memory.py::test_store_memory",
+  "tests/test_api/test_memory.py::test_update_memory",
+  "tests/test_api/test_message.py::test_create_message",
+  "tests/test_api/test_message.py::test_get_message",
+  "tests/test_api/test_message.py::test_list_messages",
+  "tests/test_core/test_agent.py::test_agent_initialization"
+]
+```
+
+# .pytest_cache/v/cache/lastfailed
+
+```
+{
+  "tests/test_api/test_agent.py::test_create_agent": true,
+  "tests/test_api/test_agent.py::test_get_agent": true,
+  "tests/test_api/test_agent.py::test_update_agent": true,
+  "tests/test_api/test_agent.py::test_delete_agent": true,
+  "tests/test_api/test_agent.py::test_list_agents": true,
+  "tests/test_api/test_function.py::test_register_function": true,
+  "tests/test_api/test_function.py::test_get_function": true,
+  "tests/test_api/test_function.py::test_update_function": true,
+  "tests/test_api/test_function.py::test_delete_function": true,
+  "tests/test_api/test_function.py::test_list_functions": true,
+  "tests/test_api/test_memory.py::test_store_memory": true,
+  "tests/test_api/test_memory.py::test_retrieve_memory": true,
+  "tests/test_api/test_memory.py::test_update_memory": true,
+  "tests/test_api/test_memory.py::test_delete_memory": true,
+  "tests/test_api/test_memory.py::test_list_memories": true,
+  "tests/test_api/test_message.py::test_create_message": true,
+  "tests/test_api/test_message.py::test_get_message": true,
+  "tests/test_api/test_message.py::test_list_messages": true,
+  "tests/test_core/test_agent.py::test_agent_initialization": true
+}
 ```
 
