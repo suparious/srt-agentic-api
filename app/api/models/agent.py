@@ -3,15 +3,16 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID
 from enum import Enum
 
+class MemoryConfig(BaseModel):
+    use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
+    use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
+
 class AgentConfig(BaseModel):
     llm_provider: str = Field(..., description="The LLM provider to use for this agent (e.g., 'openai', 'anthropic', 'huggingface')")
     model_name: str = Field(..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')")
     temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
     max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
-
-class MemoryConfig(BaseModel):
-    use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
-    use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
+    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
 
 class AgentCreationRequest(BaseModel):
     agent_name: str = Field(..., description="The name of the agent to be created")

@@ -14,3 +14,9 @@ function_def = FunctionDefinition(
 
 function_id = await register_function(function_def)
 ```
+
+## Formatting for summary
+
+```bash
+npx ai-digest
+```
