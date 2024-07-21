@@ -35,7 +35,7 @@ async def test_agent_initialization(agent_config):
         assert agent.name == "Test Agent"
         assert agent.config == agent_config
         assert isinstance(agent.llm_provider, Mock)
-        assert isinstance(agent.memory, MockMemorySystem)
+        assert isinstance(agent.memory, MockMemorySystem.return_value)
 
 
 @pytest.mark.asyncio
@@ -80,15 +80,17 @@ async def test_agent_execute_function(agent_config):
     async def test_function(param1, param2):
         return f"Executed with {param1} and {param2}"
 
-    agent.available_function_ids = ["test_function_id"]
-    with patch.dict('app.core.agent.registered_functions',
-                    {"test_function_id": AsyncMock(implementation=test_function)}):
-        result = await agent.execute_function(
-            function_name="test_function",
-            parameters={"param1": "value1", "param2": "value2"}
-        )
+    mock_function = AsyncMock(implementation=test_function)
+    agent.get_function_by_name = Mock(return_value=mock_function)
+
+    result = await agent.execute_function(
+        function_name="test_function",
+        parameters={"param1": "value1", "param2": "value2"}
+    )
 
     assert result == "Executed with value1 and value2"
+    agent.get_function_by_name.assert_called_once_with("test_function")
+    mock_function.assert_called_once_with(param1="value1", param2="value2")
 
 
 def test_agent_get_available_functions(agent_config):
@@ -101,12 +103,14 @@ def test_agent_get_available_functions(agent_config):
     )
 
     agent.available_function_ids = ["function1", "function2"]
+    mock_function1 = Mock(name="Function 1")
+    mock_function2 = Mock(name="Function 2")
     with patch.dict('app.core.agent.registered_functions', {
-        "function1": Mock(name="Function 1"),
-        "function2": Mock(name="Function 2")
+        "function1": mock_function1,
+        "function2": mock_function2
     }):
         available_functions = agent.get_available_functions()
 
     assert len(available_functions) == 2
-    assert available_functions[0].name == "Function 1"
-    assert available_functions[1].name == "Function 2"
+    assert available_functions[0] == mock_function1
+    assert available_functions[1] == mock_function2
