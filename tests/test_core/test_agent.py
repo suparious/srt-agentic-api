@@ -35,7 +35,7 @@ async def test_agent_initialization(agent_config):
         assert agent.name == "Test Agent"
         assert agent.config == agent_config
         assert isinstance(agent.llm_provider, Mock)
-        assert isinstance(agent.memory, MockMemorySystem.return_value)
+        assert isinstance(agent.memory, MockMemorySystem.return_value)  # This line remains unchanged
 
 
 @pytest.mark.asyncio
@@ -80,7 +80,7 @@ async def test_agent_execute_function(agent_config):
     async def test_function(param1, param2):
         return f"Executed with {param1} and {param2}"
 
-    mock_function = AsyncMock(implementation=test_function)
+    mock_function = AsyncMock(side_effect=test_function)  # Changed from implementation to side_effect
     mock_function.id = "test_function_id"
     agent.get_function_by_name = Mock(return_value=mock_function)
 

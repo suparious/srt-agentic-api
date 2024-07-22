@@ -41,8 +41,8 @@ def auth_headers(test_settings):
 @pytest.fixture
 async def test_agent(async_client, auth_headers):
     agent_data = {
-        "name": "Test Agent",
-        "config": {
+        "agent_name": "Test Agent",
+        "agent_config": {
             "llm_provider": "openai",
             "model_name": "gpt-3.5-turbo",
             "temperature": 0.7,

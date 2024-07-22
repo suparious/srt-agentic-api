@@ -6,8 +6,8 @@ pytestmark = pytest.mark.asyncio
 
 async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
-        "name": "Test Agent",
-        "config": {
+        "agent_name": "Test Agent",
+        "agent_config": {
             "llm_provider": "openai",
             "model_name": "gpt-3.5-turbo",
             "temperature": 0.7,
@@ -31,7 +31,7 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
     return created_agent["agent_id"]
 
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = test_agent
+    agent_id = await test_agent
     response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 200
     agent = response.json()
@@ -39,9 +39,9 @@ async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     assert agent["name"] == "Test Agent"
 
 async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = test_agent
+    agent_id = await test_agent
     update_data = {
-        "config": {
+        "agent_config": {
             "temperature": 0.8
         }
     }
@@ -51,7 +51,7 @@ async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent)
     assert updated_agent["message"] == "Agent updated successfully"
 
 async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = test_agent
+    agent_id = await test_agent
     response = await async_client.delete(f"/agent/{agent_id}", headers=auth_headers)
     assert response.status_code == 204
 
@@ -59,7 +59,7 @@ async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
     # Create a second agent to ensure we have at least two
     await test_create_agent(async_client, auth_headers)
 
-    response = await async_client.get("/agent/", headers=auth_headers)
+    response = await async_client.get("/agent", headers=auth_headers)
     assert response.status_code == 200
     agents = response.json()
     assert isinstance(agents, list)
