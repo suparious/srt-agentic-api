@@ -414,12 +414,12 @@ tests/test_api/test_function.py FFFFFF                                   [ 44%]
 tests/test_api/test_main.py F                                            [ 48%]
 tests/test_api/test_memory.py FFFFF                                      [ 68%]
 tests/test_api/test_message.py FFFF                                      [ 84%]
-tests/test_core/test_agent.py F.F.                                       [100%]
+tests/test_core/test_agent.py ..F.                                       [100%]
 
 =================================== FAILURES ===================================
 ______________________________ test_create_agent _______________________________
 
-async_client = <async_generator object async_client at 0x10b0dda80>
+async_client = <async_generator object async_client at 0x1158edb70>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     async def test_create_agent(async_client: AsyncClient, auth_headers):
@@ -451,9 +451,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ________________________________ test_get_agent ________________________________
 
-async_client = <async_generator object async_client at 0x10b0ddb70>
+async_client = <async_generator object async_client at 0x1158edc60>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0ce180>
+test_agent = <coroutine object test_agent at 0x1158de180>
 
     async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
 >       agent_id = await test_agent
@@ -461,7 +461,7 @@ test_agent = <coroutine object test_agent at 0x10b0ce180>
 tests/test_api/test_agent.py:34: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0ddb70>
+async_client = <async_generator object async_client at 0x1158edc60>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     @pytest.fixture
@@ -494,9 +494,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_update_agent _______________________________
 
-async_client = <async_generator object async_client at 0x10b0dce50>
+async_client = <async_generator object async_client at 0x1158ecf40>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cce80>
+test_agent = <coroutine object test_agent at 0x1158dce80>
 
     async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
 >       agent_id = await test_agent
@@ -504,7 +504,7 @@ test_agent = <coroutine object test_agent at 0x10b0cce80>
 tests/test_api/test_agent.py:42: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0dce50>
+async_client = <async_generator object async_client at 0x1158ecf40>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     @pytest.fixture
@@ -537,9 +537,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_delete_agent _______________________________
 
-async_client = <async_generator object async_client at 0x10b0dee30>
+async_client = <async_generator object async_client at 0x1158eef20>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0ce640>
+test_agent = <coroutine object test_agent at 0x1158de640>
 
     async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
 >       agent_id = await test_agent
@@ -547,7 +547,7 @@ test_agent = <coroutine object test_agent at 0x10b0ce640>
 tests/test_api/test_agent.py:54: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0dee30>
+async_client = <async_generator object async_client at 0x1158eef20>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     @pytest.fixture
@@ -580,9 +580,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _______________________________ test_list_agents _______________________________
 
-async_client = <async_generator object async_client at 0x10b0df4c0>
+async_client = <async_generator object async_client at 0x1158ef5b0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0ceb00>
+test_agent = <coroutine object test_agent at 0x1158deb00>
 
     async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
         # Create a second agent to ensure we have at least two
@@ -591,7 +591,7 @@ test_agent = <coroutine object test_agent at 0x10b0ceb00>
 tests/test_api/test_agent.py:60: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0df4c0>
+async_client = <async_generator object async_client at 0x1158ef5b0>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     async def test_create_agent(async_client: AsyncClient, auth_headers):
@@ -623,7 +623,7 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ____________________________ test_register_function ____________________________
 
-async_client = <async_generator object async_client at 0x10b0dfb50>
+async_client = <async_generator object async_client at 0x1158efc40>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     async def test_register_function(async_client: AsyncClient, auth_headers):
@@ -651,9 +651,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_get_function _______________________________
 
-async_client = <async_generator object async_client at 0x10b0dff10>
+async_client = <async_generator object async_client at 0x1159f0040>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x10b0c8dc0>
+test_function = <coroutine object test_function at 0x1158d8dc0>
 
     async def test_get_function(async_client: AsyncClient, auth_headers, test_function):
         function_id = test_function
@@ -667,9 +667,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _____________________________ test_update_function _____________________________
 
-async_client = <async_generator object async_client at 0x10b1dc310>
+async_client = <async_generator object async_client at 0x1159f0400>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x10b0c9900>
+test_function = <coroutine object test_function at 0x1158d9900>
 
     async def test_update_function(async_client: AsyncClient, auth_headers, test_function):
         function_id = test_function
@@ -698,10 +698,10 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _____________________________ test_delete_function _____________________________
 
-async_client = <async_generator object async_client at 0x10b1dc6d0>
+async_client = <async_generator object async_client at 0x1159f07c0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x10b0c9480>
-test_agent = <coroutine object test_agent at 0x10b0cf5b0>
+test_function = <coroutine object test_function at 0x1158d9480>
+test_agent = <coroutine object test_agent at 0x1158df5b0>
 
     async def test_delete_function(async_client: AsyncClient, auth_headers, test_function, test_agent):
         function_id = test_function
@@ -715,9 +715,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _____________________________ test_list_functions ______________________________
 
-async_client = <async_generator object async_client at 0x10b1dca90>
+async_client = <async_generator object async_client at 0x1159f0b80>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cf940>
+test_agent = <coroutine object test_agent at 0x1158df940>
 
     async def test_list_functions(async_client: AsyncClient, auth_headers, test_agent):
         # Register a couple of functions first
@@ -726,7 +726,7 @@ test_agent = <coroutine object test_agent at 0x10b0cf940>
 tests/test_api/test_function.py:67: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b1dca90>
+async_client = <async_generator object async_client at 0x1159f0b80>
 auth_headers = {'X-API-Key': 'test_api_key'}
 
     async def test_register_function(async_client: AsyncClient, auth_headers):
@@ -754,10 +754,10 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ____________________________ test_execute_function _____________________________
 
-async_client = <async_generator object async_client at 0x10b1dce50>
+async_client = <async_generator object async_client at 0x1159f0f40>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cfe00>
-test_function = <coroutine object test_function at 0x10b0ca0e0>
+test_agent = <coroutine object test_agent at 0x1158dfe00>
+test_function = <coroutine object test_function at 0x1158da0e0>
 
     async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent, test_function):
         execution_data = {
@@ -778,7 +778,7 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ________________________________ test_read_main ________________________________
 
-async_client = <async_generator object async_client at 0x10b1dd210>
+async_client = <async_generator object async_client at 0x1159f1300>
 
     async def test_read_main(async_client: AsyncClient):
 >       response = await async_client.get("/")
@@ -791,9 +791,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _______________________________ test_add_memory ________________________________
 
-async_client = <async_generator object async_client at 0x10b1dd5d0>
+async_client = <async_generator object async_client at 0x1159f16c0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b204630>
+test_agent = <coroutine object test_agent at 0x115a08630>
 
     async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
         memory_data = {
@@ -814,9 +814,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 _____________________________ test_retrieve_memory _____________________________
 
-async_client = <async_generator object async_client at 0x10b1dd210>
+async_client = <async_generator object async_client at 0x1159f1300>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b204170>
+test_agent = <coroutine object test_agent at 0x115a08170>
 
     async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
 >       memory_id = await test_add_memory(async_client, auth_headers, test_agent)
@@ -824,9 +824,9 @@ test_agent = <coroutine object test_agent at 0x10b204170>
 tests/test_api/test_memory.py:25: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b1dd210>
+async_client = <async_generator object async_client at 0x1159f1300>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b204170>
+test_agent = <coroutine object test_agent at 0x115a08170>
 
     async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
         memory_data = {
@@ -847,9 +847,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_search_memory ______________________________
 
-async_client = <async_generator object async_client at 0x10b1dd990>
+async_client = <async_generator object async_client at 0x1159f1a80>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b2049c0>
+test_agent = <coroutine object test_agent at 0x115a089c0>
 
     async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
 >       await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
@@ -857,9 +857,9 @@ test_agent = <coroutine object test_agent at 0x10b2049c0>
 tests/test_api/test_memory.py:38: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b1dd990>
+async_client = <async_generator object async_client at 0x1159f1a80>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b2049c0>
+test_agent = <coroutine object test_agent at 0x115a089c0>
 
     async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
         memory_data = {
@@ -880,9 +880,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_delete_memory ______________________________
 
-async_client = <async_generator object async_client at 0x10b0dff10>
+async_client = <async_generator object async_client at 0x1158ef2e0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cfcd0>
+test_agent = <coroutine object test_agent at 0x1158dfcd0>
 
     async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
 >       memory_id = await test_add_memory(async_client, auth_headers, test_agent)
@@ -890,9 +890,9 @@ test_agent = <coroutine object test_agent at 0x10b0cfcd0>
 tests/test_api/test_memory.py:52: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0dff10>
+async_client = <async_generator object async_client at 0x1158ef2e0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cfcd0>
+test_agent = <coroutine object test_agent at 0x1158dfcd0>
 
     async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
         memory_data = {
@@ -913,9 +913,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ____________________________ test_memory_operation _____________________________
 
-async_client = <async_generator object async_client at 0x10b0dfd30>
+async_client = <async_generator object async_client at 0x1158eee30>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cf810>
+test_agent = <coroutine object test_agent at 0x1158df810>
 
     async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
         operation_data = {
@@ -937,9 +937,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ______________________________ test_send_message _______________________________
 
-async_client = <async_generator object async_client at 0x10b0df5b0>
+async_client = <async_generator object async_client at 0x1158ef790>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cf5b0>
+test_agent = <coroutine object test_agent at 0x1158df5b0>
 
     async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
         message_data = {
@@ -956,9 +956,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ___________________________ test_get_message_history ___________________________
 
-async_client = <async_generator object async_client at 0x10b0dee30>
+async_client = <async_generator object async_client at 0x1158ef010>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cf220>
+test_agent = <coroutine object test_agent at 0x1158df220>
 
     async def test_get_message_history(async_client: AsyncClient, auth_headers, test_agent):
         # First, send a message to ensure there's some history
@@ -967,9 +967,9 @@ test_agent = <coroutine object test_agent at 0x10b0cf220>
 tests/test_api/test_message.py:21: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0dee30>
+async_client = <async_generator object async_client at 0x1158ef010>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cf220>
+test_agent = <coroutine object test_agent at 0x1158df220>
 
     async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
         message_data = {
@@ -986,9 +986,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 __________________________ test_clear_message_history __________________________
 
-async_client = <async_generator object async_client at 0x10b0dce50>
+async_client = <async_generator object async_client at 0x1158ee6b0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cee90>
+test_agent = <coroutine object test_agent at 0x1158dee90>
 
     async def test_clear_message_history(async_client: AsyncClient, auth_headers, test_agent):
         # First, send a message to ensure there's some history
@@ -997,9 +997,9 @@ test_agent = <coroutine object test_agent at 0x10b0cee90>
 tests/test_api/test_message.py:36: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b0dce50>
+async_client = <async_generator object async_client at 0x1158ee6b0>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0cee90>
+test_agent = <coroutine object test_agent at 0x1158dee90>
 
     async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
         message_data = {
@@ -1016,9 +1016,9 @@ Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
 ___________________________ test_get_latest_message ____________________________
 
-async_client = <async_generator object async_client at 0x10b1dd8a0>
+async_client = <async_generator object async_client at 0x1159f1210>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0ceb00>
+test_agent = <coroutine object test_agent at 0x1158deb00>
 
     async def test_get_latest_message(async_client: AsyncClient, auth_headers, test_agent):
         # First, send a message
@@ -1027,9 +1027,9 @@ test_agent = <coroutine object test_agent at 0x10b0ceb00>
 tests/test_api/test_message.py:58: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-async_client = <async_generator object async_client at 0x10b1dd8a0>
+async_client = <async_generator object async_client at 0x1159f1210>
 auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x10b0ceb00>
+test_agent = <coroutine object test_agent at 0x1158deb00>
 
     async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
         message_data = {
@@ -1044,34 +1044,6 @@ tests/test_api/test_message.py:11: AttributeError
 Debug: ALLOWED_ORIGINS value received: ['http://testserver', 'http://localhost']
 Debug: ALLOWED_ORIGINS type: <class 'list'>
 Debug: ALLOWED_ORIGINS env var: None
-__________________________ test_agent_initialization ___________________________
-
-agent_config = AgentConfig(llm_provider='openai', model_name='gpt-3.5-turbo', temperature=0.7, max_tokens=100, memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True))
-
-    @pytest.mark.asyncio
-    async def test_agent_initialization(agent_config):
-        agent_id = UUID('12345678-1234-5678-1234-567812345678')
-        with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-                patch('app.core.agent.MemorySystem') as MockMemorySystem:
-            agent = Agent(
-                agent_id=agent_id,
-                name="Test Agent",
-                config=agent_config,
-                memory_config=agent_config.memory_config
-            )
-    
-            assert agent.id == agent_id
-            assert agent.name == "Test Agent"
-            assert agent.config == agent_config
-            assert isinstance(agent.llm_provider, Mock)
->           assert isinstance(agent.memory, MockMemorySystem.return_value)  # This line remains unchanged
-E           TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union
-
-tests/test_core/test_agent.py:38: TypeError
------------------------------ Captured stderr call -----------------------------
-2024-07-21 17:49:40,175 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
------------------------------- Captured log call -------------------------------
-INFO     agent:agent.py:25 Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
 _________________________ test_agent_execute_function __________________________
 
 agent_config = AgentConfig(llm_provider='openai', model_name='gpt-3.5-turbo', temperature=0.7, max_tokens=100, memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True))
@@ -1089,7 +1061,7 @@ agent_config = AgentConfig(llm_provider='openai', model_name='gpt-3.5-turbo', te
         async def test_function(param1, param2):
             return f"Executed with {param1} and {param2}"
     
-        mock_function = AsyncMock(side_effect=test_function)  # Changed from implementation to side_effect
+        mock_function = AsyncMock(side_effect=test_function)
         mock_function.id = "test_function_id"
         agent.get_function_by_name = Mock(return_value=mock_function)
     
@@ -1100,16 +1072,16 @@ agent_config = AgentConfig(llm_provider='openai', model_name='gpt-3.5-turbo', te
             )
     
 >       assert result == "Executed with value1 and value2"
-E       AssertionError: assert <AsyncMock name='mock.implementation()' id='4482792432'> == 'Executed with value1 and value2'
+E       AssertionError: assert <AsyncMock name='mock.implementation()' id='4657633648'> == 'Executed with value1 and value2'
 
-tests/test_core/test_agent.py:93: AssertionError
+tests/test_core/test_agent.py:91: AssertionError
 ----------------------------- Captured stderr call -----------------------------
-2024-07-21 17:49:40,190 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,604 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,605 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,605 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-21 17:49:40,605 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-21 17:49:40,606 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,376 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,676 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,676 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,676 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
+2024-07-21 17:55:18,677 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,677 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
 ------------------------------ Captured log call -------------------------------
 INFO     memory:memory.py:18 Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
 INFO     memory:memory.py:70 ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
@@ -1138,8 +1110,8 @@ INFO     agent:agent.py:58 Function test_function executed successfully for Agen
   <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
 
 tests/test_core/test_agent.py::test_agent_execute_function
-  /Users/suparious/repos/srt-agentic-api/.venv/lib/python3.12/site-packages/urllib3/util/request.py:9: RuntimeWarning: coroutine 'test_agent' was never awaited
-    from .util import to_bytes
+  /Users/suparious/.pyenv/versions/3.12.4/lib/python3.12/re/_parser.py:293: RuntimeWarning: coroutine 'test_agent' was never awaited
+    def tell(self):
   Enable tracemalloc to get traceback where the object was allocated.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 
@@ -1166,34 +1138,33 @@ FAILED tests/test_api/test_message.py::test_send_message - AttributeError: 'a...
 FAILED tests/test_api/test_message.py::test_get_message_history - AttributeEr...
 FAILED tests/test_api/test_message.py::test_clear_message_history - Attribute...
 FAILED tests/test_api/test_message.py::test_get_latest_message - AttributeErr...
-FAILED tests/test_core/test_agent.py::test_agent_initialization - TypeError: ...
 FAILED tests/test_core/test_agent.py::test_agent_execute_function - Assertion...
-================== 23 failed, 2 passed, 27 warnings in 0.98s ===================
+================== 22 failed, 3 passed, 27 warnings in 0.68s ===================
 
 ```
 
 # logs/memory.log
 
 ```log
-2024-07-21 17:49:40,190 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,604 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,605 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,617 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,621 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
-2024-07-21 17:49:40,621 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,376 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,676 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,676 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,688 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,691 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
+2024-07-21 17:55:18,691 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
 
 ```
 
 # logs/main.log
 
 ```log
-2024-07-21 17:49:19,504 INFO Starting SolidRusT Agentic API
-2024-07-21 17:49:25,152 INFO Incoming request: GET http://0.0.0.0:8000/
-2024-07-21 17:49:25,154 INFO Response status code: 200
-2024-07-21 17:49:27,393 INFO Incoming request: GET http://0.0.0.0:8000/docs
-2024-07-21 17:49:27,394 INFO Response status code: 200
-2024-07-21 17:49:27,536 INFO Incoming request: GET http://0.0.0.0:8000/openapi.json
-2024-07-21 17:49:27,591 INFO Response status code: 200
+2024-07-21 17:55:02,508 INFO Starting SolidRusT Agentic API
+2024-07-21 17:55:07,635 INFO Incoming request: GET http://0.0.0.0:8000/
+2024-07-21 17:55:07,636 INFO Response status code: 200
+2024-07-21 17:55:09,569 INFO Incoming request: GET http://0.0.0.0:8000/docs
+2024-07-21 17:55:09,570 INFO Response status code: 200
+2024-07-21 17:55:09,684 INFO Incoming request: GET http://0.0.0.0:8000/openapi.json
+2024-07-21 17:55:09,734 INFO Response status code: 200
 
 ```
 
@@ -1212,14 +1183,14 @@ FAILED tests/test_core/test_agent.py::test_agent_execute_function - Assertion...
 # logs/agent.log
 
 ```log
-2024-07-21 17:49:40,175 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-21 17:49:40,187 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-21 17:49:40,187 INFO Processing message for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-21 17:49:40,188 INFO Message processed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-21 17:49:40,605 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-21 17:49:40,605 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-21 17:49:40,606 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-21 17:49:40,621 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
+2024-07-21 17:55:18,369 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
+2024-07-21 17:55:18,373 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
+2024-07-21 17:55:18,373 INFO Processing message for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,374 INFO Message processed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,676 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
+2024-07-21 17:55:18,677 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,677 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
+2024-07-21 17:55:18,691 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
 
 ```
 
@@ -1705,7 +1676,6 @@ from uuid import UUID
 from app.core.agent import Agent
 from app.api.models.agent import AgentConfig, MemoryConfig
 
-
 @pytest.fixture
 def agent_config():
     return AgentConfig(
@@ -1719,12 +1689,13 @@ def agent_config():
         )
     )
 
-
 @pytest.mark.asyncio
 async def test_agent_initialization(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
             patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_memory_instance = Mock()
+        MockMemorySystem.return_value = mock_memory_instance
         agent = Agent(
             agent_id=agent_id,
             name="Test Agent",
@@ -1736,8 +1707,7 @@ async def test_agent_initialization(agent_config):
         assert agent.name == "Test Agent"
         assert agent.config == agent_config
         assert isinstance(agent.llm_provider, Mock)
-        assert isinstance(agent.memory, MockMemorySystem.return_value)  # This line remains unchanged
-
+        assert agent.memory == mock_memory_instance
 
 @pytest.mark.asyncio
 async def test_agent_process_message(agent_config):
@@ -1767,7 +1737,6 @@ async def test_agent_process_message(agent_config):
         mock_llm_provider.generate.assert_called_once()
         mock_memory.add.assert_called_once()
 
-
 @pytest.mark.asyncio
 async def test_agent_execute_function(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
@@ -1781,7 +1750,7 @@ async def test_agent_execute_function(agent_config):
     async def test_function(param1, param2):
         return f"Executed with {param1} and {param2}"
 
-    mock_function = AsyncMock(side_effect=test_function)  # Changed from implementation to side_effect
+    mock_function = AsyncMock(side_effect=test_function)
     mock_function.id = "test_function_id"
     agent.get_function_by_name = Mock(return_value=mock_function)
 
@@ -1794,7 +1763,6 @@ async def test_agent_execute_function(agent_config):
     assert result == "Executed with value1 and value2"
     agent.get_function_by_name.assert_called_once_with("test_function")
     mock_function.assert_called_once_with(param1="value1", param2="value2")
-
 
 def test_agent_get_available_functions(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')

@@ -5,7 +5,7 @@ from app.main import app
 from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_settings():
     return Settings(
         API_KEY="test_api_key",
@@ -19,7 +19,7 @@ def test_settings():
         TGI_API_BASE="http://test-tgi-server-endpoint",
     )
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def app_with_test_settings(test_settings):
     app.dependency_overrides[Settings] = lambda: test_settings
     yield app
@@ -30,11 +30,11 @@ async def async_client(app_with_test_settings):
     async with AsyncClient(app=app_with_test_settings, base_url="http://test") as client:
         yield client
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def sync_client(app_with_test_settings):
     return TestClient(app_with_test_settings)
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def auth_headers(test_settings):
     return {"X-API-Key": test_settings.API_KEY}
 
