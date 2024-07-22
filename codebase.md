@@ -194,6 +194,212 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```
 
+# tests/conftest.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from fastapi.testclient import TestClient
+from app.main import app
+from app.config import Settings
+from app.api.models.agent import AgentConfig, MemoryConfig
+
+@pytest.fixture
+def test_settings():
+    return Settings(
+        API_KEY="test_api_key",
+        ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
+        REDIS_URL="redis://localhost:6379/1",
+        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
+        OPENAI_API_KEY="test_openai_key",
+        ANTHROPIC_API_KEY="test_anthropic_key",
+        VLLM_API_BASE="http://test-vllm-api-endpoint",
+        LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
+        TGI_API_BASE="http://test-tgi-server-endpoint",
+    )
+
+@pytest.fixture
+def app_with_test_settings(test_settings):
+    app.dependency_overrides[Settings] = lambda: test_settings
+    yield app
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+async def async_client(app_with_test_settings):
+    async with AsyncClient(app=app_with_test_settings, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture
+def sync_client(app_with_test_settings):
+    return TestClient(app_with_test_settings)
+
+@pytest.fixture
+def auth_headers(test_settings):
+    return {"X-API-Key": test_settings.API_KEY}
+
+@pytest.fixture
+async def test_agent(async_client, auth_headers):
+    agent_data = {
+        "name": "Test Agent",
+        "config": {
+            "llm_provider": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 150,
+            "memory_config": {
+                "use_long_term_memory": True,
+                "use_redis_cache": True
+            }
+        },
+        "memory_config": {
+            "use_long_term_memory": True,
+            "use_redis_cache": True
+        },
+        "initial_prompt": "You are a helpful assistant."
+    }
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    return response.json()["agent_id"]
+
+@pytest.fixture
+async def test_function(async_client, auth_headers):
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    return response.json()["function_id"]
+
+```
+
+# tests/__init__.py
+
+```py
+
+```
+
+# tests/README.md
+
+```md
+# SolidRusT Agentic API Tests
+
+This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
+
+## Directory Structure
+
+\`\`\`
+tests/
+├── __init__.py
+├── conftest.py
+├── README.md
+├── test_api/
+│   ├── __init__.py
+│   ├── test_agent.py
+│   ├── test_function.py
+│   ├── test_main.py
+│   ├── test_memory.py
+│   └── test_message.py
+└── test_core/
+    ├── __init__.py
+    ├── test_agent.py
+    └── test_memory.py
+\`\`\`
+
+- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
+- `test_api/`: Contains tests for the API endpoints.
+- `test_core/`: Contains tests for the core functionality of the application.
+
+## Running Tests
+
+To run all tests, use the following command from the root directory of the project:
+
+\`\`\`
+pytest
+\`\`\`
+
+To run tests in a specific file, use:
+
+\`\`\`
+pytest tests/path/to/test_file.py
+\`\`\`
+
+For example, to run the main API tests:
+
+\`\`\`
+pytest tests/test_api/test_main.py
+\`\`\`
+
+## Test Categories
+
+### API Tests
+
+These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
+
+### Core Tests
+
+These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
+
+## Writing New Tests
+
+When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
+
+1. Place API-related tests in the `test_api/` directory.
+2. Place core functionality tests in the `test_core/` directory.
+3. Use descriptive names for test functions, starting with `test_`.
+4. Use pytest fixtures where appropriate to set up test environments.
+5. Aim for high test coverage, including both happy paths and edge cases.
+
+## Continuous Integration
+
+These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
+
+
+## Comments
+
+Now, let's address the warnings we're seeing in the test output:
+
+1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
+
+2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
+
+3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
+
+To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class YourModel(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    # Your model fields here
+    model_name: str  # This field name is now allowed
+\`\`\`
+
+To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
+
+\`\`\`ini
+[pytest]
+filterwarnings =
+    ignore::DeprecationWarning:google._upb._message:
+    ignore::pydantic.PydanticDeprecatedSince20
+\`\`\`
+
+This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
+
+```
+
 # docs/custom-instructions.md
 
 ```md
@@ -302,100 +508,6 @@ Remember to always consider the end-user experience when developing new features
 
 ```
 
-# docs/ROADMAP.md
-
-```md
-# SolidRusT Agentic API Development Roadmap
-
-## Completed Tasks
-1. Set up basic project structure
-2. Implemented core agent logic (`app/core/agent.py`)
-3. Created API models for agent, message, function, and memory
-4. Implemented agent, message, function, and memory endpoints
-5. Set up logging utility
-6. Implemented basic authentication
-7. Created and updated `requirements.txt`
-8. Updated `README.md` with setup instructions
-9. Implemented memory system with Redis and ChromaDB integration
-10. Successfully ran the application with a welcome message
-11. Enhanced API documentation using Swagger UI
-12. Implemented function registration and management system
-13. Added function assignment and removal capabilities for agents
-14. Implemented actual function execution logic in the `Agent` class
-
-## Current Phase: API Refinement and Advanced Features
-
-1. **Function System Enhancements**
-   - [ ] Implement asynchronous function support
-   - [ ] Add more robust type checking and conversion for function parameters
-   - [ ] Implement function versioning system
-   - [ ] Create a set of built-in functions available to all agents
-
-2. **Agent System Improvements**
-   - [ ] Implement agent state persistence
-   - [ ] Add support for agent templates or archetypes
-   - [ ] Develop a system for inter-agent communication
-
-3. **Memory System Optimization**
-   - [ ] Implement more sophisticated memory retrieval algorithms
-   - [ ] Add support for hierarchical memory structures
-   - [ ] Optimize long-term memory storage and retrieval
-
-4. **LLM Integration Enhancements**
-   - [ ] Add support for multiple LLM providers
-   - [ ] Implement fallback mechanisms for LLM failures
-   - [ ] Develop a system for LLM output parsing and validation
-
-5. **Security and Access Control**
-   - [ ] Implement role-based access control for API endpoints
-   - [ ] Develop a comprehensive authentication system
-   - [ ] Implement rate limiting and usage quotas
-
-6. **Monitoring and Observability**
-   - [ ] Set up comprehensive logging and monitoring
-   - [ ] Implement performance tracking and analytics
-   - [ ] Develop a dashboard for system health and usage statistics
-
-## Next Phase: Scaling and Production Readiness
-
-7. **Scalability Enhancements**
-   - [ ] Implement horizontal scaling strategies
-   - [ ] Optimize database queries and caching
-   - [ ] Develop load balancing mechanisms
-
-8. **Testing and Quality Assurance**
-   - [ ] Develop comprehensive unit test suite
-   - [ ] Implement integration tests for all major components
-   - [ ] Set up continuous integration and deployment pipeline
-
-9. **Documentation and User Guide**
-   - [ ] Create detailed API documentation
-   - [ ] Develop user guide and tutorials
-   - [ ] Create SDK for popular programming languages
-
-10. **Deployment and Operations**
-    - [ ] Finalize Dockerfile and docker-compose setup
-    - [ ] Prepare deployment scripts for various cloud providers
-    - [ ] Implement backup and disaster recovery strategies
-
-## Future Considerations
-
-11. **Advanced AI Features**
-    - [ ] Implement multi-agent collaboration systems
-    - [ ] Develop advanced reasoning and planning capabilities
-    - [ ] Explore integration with other AI technologies (e.g., computer vision, speech recognition)
-
-12. **Ecosystem Development**
-    - [ ] Create a marketplace for custom functions and agent templates
-    - [ ] Develop tools for visual agent and workflow design
-    - [ ] Foster a community of developers and researchers around the platform
-
-13. **Ethical AI and Governance**
-    - [ ] Implement safeguards against misuse
-    - [ ] Develop transparency and explainability features
-    - [ ] Create governance structures for responsible AI development
-```
-
 # docs/NOTES.md
 
 ```md
@@ -444,6 +556,106 @@ provider_config = {
 llm_provider = create_llm_provider(provider_config)
 \`\`\`
 
+```
+
+# docs/DevelopmentPlan.md
+
+```md
+# Updated SolidRusT Agentic API Development Plan
+
+## Phase 1: Core Functionality and Testing (Immediate Priority)
+
+1. **Fix and Enhance Testing Framework**
+   - [ ] Resolve `test_client` fixture issues in API tests
+   - [ ] Update AsyncClient usage in tests to ensure proper asynchronous testing
+   - [ ] Implement comprehensive mocking of dependencies in tests
+   - [ ] Increase test coverage to at least 80% for core functionality
+
+2. **Address Core Functionality Issues**
+   - [ ] Debug and fix Agent initialization process
+   - [ ] Ensure proper function execution within the Agent class
+   - [ ] Resolve any issues with memory system integration (Redis and ChromaDB)
+   - [ ] Implement robust error handling and logging throughout the core modules
+
+3. **Refine API Endpoints and Models**
+   - [ ] Review and update all API endpoints for consistency and error handling
+   - [ ] Update Pydantic models to v2 syntax and resolve deprecation warnings
+   - [ ] Implement proper input validation and error responses for all endpoints
+   - [ ] Ensure all endpoints are properly documented with clear request/response examples
+
+4. **Enhance Memory System**
+   - [ ] Optimize memory retrieval algorithms for both short-term and long-term memory
+   - [ ] Implement more sophisticated memory search functionality
+   - [ ] Add support for memory context and relevance scoring
+
+5. **Improve LLM Provider Integration**
+   - [ ] Implement actual API calls to supported LLM providers (OpenAI, Anthropic, etc.)
+   - [ ] Add comprehensive error handling and retries for LLM API calls
+   - [ ] Develop a fallback mechanism for LLM provider failures
+
+## Phase 2: Advanced Features and Optimizations
+
+6. **Implement Advanced Agent Capabilities**
+   - [ ] Develop more sophisticated reasoning algorithms for agents
+   - [ ] Implement context-aware function calling
+   - [ ] Add support for multi-turn conversations and maintaining conversation state
+
+7. **Enhance Function System**
+   - [ ] Implement function versioning to allow for updates without breaking existing agents
+   - [ ] Add support for more complex parameter types and return values
+   - [ ] Develop a system for dynamic function discovery and registration
+
+8. **Security Enhancements**
+   - [ ] Implement role-based access control for API endpoints
+   - [ ] Add rate limiting and usage quotas to prevent abuse
+   - [ ] Conduct a comprehensive security audit of the entire system
+
+9. **Performance Optimizations**
+   - [ ] Implement caching mechanisms for frequently accessed data
+   - [ ] Optimize database queries and indexing strategies
+   - [ ] Implement parallel processing where applicable, especially for agent operations
+
+10. **Scalability Improvements**
+    - [ ] Design and implement horizontal scaling strategies
+    - [ ] Develop load balancing mechanisms for distributed deployments
+    - [ ] Optimize the system for cloud deployment (AWS, GCP, or Azure)
+
+## Phase 3: Production Readiness and Advanced Features
+
+11. **Monitoring and Observability**
+    - [ ] Implement comprehensive logging and monitoring throughout the application
+    - [ ] Develop a dashboard for system health and usage statistics
+    - [ ] Set up alerting for critical system events and errors
+
+12. **Documentation and User Guide**
+    - [ ] Create detailed API documentation with interactive examples
+    - [ ] Develop a comprehensive user guide for setting up and using the system
+    - [ ] Create tutorials and use-case examples for common scenarios
+
+13. **Continuous Integration and Deployment**
+    - [ ] Set up CI/CD pipelines for automated testing and deployment
+    - [ ] Implement automated version bumping and changelog generation
+    - [ ] Develop deployment scripts for various cloud providers
+
+14. **Advanced AI Features**
+    - [ ] Implement multi-agent collaboration systems
+    - [ ] Develop advanced planning and reasoning capabilities for agents
+    - [ ] Explore integration with other AI technologies (e.g., computer vision, speech recognition)
+
+15. **Ecosystem Development**
+    - [ ] Create SDKs for popular programming languages to interact with the API
+    - [ ] Develop tools for visual agent and workflow design
+    - [ ] Consider creating a marketplace for custom functions and agent templates
+
+## Ongoing Tasks
+
+- Regularly update dependencies and address security vulnerabilities
+- Conduct code reviews for all new features and significant changes
+- Maintain and update documentation as the system evolves
+- Gather and incorporate user feedback for continuous improvement
+- Stay updated with advancements in AI and LLM technologies, and integrate relevant improvements
+
+This updated plan addresses the immediate concerns highlighted in the current plan while also incorporating longer-term goals from the roadmap. It provides a clear, phased approach to development, focusing first on stabilizing core functionality and testing, then moving on to advanced features and optimizations, and finally preparing the system for production use and future expansion.
 ```
 
 # app/main.py
@@ -655,159 +867,480 @@ print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
 
 ```
 
-# tests/conftest.py
+# tests/test_core/test_memory.py
+
+```py
+
+```
+
+# tests/test_core/test_agent.py
+
+```py
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from uuid import UUID
+from app.core.agent import Agent
+from app.api.models.agent import AgentConfig, MemoryConfig
+
+
+@pytest.fixture
+def agent_config():
+    return AgentConfig(
+        llm_provider="openai",
+        model_name="gpt-3.5-turbo",
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_agent_initialization(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
+        )
+
+        assert agent.id == agent_id
+        assert agent.name == "Test Agent"
+        assert agent.config == agent_config
+        assert isinstance(agent.llm_provider, Mock)
+        assert isinstance(agent.memory, MockMemorySystem.return_value)
+
+
+@pytest.mark.asyncio
+async def test_agent_process_message(agent_config):
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
+        mock_llm_provider.generate.return_value = "Processed message response"
+
+        mock_memory = AsyncMock()
+        MockMemorySystem.return_value = mock_memory
+        mock_memory.retrieve_relevant.return_value = []
+
+        agent_id = UUID('12345678-1234-5678-1234-567812345678')
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
+        )
+
+        message = "Test message"
+        response, function_calls = await agent.process_message(message=message)
+
+        assert response == "Processed message response"
+        assert function_calls == []
+        mock_llm_provider.generate.assert_called_once()
+        mock_memory.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_agent_execute_function(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent = Agent(
+        agent_id=agent_id,
+        name="Test Agent",
+        config=agent_config,
+        memory_config=agent_config.memory_config
+    )
+
+    async def test_function(param1, param2):
+        return f"Executed with {param1} and {param2}"
+
+    mock_function = AsyncMock(implementation=test_function)
+    mock_function.id = "test_function_id"
+    agent.get_function_by_name = Mock(return_value=mock_function)
+
+    with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
+        result = await agent.execute_function(
+            function_name="test_function",
+            parameters={"param1": "value1", "param2": "value2"}
+        )
+
+    assert result == "Executed with value1 and value2"
+    agent.get_function_by_name.assert_called_once_with("test_function")
+    mock_function.assert_called_once_with(param1="value1", param2="value2")
+
+
+def test_agent_get_available_functions(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent = Agent(
+        agent_id=agent_id,
+        name="Test Agent",
+        config=agent_config,
+        memory_config=agent_config.memory_config
+    )
+
+    agent.available_function_ids = ["function1", "function2"]
+    mock_function1 = Mock(name="Function 1")
+    mock_function2 = Mock(name="Function 2")
+    with patch.dict('app.core.agent.registered_functions', {
+        "function1": mock_function1,
+        "function2": mock_function2
+    }):
+        available_functions = agent.get_available_functions()
+
+    assert len(available_functions) == 2
+    assert available_functions[0] == mock_function1
+    assert available_functions[1] == mock_function2
+
+```
+
+# tests/test_core/__init__.py
+
+```py
+
+```
+
+# tests/test_api/test_message.py
 
 ```py
 import pytest
 from httpx import AsyncClient
-from app.main import app
-from app.config import Settings
 
-@pytest.fixture
-def test_settings():
-    return Settings(
-        API_KEY="test_api_key",
-        ALLOWED_ORIGINS=["http://testserver", "http://localhost"],  # Set as a list
-        REDIS_URL="redis://localhost:6379/1",
-        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
-        OPENAI_API_KEY="test_openai_key",
-        ANTHROPIC_API_KEY="test_anthropic_key",
-        VLLM_API_BASE="http://test-vllm-api-endpoint",
-        LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
-        TGI_API_BASE="http://test-tgi-server-endpoint",
-    )
+pytestmark = pytest.mark.asyncio
 
-@pytest.fixture
-def app_with_test_settings(test_settings):
-    app.dependency_overrides[Settings] = lambda: test_settings
-    yield app
-    app.dependency_overrides.clear()
+async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
+    message_data = {
+        "agent_id": test_agent,
+        "message": "Hello, agent!"
+    }
+    response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "agent_id" in result
+    assert "response" in result
+    assert isinstance(result.get("function_calls"), list) or result.get("function_calls") is None
+    return result
 
-@pytest.fixture
-async def async_client(app_with_test_settings):
-    async with AsyncClient(app=app_with_test_settings, base_url="http://test") as client:
-        yield client
+async def test_get_message_history(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message to ensure there's some history
+    sent_message = await test_send_message(async_client, auth_headers, test_agent)
 
-@pytest.fixture
-def auth_headers(test_settings):
-    return {"X-API-Key": test_settings.API_KEY}
+    history_request = {
+        "agent_id": sent_message["agent_id"],
+        "limit": 10
+    }
+    response = await async_client.get("/message/history", params=history_request, headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert isinstance(history["messages"], list)
+    assert len(history["messages"]) > 0
+    assert history["messages"][0]["content"] == "Hello, agent!"
+
+async def test_clear_message_history(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message to ensure there's some history
+    sent_message = await test_send_message(async_client, auth_headers, test_agent)
+
+    clear_request = {
+        "agent_id": sent_message["agent_id"]
+    }
+    response = await async_client.post("/message/clear", json=clear_request, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Message history cleared successfully"
+
+    # Verify that the history is indeed cleared
+    history_request = {
+        "agent_id": sent_message["agent_id"],
+        "limit": 10
+    }
+    response = await async_client.get("/message/history", params=history_request, headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert len(history["messages"]) == 0
+
+async def test_get_latest_message(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message
+    sent_message = await test_send_message(async_client, auth_headers, test_agent)
+
+    latest_request = {
+        "agent_id": sent_message["agent_id"]
+    }
+    response = await async_client.get("/message/latest", params=latest_request, headers=auth_headers)
+    assert response.status_code == 200
+    latest_message = response.json()
+    assert latest_message["content"] == "Hello, agent!"
 
 ```
 
-# tests/__init__.py
+# tests/test_api/test_memory.py
 
 ```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
+from app.api.models.memory import MemoryType, MemoryOperation
+
+pytestmark = pytest.mark.asyncio
+
+async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "entry": {
+            "content": "Test memory content",
+            "metadata": {"key": "value"}
+        }
+    }
+    response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    added_memory = response.json()
+    assert added_memory["message"] == "Memory added successfully"
+    assert "memory_id" in added_memory
+    return added_memory["memory_id"]
+
+async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    retrieve_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "memory_id": memory_id
+    }
+    response = await async_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
+    assert response.status_code == 200
+    memory = response.json()
+    assert memory["content"] == "Test memory content"
+    assert memory["metadata"] == {"key": "value"}
+
+async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
+    await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
+    search_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "query": "Test memory",
+        "limit": 5
+    }
+    response = await async_client.post("/memory/search", json=search_data, headers=auth_headers)
+    assert response.status_code == 200
+    results = response.json()
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
+
+async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    delete_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "memory_id": memory_id
+    }
+    response = await async_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Memory deleted successfully"
+
+async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
+    operation_data = {
+        "agent_id": test_agent,
+        "operation": MemoryOperation.ADD,
+        "memory_type": MemoryType.SHORT_TERM,
+        "data": {
+            "content": "Test operation memory content",
+            "metadata": {"operation": "test"}
+        }
+    }
+    response = await async_client.post("/memory/operate", json=operation_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "ADD operation completed successfully"
+    assert "result" in result
 
 ```
 
-# tests/README.md
+# tests/test_api/test_main.py
 
-```md
-# SolidRusT Agentic API Tests
+```py
+import pytest
+from httpx import AsyncClient
 
-This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
+pytestmark = pytest.mark.asyncio
 
-## Directory Structure
+async def test_read_main(async_client: AsyncClient):
+    response = await async_client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
+```
 
-\`\`\`
-tests/
-├── __init__.py
-├── conftest.py
-├── README.md
-├── test_api/
-│   ├── __init__.py
-│   ├── test_agent.py
-│   ├── test_function.py
-│   ├── test_main.py
-│   ├── test_memory.py
-│   └── test_message.py
-└── test_core/
-    ├── __init__.py
-    ├── test_agent.py
-    └── test_memory.py
-\`\`\`
+# tests/test_api/test_function.py
 
-- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
-- `test_api/`: Contains tests for the API endpoints.
-- `test_core/`: Contains tests for the core functionality of the application.
+```py
+import pytest
+from httpx import AsyncClient
 
-## Running Tests
+pytestmark = pytest.mark.asyncio
 
-To run all tests, use the following command from the root directory of the project:
+async def test_register_function(async_client: AsyncClient, auth_headers):
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    registered_function = response.json()
+    assert registered_function["message"] == "Function registered successfully"
+    assert "function_id" in registered_function
+    return registered_function["function_id"]
 
-\`\`\`
-pytest
-\`\`\`
+async def test_get_function(async_client: AsyncClient, auth_headers, test_function):
+    function_id = test_function
+    response = await async_client.get(f"/function/{function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    function = response.json()
+    assert function["name"] == "test_function"
+    assert function["description"] == "A test function"
 
-To run tests in a specific file, use:
+async def test_update_function(async_client: AsyncClient, auth_headers, test_function):
+    function_id = test_function
+    update_data = {
+        "updated_function": {
+            "name": "updated_test_function",
+            "description": "An updated test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"},
+                    "param3": {"type": "boolean"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.put(f"/function/update", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_function = response.json()
+    assert updated_function["message"] == "Function updated successfully"
 
-\`\`\`
-pytest tests/path/to/test_file.py
-\`\`\`
+async def test_delete_function(async_client: AsyncClient, auth_headers, test_function, test_agent):
+    function_id = test_function
+    response = await async_client.delete(f"/function/remove?agent_id={test_agent}&function_id={function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Function removed successfully"
 
-For example, to run the main API tests:
+async def test_list_functions(async_client: AsyncClient, auth_headers, test_agent):
+    # Register a couple of functions first
+    await test_register_function(async_client, auth_headers)
+    await test_register_function(async_client, auth_headers)
 
-\`\`\`
-pytest tests/test_api/test_main.py
-\`\`\`
+    response = await async_client.get(f"/function/available?agent_id={test_agent}", headers=auth_headers)
+    assert response.status_code == 200
+    functions = response.json()
+    assert isinstance(functions["functions"], list)
+    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
 
-## Test Categories
+async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent, test_function):
+    execution_data = {
+        "agent_id": test_agent,
+        "function_name": "test_function",
+        "parameters": {
+            "param1": "test",
+            "param2": 123
+        }
+    }
+    response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "result" in result
 
-### API Tests
+```
 
-These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
+# tests/test_api/test_agent.py
 
-### Core Tests
+```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
 
-These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
+pytestmark = pytest.mark.asyncio
 
-## Writing New Tests
+async def test_create_agent(async_client: AsyncClient, auth_headers):
+    agent_data = {
+        "name": "Test Agent",
+        "config": {
+            "llm_provider": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 150,
+            "memory_config": {
+                "use_long_term_memory": True,
+                "use_redis_cache": True
+            }
+        },
+        "memory_config": {
+            "use_long_term_memory": True,
+            "use_redis_cache": True
+        },
+        "initial_prompt": "You are a helpful assistant."
+    }
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    created_agent = response.json()
+    assert "agent_id" in created_agent
+    assert UUID(created_agent["agent_id"])
+    return created_agent["agent_id"]
 
-When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
+async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
+    agent_id = test_agent
+    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 200
+    agent = response.json()
+    assert agent["agent_id"] == str(agent_id)
+    assert agent["name"] == "Test Agent"
 
-1. Place API-related tests in the `test_api/` directory.
-2. Place core functionality tests in the `test_core/` directory.
-3. Use descriptive names for test functions, starting with `test_`.
-4. Use pytest fixtures where appropriate to set up test environments.
-5. Aim for high test coverage, including both happy paths and edge cases.
+async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
+    agent_id = test_agent
+    update_data = {
+        "config": {
+            "temperature": 0.8
+        }
+    }
+    response = await async_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_agent = response.json()
+    assert updated_agent["message"] == "Agent updated successfully"
 
-## Continuous Integration
+async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
+    agent_id = test_agent
+    response = await async_client.delete(f"/agent/{agent_id}", headers=auth_headers)
+    assert response.status_code == 204
 
-These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
+async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
+    # Create a second agent to ensure we have at least two
+    await test_create_agent(async_client, auth_headers)
 
+    response = await async_client.get("/agent/", headers=auth_headers)
+    assert response.status_code == 200
+    agents = response.json()
+    assert isinstance(agents, list)
+    assert len(agents) >= 2  # We should have at least the two agents we created
 
-## Comments
+```
 
-Now, let's address the warnings we're seeing in the test output:
+# tests/test_api/__init__.py
 
-1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
-
-2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
-
-3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
-
-To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
-
-\`\`\`python
-from pydantic import BaseModel, ConfigDict
-
-class YourModel(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())
-    
-    # Your model fields here
-    model_name: str  # This field name is now allowed
-\`\`\`
-
-To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
-
-\`\`\`ini
-[pytest]
-filterwarnings =
-    ignore::DeprecationWarning:google._upb._message:
-    ignore::pydantic.PydanticDeprecatedSince20
-\`\`\`
-
-This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
+```py
 
 ```
 
@@ -1493,509 +2026,6 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 ```
 
 # app/api/__init__.py
-
-```py
-
-```
-
-# tests/test_core/test_memory.py
-
-```py
-
-```
-
-# tests/test_core/test_agent.py
-
-```py
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from uuid import UUID
-from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-
-@pytest.fixture
-def agent_config():
-    return AgentConfig(
-        llm_provider="openai",
-        model_name="gpt-3.5-turbo",
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        )
-    )
-
-
-@pytest.mark.asyncio
-async def test_agent_initialization(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        agent = Agent(
-            agent_id=agent_id,
-            name="Test Agent",
-            config=agent_config,
-            memory_config=agent_config.memory_config
-        )
-
-        assert agent.id == agent_id
-        assert agent.name == "Test Agent"
-        assert agent.config == agent_config
-        assert isinstance(agent.llm_provider, Mock)
-        assert isinstance(agent.memory, MockMemorySystem)
-
-
-@pytest.mark.asyncio
-async def test_agent_process_message(agent_config):
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-        mock_llm_provider.generate.return_value = "Processed message response"
-
-        mock_memory = AsyncMock()
-        MockMemorySystem.return_value = mock_memory
-        mock_memory.retrieve_relevant.return_value = []
-
-        agent_id = UUID('12345678-1234-5678-1234-567812345678')
-        agent = Agent(
-            agent_id=agent_id,
-            name="Test Agent",
-            config=agent_config,
-            memory_config=agent_config.memory_config
-        )
-
-        message = "Test message"
-        response, function_calls = await agent.process_message(message=message)
-
-        assert response == "Processed message response"
-        assert function_calls == []
-        mock_llm_provider.generate.assert_called_once()
-        mock_memory.add.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_agent_execute_function(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
-
-    async def test_function(param1, param2):
-        return f"Executed with {param1} and {param2}"
-
-    agent.available_function_ids = ["test_function_id"]
-    with patch.dict('app.core.agent.registered_functions',
-                    {"test_function_id": AsyncMock(implementation=test_function)}):
-        result = await agent.execute_function(
-            function_name="test_function",
-            parameters={"param1": "value1", "param2": "value2"}
-        )
-
-    assert result == "Executed with value1 and value2"
-
-
-def test_agent_get_available_functions(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
-
-    agent.available_function_ids = ["function1", "function2"]
-    with patch.dict('app.core.agent.registered_functions', {
-        "function1": Mock(name="Function 1"),
-        "function2": Mock(name="Function 2")
-    }):
-        available_functions = agent.get_available_functions()
-
-    assert len(available_functions) == 2
-    assert available_functions[0].name == "Function 1"
-    assert available_functions[1].name == "Function 2"
-
-```
-
-# tests/test_core/__init__.py
-
-```py
-
-```
-
-# tests/test_api/test_message.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from uuid import UUID
-from app.core.agent import create_agent
-from httpx import AsyncClient
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-@pytest.fixture
-async def test_agent(test_client: TestClient, auth_headers):
-    agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": AgentConfig(
-            llm_provider="openai",
-            model_name="gpt-3.5-turbo",
-            temperature=0.7,
-            max_tokens=150,
-            memory_config=MemoryConfig(
-                use_long_term_memory=True,
-                use_redis_cache=True
-            )
-        ),
-        "memory_config": MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        ),
-        "initial_prompt": "You are a helpful assistant."
-    }
-    agent_id = await create_agent(**agent_data)
-    return agent_id
-
-@pytest.mark.asyncio
-async def test_send_message(test_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    message_data = {
-        "agent_id": str(agent_id),
-        "message": "Hello, agent!"
-    }
-    response = await test_client.post("/message/send", json=message_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "agent_id" in result
-    assert "response" in result
-    assert isinstance(result.get("function_calls"), list) or result.get("function_calls") is None
-    return result
-
-@pytest.mark.asyncio
-async def test_get_message_history(test_client: AsyncClient, auth_headers, test_agent):
-    # First, send a message to ensure there's some history
-    sent_message = await test_send_message(test_client, auth_headers, test_agent)
-
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = await test_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert isinstance(history["messages"], list)
-    assert len(history["messages"]) > 0
-    assert history["messages"][0]["content"] == "Hello, agent!"
-
-
-def test_clear_message_history(test_client: TestClient, auth_headers):
-    # First, send a message to ensure there's some history
-    sent_message = test_send_message(test_client, auth_headers)
-
-    clear_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = test_client.post("/message/clear", json=clear_request, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Message history cleared successfully"
-
-    # Verify that the history is indeed cleared
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = test_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert len(history["messages"]) == 0
-
-
-def test_get_latest_message(test_client: TestClient, auth_headers):
-    # First, send a message
-    sent_message = test_send_message(test_client, auth_headers)
-
-    latest_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = test_client.get("/message/latest", params=latest_request, headers=auth_headers)
-    assert response.status_code == 200
-    latest_message = response.json()
-    assert latest_message["content"] == "Hello, agent!"
-
-```
-
-# tests/test_api/test_memory.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from uuid import UUID
-
-def test_add_memory(test_client: TestClient, auth_headers):
-    memory_data = {
-        "agent_id": str(UUID(int=0)),  # Using a dummy UUID for testing
-        "memory_type": "SHORT_TERM",
-        "entry": {
-            "content": "Test memory content",
-            "metadata": {"key": "value"}
-        }
-    }
-    response = test_client.post("/memory/add", json=memory_data, headers=auth_headers)
-    assert response.status_code == 201
-    added_memory = response.json()
-    assert added_memory["message"] == "Memory added successfully"
-    assert "memory_id" in added_memory
-    return added_memory["memory_id"]
-
-def test_retrieve_memory(test_client: TestClient, auth_headers):
-    memory_id = test_add_memory(test_client, auth_headers)
-    retrieve_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "memory_id": memory_id
-    }
-    response = test_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
-    assert response.status_code == 200
-    memory = response.json()
-    assert memory["content"] == "Test memory content"
-    assert memory["metadata"] == {"key": "value"}
-
-def test_search_memory(test_client: TestClient, auth_headers):
-    test_add_memory(test_client, auth_headers)  # Add a memory to search for
-    search_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "query": "Test memory",
-        "limit": 5
-    }
-    response = test_client.post("/memory/search", json=search_data, headers=auth_headers)
-    assert response.status_code == 200
-    results = response.json()
-    assert isinstance(results["results"], list)
-    assert len(results["results"]) > 0
-
-def test_delete_memory(test_client: TestClient, auth_headers):
-    memory_id = test_add_memory(test_client, auth_headers)
-    delete_data = {
-        "agent_id": str(UUID(int=0)),
-        "memory_type": "SHORT_TERM",
-        "memory_id": memory_id
-    }
-    response = test_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Memory deleted successfully"
-
-def test_memory_operation(test_client: TestClient, auth_headers):
-    operation_data = {
-        "agent_id": str(UUID(int=0)),
-        "operation": "ADD",
-        "memory_type": "SHORT_TERM",
-        "data": {
-            "content": "Test operation memory content",
-            "metadata": {"operation": "test"}
-        }
-    }
-    response = test_client.post("/memory/operate", json=operation_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "ADD operation completed successfully"
-    assert "result" in result
-```
-
-# tests/test_api/test_main.py
-
-```py
-from fastapi.testclient import TestClient
-
-def test_read_main(test_client):
-    response = test_client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
-
-```
-
-# tests/test_api/test_function.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-
-@pytest.mark.asyncio
-async def test_register_function(test_client: AsyncClient, auth_headers):
-    function_data = {
-        "function": {
-            "name": "test_function",
-            "description": "A test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await test_client.post("/function/register", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    registered_function = response.json()
-    assert registered_function["message"] == "Function registered successfully"
-    assert "function_id" in registered_function
-    return registered_function["function_id"]
-
-@pytest.mark.asyncio
-async def test_get_function(test_client: AsyncClient, auth_headers):
-    function_id = await test_register_function(test_client, auth_headers)
-    response = await test_client.get(f"/function/{function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    function = response.json()
-    assert function["name"] == "test_function"
-    assert function["description"] == "A test function"
-
-@pytest.mark.asyncio
-async def test_update_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    update_data = {
-        "updated_function": {
-            "name": "updated_test_function",
-            "description": "An updated test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"},
-                    "param3": {"type": "boolean"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = test_client.put(f"/function/update", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_function = response.json()
-    assert updated_function["message"] == "Function updated successfully"
-
-@pytest.mark.asyncio
-async def test_delete_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    response = test_client.delete(f"/function/remove?agent_id=test_agent_id&function_id={function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Function removed successfully"
-
-@pytest.mark.asyncio
-async def test_list_functions(test_client: TestClient, auth_headers):
-    # Register a couple of functions first
-    test_register_function(test_client, auth_headers)
-    test_register_function(test_client, auth_headers)
-
-    response = test_client.get("/function/available?agent_id=test_agent_id", headers=auth_headers)
-    assert response.status_code == 200
-    functions = response.json()
-    assert isinstance(functions["functions"], list)
-    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
-
-@pytest.mark.asyncio
-async def test_execute_function(test_client: TestClient, auth_headers):
-    function_id = test_register_function(test_client, auth_headers)
-    execution_data = {
-        "agent_id": "test_agent_id",
-        "function_name": "test_function",
-        "parameters": {
-            "param1": "test",
-            "param2": 123
-        }
-    }
-    response = test_client.post("/function/execute", json=execution_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "result" in result
-```
-
-# tests/test_api/test_agent.py
-
-```py
-import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-from uuid import UUID
-
-pytestmark = pytest.mark.asyncio
-
-@pytest.mark.asyncio
-async def test_create_agent(async_client: AsyncClient, auth_headers):
-    agent_data = {
-        "name": "Test Agent",
-        "config": {
-            "llm_provider": "openai",
-            "model_name": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "max_tokens": 150,
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            }
-        },
-        "memory_config": {
-            "use_long_term_memory": True,
-            "use_redis_cache": True
-        },
-        "initial_prompt": "You are a helpful assistant."
-    }
-    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-    assert response.status_code == 201
-    created_agent = response.json()
-    assert "agent_id" in created_agent
-    assert UUID(created_agent["agent_id"])
-    return created_agent["agent_id"]
-
-@pytest.mark.asyncio
-async def test_get_agent(async_client: AsyncClient, auth_headers):
-    agent_id = await test_create_agent(async_client, auth_headers)
-    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 200
-    agent = response.json()
-    assert agent["agent_id"] == str(agent_id)
-    assert agent["name"] == "Test Agent"
-
-async def test_update_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    update_data = {
-        "agent_config": {
-            "temperature": 0.8
-        }
-    }
-    response = test_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_agent = response.json()
-    assert updated_agent["message"] == "Agent updated successfully"
-
-async def test_delete_agent(test_client: TestClient, auth_headers):
-    agent_id = test_create_agent(test_client, auth_headers)
-    response = test_client.delete(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-async def test_list_agents(test_client: TestClient, auth_headers):
-    # Create a couple of agents first
-    test_create_agent(test_client, auth_headers)
-    test_create_agent(test_client, auth_headers)
-
-    response = test_client.get("/agent/", headers=auth_headers)
-    assert response.status_code == 200
-    agents = response.json()
-    assert isinstance(agents, list)
-    assert len(agents) >= 2  # We should have at least the two agents we just created
-```
-
-# tests/test_api/__init__.py
 
 ```py
 
