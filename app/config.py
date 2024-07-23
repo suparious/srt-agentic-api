@@ -1,10 +1,9 @@
 import os
 from typing import List, Dict, Any
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 class Settings(BaseSettings):
-    # API settings
     API_KEY: str
     API_VERSION: str = "v1"
 
@@ -92,11 +91,7 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": True,
-        "env_file_encoding": "utf-8",
-    }
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 settings = Settings()
 print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")

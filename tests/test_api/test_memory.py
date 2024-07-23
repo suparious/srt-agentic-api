@@ -5,9 +5,10 @@ from app.api.models.memory import MemoryType, MemoryOperation
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.mark.asyncio
 async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_data = {
-        "agent_id": test_agent,
+        "agent_id": await test_agent,
         "memory_type": MemoryType.SHORT_TERM,
         "entry": {
             "content": "Test memory content",
@@ -21,10 +22,11 @@ async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     assert "memory_id" in added_memory
     return added_memory["memory_id"]
 
+@pytest.mark.asyncio
 async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_id = await test_add_memory(async_client, auth_headers, test_agent)
     retrieve_data = {
-        "agent_id": test_agent,
+        "agent_id": await test_agent,
         "memory_type": MemoryType.SHORT_TERM,
         "memory_id": memory_id
     }

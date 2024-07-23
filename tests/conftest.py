@@ -1,3 +1,5 @@
+import tempfile
+import os
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -7,11 +9,12 @@ from app.api.models.agent import AgentConfig, MemoryConfig
 
 @pytest.fixture(scope="session")
 def test_settings():
+    temp_dir = tempfile.mkdtemp()
     return Settings(
-        API_KEY="test_api_key",
+        API_KEY="test_api_key",  # Make sure this matches the key used in auth_headers
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
-        REDIS_URL="redis://localhost:6379/15",  # Use test database
-        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
+        REDIS_URL="redis://localhost:6379/15",
+        CHROMA_PERSIST_DIRECTORY=os.path.join(temp_dir, "test_chroma_db"),
         OPENAI_API_KEY="test_openai_key",
         ANTHROPIC_API_KEY="test_anthropic_key",
         VLLM_API_BASE="http://test-vllm-api-endpoint",

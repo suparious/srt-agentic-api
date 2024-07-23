@@ -2,13 +2,14 @@ import json
 from uuid import UUID
 from typing import Dict, Any, List
 from redis import asyncio as aioredis
+from redis.asyncio import Redis
 from app.utils.logging import memory_logger
 from app.config import settings
 
 class RedisMemory:
     def __init__(self, agent_id: UUID):
         try:
-            self.redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+            self.redis = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
             self.agent_id = agent_id
             memory_logger.info(f"Redis connection established: {settings.redis_url} for agent: {agent_id}")
         except Exception as e:
