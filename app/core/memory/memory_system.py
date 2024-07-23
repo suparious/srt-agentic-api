@@ -5,7 +5,7 @@ from app.api.models.agent import MemoryConfig
 from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory
 from .vector_memory import VectorMemory
-from chromadb.config import Settings as ChromaSettings
+from chromadb.config import Settings as ChromaDBSettings
 from app.config import settings as app_settings
 
 class MemorySystem:
@@ -13,11 +13,11 @@ class MemorySystem:
         self.agent_id = agent_id
         self.config = config
         self.short_term = RedisMemory(agent_id)
-        chroma_settings = ChromaSettings(
+        chroma_db_settings = ChromaDBSettings(
             chroma_db_impl="duckdb+parquet",
             persist_directory=app_settings.chroma_persist_directory
         )
-        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_settings)
+        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_db_settings)
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:

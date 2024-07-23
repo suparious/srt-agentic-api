@@ -241,8 +241,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # tests/conftest.py
 
 ```py
-import tempfile
-import os
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -252,12 +250,11 @@ from app.api.models.agent import AgentConfig, MemoryConfig
 
 @pytest.fixture(scope="session")
 def test_settings():
-    temp_dir = tempfile.mkdtemp()
     return Settings(
-        API_KEY="test_api_key",  # Make sure this matches the key used in auth_headers
+        API_KEY="test_api_key",
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
         REDIS_URL="redis://localhost:6379/15",
-        CHROMA_PERSIST_DIRECTORY=os.path.join(temp_dir, "test_chroma_db"),
+        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
         OPENAI_API_KEY="test_openai_key",
         ANTHROPIC_API_KEY="test_anthropic_key",
         VLLM_API_BASE="http://test-vllm-api-endpoint",
@@ -267,19 +264,19 @@ def test_settings():
     )
 
 @pytest.fixture(scope="module")
-def app_with_test_settings(test_settings):
+def test_app(test_settings):
     app.dependency_overrides[Settings] = lambda: test_settings
     yield app
     app.dependency_overrides.clear()
 
 @pytest.fixture
-async def async_client(app_with_test_settings):
-    async with AsyncClient(app=app_with_test_settings, base_url="http://test") as client:
+async def async_client(test_app):
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
         yield client
 
 @pytest.fixture(scope="module")
-def sync_client(app_with_test_settings):
-    return TestClient(app_with_test_settings)
+def sync_client(test_app):
+    return TestClient(test_app)
 
 @pytest.fixture(scope="module")
 def auth_headers(test_settings):
@@ -289,45 +286,25 @@ def auth_headers(test_settings):
 async def test_agent(async_client, auth_headers):
     agent_data = {
         "agent_name": "Test Agent",
-        "agent_config": {
-            "llm_provider": "openai",
-            "model_name": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "max_tokens": 150,
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            }
-        },
-        "memory_config": {
-            "use_long_term_memory": True,
-            "use_redis_cache": True
-        },
+        "agent_config": AgentConfig(
+            llm_provider="openai",
+            model_name="gpt-3.5-turbo",
+            temperature=0.7,
+            max_tokens=150,
+            memory_config=MemoryConfig(
+                use_long_term_memory=True,
+                use_redis_cache=True
+            )
+        ).model_dump(),
+        "memory_config": MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        ).model_dump(),
         "initial_prompt": "You are a helpful assistant."
     }
     response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     return response.json()["agent_id"]
-
-@pytest.fixture
-async def test_function(async_client, auth_headers):
-    function_data = {
-        "function": {
-            "name": "test_function",
-            "description": "A test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    return response.json()["function_id"]
 
 ```
 
@@ -706,6 +683,73 @@ llm_provider = create_llm_provider(provider_config)
 This updated plan addresses the immediate concerns highlighted in the current plan while also incorporating longer-term goals from the roadmap. It provides a clear, phased approach to development, focusing first on stabilizing core functionality and testing, then moving on to advanced features and optimizations, and finally preparing the system for production use and future expansion.
 ```
 
+# docs/CurrentStatusSummary.md
+
+```md
+# SolidRusT Agentic API Project Status Summary
+
+## Current State
+
+The project has a good foundation with a well-structured FastAPI application. Key components include:
+
+1. API endpoints for agent, message, function, and memory operations
+2. Core functionality for agent management, LLM integration, and memory systems
+3. Pydantic models for request/response handling
+4. Basic configuration and logging setup
+
+## Progress on Development Plan
+
+### Phase 1: Core Functionality and Testing
+
+1. **Testing Framework**
+   - ✅ Basic test structure is in place
+   - ❌ Need to resolve `test_client` fixture issues
+   - ❌ Comprehensive mocking of dependencies not fully implemented
+   - ❌ Test coverage likely below 80% target
+
+2. **Core Functionality**
+   - ✅ Basic agent initialization and message processing implemented
+   - ❌ Function execution within Agent class needs debugging
+   - ✅ Memory system integration (Redis and ChromaDB) implemented
+   - ✅ Basic error handling and logging in place, but could be improved
+
+3. **API Endpoints and Models**
+   - ✅ API endpoints for core functionality implemented
+   - ✅ Pydantic models updated to v2 syntax
+   - ❌ Input validation and error responses could be improved
+   - ❌ API documentation needs enhancement
+
+4. **Memory System**
+   - ✅ Basic short-term and long-term memory implemented
+   - ❌ Memory retrieval algorithms could be optimized
+   - ❌ Advanced memory search functionality not yet implemented
+   - ❌ Memory context and relevance scoring not implemented
+
+5. **LLM Provider Integration**
+   - ✅ Basic structure for multiple LLM providers in place
+   - ❌ Actual API calls to LLM providers not implemented (using placeholders)
+   - ❌ Error handling and retries for LLM API calls not implemented
+   - ❌ Fallback mechanism for LLM provider failures not implemented
+
+### Areas Needing Immediate Attention
+
+1. Resolve testing framework issues and increase test coverage
+2. Implement actual LLM API calls and improve error handling
+3. Enhance memory system with advanced search and relevance scoring
+4. Improve API documentation and error responses
+5. Debug and refine function execution within the Agent class
+
+### Next Steps
+
+After addressing the immediate concerns, focus on:
+
+1. Implementing advanced agent capabilities (reasoning algorithms, context-aware function calling)
+2. Enhancing the function system (versioning, complex parameter types)
+3. Implementing security features (role-based access control, rate limiting)
+4. Optimizing performance (caching, query optimization)
+5. Preparing for scalability (horizontal scaling strategies, load balancing)
+```
+
 # app/main.py
 
 ```py
@@ -923,582 +967,6 @@ print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
 
 ```
 
-# tests/test_core/test_memory.py
-
-```py
-import pytest
-from uuid import UUID
-from unittest.mock import AsyncMock, patch
-from app.core.memory import RedisMemory, VectorMemory, MemorySystem
-from app.api.models.memory import MemoryType, MemoryEntry
-from app.api.models.agent import MemoryConfig
-
-
-@pytest.fixture
-def memory_config():
-    return MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-
-
-@pytest.mark.asyncio
-async def test_redis_memory():
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-
-    with patch('app.core.memory.redis_memory.aioredis') as mock_redis:
-        mock_redis_client = AsyncMock()
-        mock_redis.from_url.return_value = mock_redis_client
-
-        redis_memory = RedisMemory(agent_id)
-
-        # Test add
-        await redis_memory.add("test_key", "test_value")
-        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key",
-                                                      "test_value", ex=3600)
-
-        # Test get
-        mock_redis_client.get.return_value = "test_value"
-        value = await redis_memory.get("test_key")
-        assert value == "test_value"
-        mock_redis_client.get.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
-
-        # Test delete
-        await redis_memory.delete("test_key")
-        mock_redis_client.delete.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
-
-
-@pytest.mark.asyncio
-async def test_vector_memory():
-    with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
-        mock_client = Mock()
-        mock_collection = Mock()
-        mock_client.get_or_create_collection.return_value = mock_collection
-        mock_chromadb.Client.return_value = mock_client
-
-        vector_memory = VectorMemory("test_collection")
-
-        # Test add
-        await vector_memory.add("test_id", "test_content", {"key": "value"})
-        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}], ids=["test_id"])
-
-        # Test search
-        mock_collection.query.return_value = {
-            "ids": [["test_id"]],
-            "documents": [["test_content"]],
-            "metadatas": [[{"key": "value"}]]
-        }
-        results = await vector_memory.search("test query")
-        assert results == [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
-        mock_collection.query.assert_called_once_with(query_texts=["test query"], n_results=5)
-
-
-@pytest.mark.asyncio
-async def test_memory_system(memory_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-
-    with patch('app.core.memory.memory_system.RedisMemory') as MockRedisMemory, \
-            patch('app.core.memory.memory_system.VectorMemory') as MockVectorMemory:
-        mock_redis = AsyncMock()
-        mock_vector = AsyncMock()
-        MockRedisMemory.return_value = mock_redis
-        MockVectorMemory.return_value = mock_vector
-
-        memory_system = MemorySystem(agent_id, memory_config)
-
-        # Test add (short-term memory)
-        await memory_system.add(MemoryType.SHORT_TERM, "test_content", {"key": "value"})
-        mock_redis.add.assert_called_once()
-
-        # Test add (long-term memory)
-        await memory_system.add(MemoryType.LONG_TERM, "test_content", {"key": "value"})
-        mock_vector.add.assert_called_once()
-
-        # Test retrieve (short-term memory)
-        mock_redis.get.return_value = "test_content"
-        result = await memory_system.retrieve(MemoryType.SHORT_TERM, "test_id")
-        assert result == MemoryEntry(content="test_content")
-
-        # Test retrieve (long-term memory)
-        mock_vector.search.return_value = [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
-        result = await memory_system.retrieve(MemoryType.LONG_TERM, "test_id")
-        assert result == MemoryEntry(content="test_content", metadata={"key": "value"})
-
-        # Test search
-        results = await memory_system.search(MemoryType.LONG_TERM, "test query")
-        assert results == [MemoryEntry(content="test_content", metadata={"key": "value"})]
-
-        # Test delete
-        await memory_system.delete(MemoryType.SHORT_TERM, "test_id")
-        mock_redis.delete.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_memory_system_integration(memory_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    memory_system = MemorySystem(agent_id, memory_config)
-
-    # Test add and retrieve (short-term memory)
-    short_term_id = await memory_system.add(MemoryType.SHORT_TERM, "short-term content")
-    short_term_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
-    assert short_term_result.content == "short-term content"
-
-    # Test add and retrieve (long-term memory)
-    long_term_id = await memory_system.add(MemoryType.LONG_TERM, "long-term content", {"type": "test"})
-    long_term_result = await memory_system.retrieve(MemoryType.LONG_TERM, long_term_id)
-    assert long_term_result.content == "long-term content"
-    assert long_term_result.metadata == {"type": "test"}
-
-    # Test search
-    search_results = await memory_system.search(MemoryType.LONG_TERM, "long-term")
-    assert len(search_results) > 0
-    assert search_results[0].content == "long-term content"
-
-    # Test delete
-    await memory_system.delete(MemoryType.SHORT_TERM, short_term_id)
-    deleted_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
-    assert deleted_result is None
-
-```
-
-# tests/test_core/test_agent.py
-
-```py
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from uuid import UUID
-from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-@pytest.fixture
-def agent_config():
-    return AgentConfig(
-        llm_provider="openai",
-        model_name="gpt-3.5-turbo",
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        )
-    )
-
-@pytest.mark.asyncio
-async def test_agent_execute_function(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-
-    with patch('app.core.agent.MemorySystem') as MockMemorySystem, \
-            patch('app.core.agent.create_llm_provider') as mock_create_llm_provider:
-        mock_memory = AsyncMock()
-        MockMemorySystem.return_value = mock_memory
-
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-
-        agent = Agent(
-            agent_id=agent_id,
-            name="Test Agent",
-            config=agent_config,
-            memory_config=agent_config.memory_config
-        )
-
-        async def test_function(param1, param2):
-            return f"Executed with {param1} and {param2}"
-
-        mock_function = AsyncMock(side_effect=test_function)
-        mock_function.id = "test_function_id"
-        agent.get_function_by_name = Mock(return_value=mock_function)
-
-        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
-            result = await agent.execute_function(
-                function_name="test_function",
-                parameters={"param1": "value1", "param2": "value2"}
-            )
-
-    assert result == "Executed with value1 and value2"
-    agent.get_function_by_name.assert_called_once_with("test_function")
-    mock_function.assert_awaited_once_with(param1="value1", param2="value2")
-
-```
-
-# tests/test_core/__init__.py
-
-```py
-
-```
-
-# tests/test_api/test_message.py
-
-```py
-import pytest
-from httpx import AsyncClient
-
-pytestmark = pytest.mark.asyncio
-
-async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
-    message_data = {
-        "agent_id": test_agent,
-        "message": "Hello, agent!"
-    }
-    response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "agent_id" in result
-    assert "response" in result
-    assert isinstance(result.get("function_calls"), list) or result.get("function_calls") is None
-    return result
-
-async def test_get_message_history(async_client: AsyncClient, auth_headers, test_agent):
-    # First, send a message to ensure there's some history
-    sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = await async_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert isinstance(history["messages"], list)
-    assert len(history["messages"]) > 0
-    assert history["messages"][0]["content"] == "Hello, agent!"
-
-async def test_clear_message_history(async_client: AsyncClient, auth_headers, test_agent):
-    # First, send a message to ensure there's some history
-    sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-    clear_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = await async_client.post("/message/clear", json=clear_request, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Message history cleared successfully"
-
-    # Verify that the history is indeed cleared
-    history_request = {
-        "agent_id": sent_message["agent_id"],
-        "limit": 10
-    }
-    response = await async_client.get("/message/history", params=history_request, headers=auth_headers)
-    assert response.status_code == 200
-    history = response.json()
-    assert len(history["messages"]) == 0
-
-async def test_get_latest_message(async_client: AsyncClient, auth_headers, test_agent):
-    # First, send a message
-    sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-    latest_request = {
-        "agent_id": sent_message["agent_id"]
-    }
-    response = await async_client.get("/message/latest", params=latest_request, headers=auth_headers)
-    assert response.status_code == 200
-    latest_message = response.json()
-    assert latest_message["content"] == "Hello, agent!"
-
-```
-
-# tests/test_api/test_memory.py
-
-```py
-import pytest
-from httpx import AsyncClient
-from uuid import UUID
-from app.api.models.memory import MemoryType, MemoryOperation
-
-pytestmark = pytest.mark.asyncio
-
-@pytest.mark.asyncio
-async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
-    memory_data = {
-        "agent_id": await test_agent,
-        "memory_type": MemoryType.SHORT_TERM,
-        "entry": {
-            "content": "Test memory content",
-            "metadata": {"key": "value"}
-        }
-    }
-    response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
-    assert response.status_code == 201
-    added_memory = response.json()
-    assert added_memory["message"] == "Memory added successfully"
-    assert "memory_id" in added_memory
-    return added_memory["memory_id"]
-
-@pytest.mark.asyncio
-async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
-    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
-    retrieve_data = {
-        "agent_id": await test_agent,
-        "memory_type": MemoryType.SHORT_TERM,
-        "memory_id": memory_id
-    }
-    response = await async_client.get("/memory/retrieve", params=retrieve_data, headers=auth_headers)
-    assert response.status_code == 200
-    memory = response.json()
-    assert memory["content"] == "Test memory content"
-    assert memory["metadata"] == {"key": "value"}
-
-async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
-    await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
-    search_data = {
-        "agent_id": test_agent,
-        "memory_type": MemoryType.SHORT_TERM,
-        "query": "Test memory",
-        "limit": 5
-    }
-    response = await async_client.post("/memory/search", json=search_data, headers=auth_headers)
-    assert response.status_code == 200
-    results = response.json()
-    assert isinstance(results["results"], list)
-    assert len(results["results"]) > 0
-
-async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
-    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
-    delete_data = {
-        "agent_id": test_agent,
-        "memory_type": MemoryType.SHORT_TERM,
-        "memory_id": memory_id
-    }
-    response = await async_client.delete("/memory/delete", params=delete_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Memory deleted successfully"
-
-async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
-    operation_data = {
-        "agent_id": test_agent,
-        "operation": MemoryOperation.ADD,
-        "memory_type": MemoryType.SHORT_TERM,
-        "data": {
-            "content": "Test operation memory content",
-            "metadata": {"operation": "test"}
-        }
-    }
-    response = await async_client.post("/memory/operate", json=operation_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "ADD operation completed successfully"
-    assert "result" in result
-
-```
-
-# tests/test_api/test_main.py
-
-```py
-import pytest
-from httpx import AsyncClient
-
-pytestmark = pytest.mark.asyncio
-
-async def test_read_main(async_client: AsyncClient):
-    response = await async_client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
-```
-
-# tests/test_api/test_function.py
-
-```py
-import pytest
-from httpx import AsyncClient
-
-pytestmark = pytest.mark.asyncio
-
-async def test_register_function(async_client: AsyncClient, auth_headers):
-    function_data = {
-        "function": {
-            "name": "test_function",
-            "description": "A test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    registered_function = response.json()
-    assert registered_function["message"] == "Function registered successfully"
-    assert "function_id" in registered_function
-    return registered_function["function_id"]
-
-async def test_get_function(async_client: AsyncClient, auth_headers, test_function):
-    function_id = test_function
-    response = await async_client.get(f"/function/{function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    function = response.json()
-    assert function["name"] == "test_function"
-    assert function["description"] == "A test function"
-
-async def test_update_function(async_client: AsyncClient, auth_headers, test_function):
-    function_id = test_function
-    update_data = {
-        "updated_function": {
-            "name": "updated_test_function",
-            "description": "An updated test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"},
-                    "param3": {"type": "boolean"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await async_client.put(f"/function/update", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_function = response.json()
-    assert updated_function["message"] == "Function updated successfully"
-
-async def test_delete_function(async_client: AsyncClient, auth_headers, test_function, test_agent):
-    function_id = test_function
-    response = await async_client.delete(f"/function/remove?agent_id={test_agent}&function_id={function_id}", headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert result["message"] == "Function removed successfully"
-
-async def test_list_functions(async_client: AsyncClient, auth_headers, test_agent):
-    # Register a couple of functions first
-    await test_register_function(async_client, auth_headers)
-    await test_register_function(async_client, auth_headers)
-
-    response = await async_client.get(f"/function/available?agent_id={test_agent}", headers=auth_headers)
-    assert response.status_code == 200
-    functions = response.json()
-    assert isinstance(functions["functions"], list)
-    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
-
-async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent, test_function):
-    execution_data = {
-        "agent_id": test_agent,
-        "function_name": "test_function",
-        "parameters": {
-            "param1": "test",
-            "param2": 123
-        }
-    }
-    response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
-    assert response.status_code == 200
-    result = response.json()
-    assert "result" in result
-
-```
-
-# tests/test_api/test_agent.py
-
-```py
-import pytest
-from httpx import AsyncClient
-from uuid import UUID
-
-pytestmark = pytest.mark.asyncio
-
-async def test_create_agent(async_client: AsyncClient, auth_headers):
-    agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": {
-            "llm_provider": "openai",
-            "model_name": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "max_tokens": 150,
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            }
-        },
-        "memory_config": {
-            "use_long_term_memory": True,
-            "use_redis_cache": True
-        },
-        "initial_prompt": "You are a helpful assistant."
-    }
-    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-    assert response.status_code == 201
-    created_agent = response.json()
-    assert "agent_id" in created_agent
-    assert UUID(created_agent["agent_id"])
-    return created_agent["agent_id"]
-
-async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 200
-    agent = response.json()
-    assert agent["agent_id"] == str(agent_id)
-    assert agent["name"] == "Test Agent"
-
-async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    update_data = {
-        "agent_config": {
-            "temperature": 0.8
-        }
-    }
-    response = await async_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
-    assert response.status_code == 200
-    updated_agent = response.json()
-    assert updated_agent["message"] == "Agent updated successfully"
-
-async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    response = await async_client.delete(f"/agent/{agent_id}", headers=auth_headers)
-    assert response.status_code == 204
-
-async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
-    # Create a second agent to ensure we have at least two
-    await test_create_agent(async_client, auth_headers)
-
-    response = await async_client.get("/agent", headers=auth_headers)
-    assert response.status_code == 200
-    agents = response.json()
-    assert isinstance(agents, list)
-    assert len(agents) >= 2  # We should have at least the two agents we created
-
-```
-
-# tests/test_api/__init__.py
-
-```py
-
-```
-
-# docs/.pytest_cache/README.md
-
-```md
-# pytest cache directory #
-
-This directory contains data from the pytest's cache plugin,
-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
-
-**Do not** commit this to version control.
-
-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
-
-```
-
-# docs/.pytest_cache/CACHEDIR.TAG
-
-```TAG
-Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag created by pytest.
-# For information about cache directory tags, see:
-#	https://bford.info/cachedir/spec.html
-
-```
-
-# docs/.pytest_cache/.gitignore
-
-```
-# Created by pytest automatically.
-*
-
-```
-
 # app/utils/logging.py
 
 ```py
@@ -1569,237 +1037,6 @@ def validate_api_key(api_key: str) -> bool:
 # app/utils/__init__.py
 
 ```py
-
-```
-
-# app/core/memory.py
-
-```py
-import asyncio
-import json
-from uuid import UUID, uuid4
-from typing import Dict, Any, List, Optional
-from redis import asyncio as aioredis
-import chromadb
-from chromadb.config import Settings
-from app.api.models.memory import MemoryType, MemoryEntry, MemoryOperation
-from app.api.models.agent import MemoryConfig
-from app.utils.logging import memory_logger
-
-
-class RedisMemory:
-    def __init__(self, redis_url: str, agent_id: UUID):
-        try:
-            self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            self.agent_id = agent_id
-            memory_logger.info(f"Redis connection established: {redis_url} for agent: {agent_id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to connect to Redis: {str(e)}")
-            raise
-
-    async def add(self, key: str, value: str, expire: int = 3600):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.set(full_key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def get(self, key: str) -> str:
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            value = await self.redis.get(full_key)
-            memory_logger.debug(f"Retrieved key from Redis: {full_key}")
-            return value
-        except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def delete(self, key: str):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.delete(full_key)
-            memory_logger.debug(f"Deleted key from Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def get_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
-        try:
-            pattern = f"agent:{self.agent_id}:*"
-            keys = await self.redis.keys(pattern)
-            recent_memories = []
-            for key in keys[-limit:]:
-                value = await self.redis.get(key)
-                if value:
-                    recent_memories.append(json.loads(value))
-            return recent_memories
-        except Exception as e:
-            memory_logger.error(f"Failed to get recent memories from Redis for agent {self.agent_id}: {str(e)}")
-            raise
-
-class VectorMemory:
-    def __init__(self, collection_name: str):
-        try:
-            self.client = chromadb.Client()
-            self.collection = self.client.get_or_create_collection(collection_name)
-            memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
-        except Exception as e:
-            memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
-            raise
-
-    async def add(self, id: str, content: str, metadata: Dict[str, Any] = {}):
-        try:
-            await asyncio.to_thread(self.collection.add,
-                                    documents=[content],
-                                    metadatas=[metadata],
-                                    ids=[id])
-            memory_logger.debug(f"Added document to ChromaDB: {id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add document to ChromaDB: {id}. Error: {str(e)}")
-            raise
-
-    async def search(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        try:
-            results = await asyncio.to_thread(self.collection.query,
-                                              query_texts=[query],
-                                              n_results=n_results)
-            memory_logger.debug(f"Searched ChromaDB: {query}")
-            return [{"id": id, "content": doc, "metadata": meta}
-                    for id, doc, meta in zip(results['ids'][0], results['documents'][0], results['metadatas'][0])]
-        except Exception as e:
-            memory_logger.error(f"Failed to search ChromaDB: {query}. Error: {str(e)}")
-            raise
-
-
-class MemorySystem:
-    def __init__(self, agent_id: UUID, config: MemoryConfig):
-        self.agent_id = agent_id
-        self.config = config
-        self.short_term = RedisMemory(settings.redis_url, agent_id)
-        self.long_term = VectorMemory(f"agent_{agent_id}", settings.chroma_persist_directory)
-        memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
-
-    async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
-        try:
-            memory_id = str(UUID.uuid4())
-            if memory_type == MemoryType.SHORT_TERM and self.config.use_redis_cache:
-                await self.short_term.add(memory_id, content)
-            elif memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:
-                await self.long_term.add(memory_id, content, metadata)
-            else:
-                raise ValueError(f"Invalid memory type or configuration: {memory_type}")
-
-            memory_logger.info(f"{memory_type.value} memory added for agent: {self.agent_id}")
-            return memory_id
-        except Exception as e:
-            memory_logger.error(f"Failed to add {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def retrieve(self, memory_type: MemoryType, memory_id: str) -> Optional[MemoryEntry]:
-        try:
-            if memory_type == MemoryType.SHORT_TERM and self.config.use_redis_cache:
-                content = await self.short_term.get(memory_id)
-                return MemoryEntry(content=content) if content else None
-            elif memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:
-                result = await self.long_term.search(f"id:{memory_id}", n_results=1)
-                if result:
-                    return MemoryEntry(content=result[0]['content'], metadata=result[0]['metadata'])
-                return None
-            else:
-                raise ValueError(f"Invalid memory type or configuration: {memory_type}")
-        except Exception as e:
-            memory_logger.error(
-                f"Failed to retrieve {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def search(self, memory_type: MemoryType, query: str, limit: int = 5) -> List[MemoryEntry]:
-        try:
-            if memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:
-                results = await self.long_term.search(query, n_results=limit)
-                return [MemoryEntry(content=result['content'], metadata=result['metadata']) for result in results]
-            else:
-                raise ValueError(f"Search is only supported for long-term memory")
-        except Exception as e:
-            memory_logger.error(
-                f"Failed to search {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def delete(self, memory_type: MemoryType, memory_id: str):
-        try:
-            if memory_type == MemoryType.SHORT_TERM and self.config.use_redis_cache:
-                await self.short_term.delete(memory_id)
-            elif memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:
-                # Implement deletion for long-term memory (ChromaDB doesn't have a direct delete method)
-                # This might involve re-indexing or marking as deleted
-                pass
-            else:
-                raise ValueError(f"Invalid memory type or configuration: {memory_type}")
-            memory_logger.info(f"{memory_type.value} memory deleted for agent: {self.agent_id}")
-        except Exception as e:
-            memory_logger.error(
-                f"Failed to delete {memory_type.value} memory for agent: {self.agent_id}. Error: {str(e)}")
-            raise
-
-    async def retrieve_relevant(self, context: str, limit: int = 5) -> List[Dict[str, Any]]:
-        try:
-            relevant_memories = []
-            if self.config.use_redis_cache:
-                # Retrieve recent memories from short-term memory
-                recent_memories = await self.short_term.get_recent(limit)
-                relevant_memories.extend(recent_memories)
-
-            if self.config.use_long_term_memory:
-                # Search long-term memory for relevant entries
-                long_term_results = await self.long_term.search(context, n_results=limit)
-                relevant_memories.extend(long_term_results)
-
-            # Sort and limit the combined results
-            relevant_memories.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-            return relevant_memories[:limit]
-        except Exception as e:
-            memory_logger.error(f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}")
-            raise
-
-# Global dictionary to store active memory systems
-memory_systems: Dict[UUID, MemorySystem] = {}
-
-async def get_memory_system(agent_id: UUID, config: MemoryConfig) -> MemorySystem:
-    if agent_id not in memory_systems:
-        memory_systems[agent_id] = MemorySystem(agent_id, config)
-    return memory_systems[agent_id]
-
-async def add_to_memory(agent_id: UUID, memory_type: MemoryType, entry: MemoryEntry, config: MemoryConfig) -> str:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.add(memory_type, entry.content, entry.metadata)
-
-async def retrieve_from_memory(agent_id: UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig) -> Optional[MemoryEntry]:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.retrieve(memory_type, memory_id)
-
-async def search_memory(agent_id: UUID, memory_type: MemoryType, query: str, limit: int, config: MemoryConfig) -> List[MemoryEntry]:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.search(memory_type, query, limit)
-
-async def delete_from_memory(agent_id: UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig):
-    memory_system = await get_memory_system(agent_id, config)
-    await memory_system.delete(memory_type, memory_id)
-
-async def perform_memory_operation(agent_id: UUID, operation: MemoryOperation, memory_type: MemoryType, data: Dict[str, Any], config: MemoryConfig) -> Any:
-    memory_system = await get_memory_system(agent_id, config)
-    if operation == MemoryOperation.ADD:
-        return await memory_system.add(memory_type, data['content'], data.get('metadata', {}))
-    elif operation == MemoryOperation.RETRIEVE:
-        return await memory_system.retrieve(memory_type, data['memory_id'])
-    elif operation == MemoryOperation.SEARCH:
-        return await memory_system.search(memory_type, data['query'], data.get('limit', 5))
-    elif operation == MemoryOperation.DELETE:
-        await memory_system.delete(memory_type, data['memory_id'])
-        return {"message": "Memory deleted successfully"}
-    else:
-        raise ValueError(f"Invalid memory operation: {operation}")
-
 
 ```
 
@@ -2154,9 +1391,680 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 
 ```
 
+# tests/test_api/test_message.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
+
+pytestmark = pytest.mark.asyncio
+
+async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
+    message_data = {
+        "agent_id": test_agent,
+        "content": "Hello, agent!"
+    }
+    response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "agent_id" in result
+    assert result["agent_id"] == test_agent
+    assert "content" in result
+    assert isinstance(result["content"], str)
+    assert isinstance(result.get("function_calls", []), list)
+    return result
+
+async def test_get_message_history(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message to ensure there's some history
+    sent_message = await test_send_message(async_client, auth_headers, test_agent)
+
+    response = await async_client.get(f"/message/history?agent_id={test_agent}&limit=10", headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert "agent_id" in history
+    assert history["agent_id"] == test_agent
+    assert isinstance(history["messages"], list)
+    assert len(history["messages"]) > 0
+    assert history["messages"][0]["content"] == "Hello, agent!"
+
+async def test_clear_message_history(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message to ensure there's some history
+    await test_send_message(async_client, auth_headers, test_agent)
+
+    response = await async_client.post(f"/message/clear", json={"agent_id": test_agent}, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Message history cleared successfully"
+
+    # Verify that the history is indeed cleared
+    response = await async_client.get(f"/message/history?agent_id={test_agent}&limit=10", headers=auth_headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert len(history["messages"]) == 0
+
+async def test_get_latest_message(async_client: AsyncClient, auth_headers, test_agent):
+    # First, send a message
+    sent_message = await test_send_message(async_client, auth_headers, test_agent)
+
+    response = await async_client.get(f"/message/latest?agent_id={test_agent}", headers=auth_headers)
+    assert response.status_code == 200
+    latest_message = response.json()
+    assert latest_message["content"] == "Hello, agent!"
+
+async def test_send_message_invalid_agent(async_client: AsyncClient, auth_headers):
+    invalid_agent_id = str(UUID(int=0))
+    message_data = {
+        "agent_id": invalid_agent_id,
+        "content": "This should fail"
+    }
+    response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert "detail" in response.json()
+
+```
+
+# tests/test_api/test_memory.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
+from app.api.models.memory import MemoryType, MemoryOperation
+
+pytestmark = pytest.mark.asyncio
+
+async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "entry": {
+            "content": "Test memory content",
+            "metadata": {"key": "value"}
+        }
+    }
+    response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    added_memory = response.json()
+    assert "memory_id" in added_memory
+    assert added_memory["message"] == "Memory added successfully"
+    return added_memory["memory_id"]
+
+async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    response = await async_client.get(f"/memory/retrieve?agent_id={test_agent}&memory_type={MemoryType.SHORT_TERM}&memory_id={memory_id}", headers=auth_headers)
+    assert response.status_code == 200
+    memory = response.json()
+    assert memory["content"] == "Test memory content"
+    assert memory["metadata"] == {"key": "value"}
+
+async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
+    await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
+    search_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "query": "Test memory",
+        "limit": 5
+    }
+    response = await async_client.post("/memory/search", json=search_data, headers=auth_headers)
+    assert response.status_code == 200
+    results = response.json()
+    assert "results" in results
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
+
+async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    response = await async_client.delete(f"/memory/delete?agent_id={test_agent}&memory_type={MemoryType.SHORT_TERM}&memory_id={memory_id}", headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Memory deleted successfully"
+
+async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
+    operation_data = {
+        "agent_id": test_agent,
+        "operation": MemoryOperation.ADD,
+        "memory_type": MemoryType.SHORT_TERM,
+        "data": {
+            "content": "Test operation memory content",
+            "metadata": {"operation": "test"}
+        }
+    }
+    response = await async_client.post("/memory/operate", json=operation_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "ADD operation completed successfully"
+    assert "result" in result
+
+async def test_add_long_term_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.LONG_TERM,
+        "entry": {
+            "content": "Long-term test memory content",
+            "metadata": {"key": "long_term_value"}
+        }
+    }
+    response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    added_memory = response.json()
+    assert "memory_id" in added_memory
+    assert added_memory["message"] == "Memory added successfully"
+
+async def test_search_long_term_memory(async_client: AsyncClient, auth_headers, test_agent):
+    await test_add_long_term_memory(async_client, auth_headers, test_agent)
+    search_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.LONG_TERM,
+        "query": "Long-term test",
+        "limit": 5
+    }
+    response = await async_client.post("/memory/search", json=search_data, headers=auth_headers)
+    assert response.status_code == 200
+    results = response.json()
+    assert "results" in results
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
+    assert "Long-term test memory content" in results["results"][0]["content"]
+
+```
+
+# tests/test_api/test_main.py
+
+```py
+import pytest
+from httpx import AsyncClient
+
+pytestmark = pytest.mark.asyncio
+
+async def test_read_main(async_client: AsyncClient):
+    response = await async_client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to SolidRusT Agentic API"}
+```
+
+# tests/test_api/test_function.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
+
+pytestmark = pytest.mark.asyncio
+
+async def test_register_function(async_client: AsyncClient, auth_headers):
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert response.status_code == 201
+    registered_function = response.json()
+    assert "function_id" in registered_function
+    assert registered_function["message"] == "Function registered successfully"
+    return registered_function["function_id"]
+
+async def test_get_function(async_client: AsyncClient, auth_headers):
+    function_id = await test_register_function(async_client, auth_headers)
+    response = await async_client.get(f"/function/{function_id}", headers=auth_headers)
+    assert response.status_code == 200
+    get_function = response.json()
+    assert get_function["name"] == "test_function"
+    assert get_function["description"] == "A test function"
+
+async def test_update_function(async_client: AsyncClient, auth_headers):
+    function_id = await test_register_function(async_client, auth_headers)
+    update_data = {
+        "function_id": function_id,
+        "updated_function": {
+            "name": "updated_test_function",
+            "description": "An updated test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"},
+                    "param3": {"type": "boolean"}
+                }
+            },
+            "return_type": "string"
+        }
+    }
+    response = await async_client.put("/function/update", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_function = response.json()
+    assert updated_function["message"] == "Function updated successfully"
+
+async def test_delete_function(async_client: AsyncClient, auth_headers, test_agent):
+    function_id = await test_register_function(async_client, auth_headers)
+    response = await async_client.delete(f"/function/{function_id}?agent_id={test_agent}", headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Function removed successfully"
+
+async def test_list_functions(async_client: AsyncClient, auth_headers, test_agent):
+    # Register a couple of functions first
+    await test_register_function(async_client, auth_headers)
+    await test_register_function(async_client, auth_headers)
+
+    response = await async_client.get(f"/function/available?agent_id={test_agent}", headers=auth_headers)
+    assert response.status_code == 200
+    functions = response.json()
+    assert "functions" in functions
+    assert isinstance(functions["functions"], list)
+    assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
+
+async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent):
+    function_id = await test_register_function(async_client, auth_headers)
+    execution_data = {
+        "agent_id": test_agent,
+        "function_name": "test_function",
+        "parameters": {
+            "param1": "test",
+            "param2": 123
+        }
+    }
+    response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert "result" in result
+
+async def test_execute_nonexistent_function(async_client: AsyncClient, auth_headers, test_agent):
+    execution_data = {
+        "agent_id": test_agent,
+        "function_name": "nonexistent_function",
+        "parameters": {}
+    }
+    response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert "detail" in response.json()
+
+```
+
+# tests/test_api/test_agent.py
+
+```py
+import pytest
+from httpx import AsyncClient
+from uuid import UUID
+
+pytestmark = pytest.mark.asyncio
+
+async def test_create_agent(async_client: AsyncClient, auth_headers):
+    agent_data = {
+        "agent_name": "New Test Agent",
+        "agent_config": {
+            "llm_provider": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 150,
+            "memory_config": {
+                "use_long_term_memory": True,
+                "use_redis_cache": True
+            }
+        },
+        "memory_config": {
+            "use_long_term_memory": True,
+            "use_redis_cache": True
+        },
+        "initial_prompt": "You are a helpful assistant."
+    }
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    created_agent = response.json()
+    assert "agent_id" in created_agent
+    assert UUID(created_agent["agent_id"])
+
+async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
+    response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)
+    assert response.status_code == 200
+    agent = response.json()
+    assert agent["agent_id"] == test_agent
+    assert agent["name"] == "Test Agent"
+
+async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
+    update_data = {
+        "agent_config": {
+            "temperature": 0.8
+        }
+    }
+    response = await async_client.patch(f"/agent/{test_agent}", json=update_data, headers=auth_headers)
+    assert response.status_code == 200
+    updated_agent = response.json()
+    assert updated_agent["message"] == "Agent updated successfully"
+
+async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
+    response = await async_client.delete(f"/agent/{test_agent}", headers=auth_headers)
+    assert response.status_code == 204
+
+async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
+    # Create a second agent to ensure we have at least two
+    await test_create_agent(async_client, auth_headers)
+
+    response = await async_client.get("/agent", headers=auth_headers)
+    assert response.status_code == 200
+    agents = response.json()
+    assert isinstance(agents, list)
+    assert len(agents) >= 2  # We should have at least the two agents we created
+
+```
+
+# tests/test_api/__init__.py
+
+```py
+
+```
+
 # app/api/__init__.py
 
 ```py
+
+```
+
+# tests/test_core/test_memory.py
+
+```py
+import pytest
+from uuid import UUID
+from unittest.mock import AsyncMock, patch
+from app.core.memory import RedisMemory, VectorMemory, MemorySystem
+from app.api.models.memory import MemoryType, MemoryEntry
+from app.api.models.agent import MemoryConfig
+
+@pytest.fixture
+def memory_config():
+    return MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
+
+@pytest.mark.asyncio
+async def test_redis_memory():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+
+    with patch('app.core.memory.redis_memory.aioredis') as mock_redis:
+        mock_redis_client = AsyncMock()
+        mock_redis.from_url.return_value = mock_redis_client
+
+        redis_memory = RedisMemory("redis://localhost:6379", agent_id)
+
+        # Test add
+        await redis_memory.add("test_key", "test_value")
+        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key", "test_value", ex=3600)
+
+        # Test get
+        mock_redis_client.get.return_value = "test_value"
+        value = await redis_memory.get("test_key")
+        assert value == "test_value"
+        mock_redis_client.get.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
+
+        # Test delete
+        await redis_memory.delete("test_key")
+        mock_redis_client.delete.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
+
+@pytest.mark.asyncio
+async def test_vector_memory():
+    with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
+        mock_client = AsyncMock()
+        mock_collection = AsyncMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.Client.return_value = mock_client
+
+        vector_memory = VectorMemory("test_collection", mock_chromadb.config.Settings())
+
+        # Test add
+        await vector_memory.add("test_id", "test_content", {"key": "value"})
+        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}], ids=["test_id"])
+
+        # Test search
+        mock_collection.query.return_value = {
+            "ids": [["test_id"]],
+            "documents": [["test_content"]],
+            "metadatas": [[{"key": "value"}]]
+        }
+        results = await vector_memory.search("test query")
+        assert results == [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
+        mock_collection.query.assert_called_once_with(query_texts=["test query"], n_results=5)
+
+@pytest.mark.asyncio
+async def test_memory_system(memory_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+
+    with patch('app.core.memory.memory_system.RedisMemory') as MockRedisMemory, \
+            patch('app.core.memory.memory_system.VectorMemory') as MockVectorMemory:
+        mock_redis = AsyncMock()
+        mock_vector = AsyncMock()
+        MockRedisMemory.return_value = mock_redis
+        MockVectorMemory.return_value = mock_vector
+
+        memory_system = MemorySystem(agent_id, memory_config)
+
+        # Test add (short-term memory)
+        await memory_system.add(MemoryType.SHORT_TERM, "test_content", {"key": "value"})
+        mock_redis.add.assert_called_once()
+
+        # Test add (long-term memory)
+        await memory_system.add(MemoryType.LONG_TERM, "test_content", {"key": "value"})
+        mock_vector.add.assert_called_once()
+
+        # Test retrieve (short-term memory)
+        mock_redis.get.return_value = "test_content"
+        result = await memory_system.retrieve(MemoryType.SHORT_TERM, "test_id")
+        assert result == MemoryEntry(content="test_content")
+
+        # Test retrieve (long-term memory)
+        mock_vector.search.return_value = [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
+        result = await memory_system.retrieve(MemoryType.LONG_TERM, "test_id")
+        assert result == MemoryEntry(content="test_content", metadata={"key": "value"})
+
+        # Test search
+        results = await memory_system.search(MemoryType.LONG_TERM, "test query")
+        assert results == [MemoryEntry(content="test_content", metadata={"key": "value"})]
+
+        # Test delete
+        await memory_system.delete(MemoryType.SHORT_TERM, "test_id")
+        mock_redis.delete.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_memory_system_integration(memory_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    memory_system = MemorySystem(agent_id, memory_config)
+
+    # Test add and retrieve (short-term memory)
+    short_term_id = await memory_system.add(MemoryType.SHORT_TERM, "short-term content")
+    short_term_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
+    assert short_term_result.content == "short-term content"
+
+    # Test add and retrieve (long-term memory)
+    long_term_id = await memory_system.add(MemoryType.LONG_TERM, "long-term content", {"type": "test"})
+    long_term_result = await memory_system.retrieve(MemoryType.LONG_TERM, long_term_id)
+    assert long_term_result.content == "long-term content"
+    assert long_term_result.metadata == {"type": "test"}
+
+    # Test search
+    search_results = await memory_system.search(MemoryType.LONG_TERM, "long-term")
+    assert len(search_results) > 0
+    assert search_results[0].content == "long-term content"
+
+    # Test delete
+    await memory_system.delete(MemoryType.SHORT_TERM, short_term_id)
+    deleted_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
+    assert deleted_result is None
+
+```
+
+# tests/test_core/test_agent.py
+
+```py
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from uuid import UUID
+from app.core.agent import Agent
+from app.api.models.agent import AgentConfig, MemoryConfig
+
+
+@pytest.fixture
+def agent_config():
+    return AgentConfig(
+        llm_provider="openai",
+        model_name="gpt-3.5-turbo",
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_agent_initialization(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
+
+        mock_memory_system = AsyncMock()
+        MockMemorySystem.return_value = mock_memory_system
+
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        assert agent.id == agent_id
+        assert agent.name == agent_name
+        assert agent.config == agent_config
+        assert isinstance(agent.llm_provider, AsyncMock)
+        assert isinstance(agent.memory, AsyncMock)
+
+
+@pytest.mark.asyncio
+async def test_agent_process_message(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+    test_message = "Hello, Agent!"
+
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_llm_provider.generate.return_value = "Generated response"
+        mock_create_llm_provider.return_value = mock_llm_provider
+
+        mock_memory_system = AsyncMock()
+        mock_memory_system.retrieve_relevant.return_value = []
+        MockMemorySystem.return_value = mock_memory_system
+
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        response, function_calls = await agent.process_message(test_message)
+
+        assert response == "Generated response"
+        assert function_calls == []
+        mock_memory_system.retrieve_relevant.assert_called_once_with(test_message)
+        mock_llm_provider.generate.assert_called_once()
+        mock_memory_system.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_agent_execute_function(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
+
+        mock_memory_system = AsyncMock()
+        MockMemorySystem.return_value = mock_memory_system
+
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        async def test_function(param1, param2):
+            return f"Executed with {param1} and {param2}"
+
+        mock_function = AsyncMock(side_effect=test_function)
+        mock_function.id = "test_function_id"
+        agent.get_function_by_name = Mock(return_value=mock_function)
+
+        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
+            result = await agent.execute_function(
+                function_name="test_function",
+                parameters={"param1": "value1", "param2": "value2"}
+            )
+
+        assert result == "Executed with value1 and value2"
+        agent.get_function_by_name.assert_called_once_with("test_function")
+        mock_function.assert_awaited_once_with(param1="value1", param2="value2")
+
+
+@pytest.mark.asyncio
+async def test_agent_get_available_functions(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+
+    with patch('app.core.agent.create_llm_provider'), patch('app.core.agent.MemorySystem'):
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        mock_function1 = Mock(id="func1", name="Function 1")
+        mock_function2 = Mock(id="func2", name="Function 2")
+
+        with patch.dict('app.core.agent.registered_functions', {
+            "func1": mock_function1,
+            "func2": mock_function2
+        }):
+            agent.available_function_ids = ["func1", "func2"]
+            available_functions = agent.get_available_functions()
+
+        assert len(available_functions) == 2
+        assert available_functions[0].name == "Function 1"
+        assert available_functions[1].name == "Function 2"
+
+```
+
+# tests/test_core/__init__.py
+
+```py
+
+```
+
+# docs/.pytest_cache/README.md
+
+```md
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+```
+
+# docs/.pytest_cache/CACHEDIR.TAG
+
+```TAG
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+```
+
+# docs/.pytest_cache/.gitignore
+
+```
+# Created by pytest automatically.
+*
 
 ```
 
@@ -2166,106 +2074,72 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 import asyncio
 from typing import Dict, Any, List
 import chromadb
-from chromadb.config import Settings as ChromaSettings
+from chromadb.config import Settings as ChromaDBSettings
 from app.utils.logging import memory_logger
-from app.config import settings as app_settings
 
 class VectorMemory:
-    def __init__(self, collection_name: str, chroma_settings: ChromaSettings):
-        try:
-            self.client = chromadb.Client(chroma_settings)
-            self.collection = self.client.get_or_create_collection(collection_name)
-            memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
-        except Exception as e:
-            memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
-            raise
+    def __init__(self, collection_name: str, chroma_db_settings: ChromaDBSettings):
+        self.client = chromadb.Client(chroma_db_settings)
+        self.collection = self.client.get_or_create_collection(collection_name)
+        memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
 
     async def add(self, id: str, content: str, metadata: Dict[str, Any] = {}):
-        try:
-            await asyncio.to_thread(self.collection.add,
-                                    documents=[content],
-                                    metadatas=[metadata],
-                                    ids=[id])
-            memory_logger.debug(f"Added document to ChromaDB: {id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add document to ChromaDB: {id}. Error: {str(e)}")
-            raise
+        await asyncio.to_thread(self.collection.add,
+                                documents=[content],
+                                metadatas=[metadata],
+                                ids=[id])
+        memory_logger.debug(f"Added document to ChromaDB: {id}")
 
     async def search(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        try:
-            results = await asyncio.to_thread(self.collection.query,
-                                              query_texts=[query],
-                                              n_results=n_results)
-            memory_logger.debug(f"Searched ChromaDB: {query}")
-            return [{"id": id, "content": doc, "metadata": meta}
-                    for id, doc, meta in zip(results['ids'][0], results['documents'][0], results['metadatas'][0])]
-        except Exception as e:
-            memory_logger.error(f"Failed to search ChromaDB: {query}. Error: {str(e)}")
-            raise
+        results = await asyncio.to_thread(self.collection.query,
+                                          query_texts=[query],
+                                          n_results=n_results)
+        memory_logger.debug(f"Searched ChromaDB: {query}")
+        return [{"id": id, "content": doc, "metadata": meta}
+                for id, doc, meta in zip(results['ids'][0], results['documents'][0], results['metadatas'][0])]
+
 ```
 
 # app/core/memory/redis_memory.py
 
 ```py
-import json
 from uuid import UUID
-from typing import Dict, Any, List
+from typing import List, Dict, Any
 from redis import asyncio as aioredis
-from redis.asyncio import Redis
 from app.utils.logging import memory_logger
-from app.config import settings
+from app.config import settings as app_settings
 
 class RedisMemory:
     def __init__(self, agent_id: UUID):
-        try:
-            self.redis = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
-            self.agent_id = agent_id
-            memory_logger.info(f"Redis connection established: {settings.redis_url} for agent: {agent_id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to connect to Redis: {str(e)}")
-            raise
+        self.agent_id = agent_id
+        self.redis = aioredis.from_url(app_settings.redis_url, encoding="utf-8", decode_responses=True)
+        memory_logger.info(f"Redis connection established for agent: {agent_id}")
 
     async def add(self, key: str, value: str, expire: int = 3600):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.set(full_key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {full_key}. Error: {str(e)}")
-            raise
+        full_key = f"agent:{self.agent_id}:{key}"
+        await self.redis.set(full_key, value, ex=expire)
+        memory_logger.debug(f"Added key to Redis: {full_key}")
 
     async def get(self, key: str) -> str:
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            value = await self.redis.get(full_key)
-            memory_logger.debug(f"Retrieved key from Redis: {full_key}")
-            return value
-        except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {full_key}. Error: {str(e)}")
-            raise
+        full_key = f"agent:{self.agent_id}:{key}"
+        value = await self.redis.get(full_key)
+        memory_logger.debug(f"Retrieved key from Redis: {full_key}")
+        return value
 
     async def delete(self, key: str):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.delete(full_key)
-            memory_logger.debug(f"Deleted key from Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {full_key}. Error: {str(e)}")
-            raise
+        full_key = f"agent:{self.agent_id}:{key}"
+        await self.redis.delete(full_key)
+        memory_logger.debug(f"Deleted key from Redis: {full_key}")
 
     async def get_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
-        try:
-            pattern = f"agent:{self.agent_id}:*"
-            keys = await self.redis.keys(pattern)
-            recent_memories = []
-            for key in keys[-limit:]:
-                value = await self.redis.get(key)
-                if value:
-                    recent_memories.append(json.loads(value))
-            return recent_memories
-        except Exception as e:
-            memory_logger.error(f"Failed to get recent memories from Redis for agent {self.agent_id}: {str(e)}")
-            raise
+        pattern = f"agent:{self.agent_id}:*"
+        keys = await self.redis.keys(pattern)
+        recent_memories = []
+        for key in keys[-limit:]:
+            value = await self.redis.get(key)
+            if value:
+                recent_memories.append({"content": value})
+        return recent_memories
 
 ```
 
@@ -2279,7 +2153,7 @@ from app.api.models.agent import MemoryConfig
 from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory
 from .vector_memory import VectorMemory
-from chromadb.config import Settings as ChromaSettings
+from chromadb.config import Settings as ChromaDBSettings
 from app.config import settings as app_settings
 
 class MemorySystem:
@@ -2287,11 +2161,11 @@ class MemorySystem:
         self.agent_id = agent_id
         self.config = config
         self.short_term = RedisMemory(agent_id)
-        chroma_settings = ChromaSettings(
+        chroma_db_settings = ChromaDBSettings(
             chroma_db_impl="duckdb+parquet",
             persist_directory=app_settings.chroma_persist_directory
         )
-        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_settings)
+        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_db_settings)
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
@@ -2412,6 +2286,7 @@ async def perform_memory_operation(agent_id: UUID, operation: MemoryOperation, m
         return {"message": "Memory deleted successfully"}
     else:
         raise ValueError(f"Invalid memory operation: {operation}")
+
 ```
 
 # app/core/memory/__init__.py
