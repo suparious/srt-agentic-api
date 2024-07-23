@@ -40,8 +40,8 @@ async def test_redis_memory():
 @pytest.mark.asyncio
 async def test_vector_memory():
     with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
-        mock_client = AsyncMock()
-        mock_collection = AsyncMock()
+        mock_client = Mock()
+        mock_collection = Mock()
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_chromadb.Client.return_value = mock_client
 
@@ -49,8 +49,7 @@ async def test_vector_memory():
 
         # Test add
         await vector_memory.add("test_id", "test_content", {"key": "value"})
-        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}],
-                                                    ids=["test_id"])
+        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}], ids=["test_id"])
 
         # Test search
         mock_collection.query.return_value = {

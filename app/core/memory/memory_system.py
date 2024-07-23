@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryOperation
 from app.api.models.agent import MemoryConfig
@@ -16,7 +16,7 @@ class MemorySystem:
 
     async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
         try:
-            memory_id = str(UUID.uuid4())
+            memory_id = str(uuid4())
             if memory_type == MemoryType.SHORT_TERM and self.config.use_redis_cache:
                 await self.short_term.add(memory_id, content)
             elif memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:

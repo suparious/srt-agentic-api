@@ -41,7 +41,7 @@ async def test_agent_execute_function(agent_config):
 
         mock_function = AsyncMock(side_effect=test_function)
         mock_function.id = "test_function_id"
-        agent.get_function_by_name = AsyncMock(return_value=mock_function)
+        agent.get_function_by_name = Mock(return_value=mock_function)
 
         with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
             result = await agent.execute_function(
@@ -49,6 +49,6 @@ async def test_agent_execute_function(agent_config):
                 parameters={"param1": "value1", "param2": "value2"}
             )
 
-        assert result == "Executed with value1 and value2"
-        agent.get_function_by_name.assert_awaited_once_with("test_function")
-        mock_function.assert_awaited_once_with(param1="value1", param2="value2")
+    assert result == "Executed with value1 and value2"
+    agent.get_function_by_name.assert_called_once_with("test_function")
+    mock_function.assert_awaited_once_with(param1="value1", param2="value2")
