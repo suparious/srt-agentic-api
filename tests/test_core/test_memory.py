@@ -5,11 +5,9 @@ from app.core.memory import RedisMemory, VectorMemory, MemorySystem
 from app.api.models.memory import MemoryType, MemoryEntry
 from app.api.models.agent import MemoryConfig
 
-
 @pytest.fixture
 def memory_config():
     return MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-
 
 @pytest.mark.asyncio
 async def test_redis_memory():
@@ -19,12 +17,11 @@ async def test_redis_memory():
         mock_redis_client = AsyncMock()
         mock_redis.from_url.return_value = mock_redis_client
 
-        redis_memory = RedisMemory(agent_id)
+        redis_memory = RedisMemory("redis://localhost:6379", agent_id)
 
         # Test add
         await redis_memory.add("test_key", "test_value")
-        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key",
-                                                      "test_value", ex=3600)
+        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key", "test_value", ex=3600)
 
         # Test get
         mock_redis_client.get.return_value = "test_value"
@@ -36,16 +33,15 @@ async def test_redis_memory():
         await redis_memory.delete("test_key")
         mock_redis_client.delete.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
 
-
 @pytest.mark.asyncio
 async def test_vector_memory():
     with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
-        mock_client = Mock()
-        mock_collection = Mock()
+        mock_client = AsyncMock()
+        mock_collection = AsyncMock()
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_chromadb.Client.return_value = mock_client
 
-        vector_memory = VectorMemory("test_collection")
+        vector_memory = VectorMemory("test_collection", mock_chromadb.config.Settings())
 
         # Test add
         await vector_memory.add("test_id", "test_content", {"key": "value"})
@@ -60,7 +56,6 @@ async def test_vector_memory():
         results = await vector_memory.search("test query")
         assert results == [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
         mock_collection.query.assert_called_once_with(query_texts=["test query"], n_results=5)
-
 
 @pytest.mark.asyncio
 async def test_memory_system(memory_config):
@@ -100,7 +95,6 @@ async def test_memory_system(memory_config):
         # Test delete
         await memory_system.delete(MemoryType.SHORT_TERM, "test_id")
         mock_redis.delete.assert_called_once()
-
 
 @pytest.mark.asyncio
 async def test_memory_system_integration(memory_config):

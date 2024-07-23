@@ -6,7 +6,7 @@ pytestmark = pytest.mark.asyncio
 
 async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
-        "agent_name": "Test Agent",
+        "agent_name": "New Test Agent",
         "agent_config": {
             "llm_provider": "openai",
             "model_name": "gpt-3.5-turbo",
@@ -28,31 +28,27 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
     created_agent = response.json()
     assert "agent_id" in created_agent
     assert UUID(created_agent["agent_id"])
-    return created_agent["agent_id"]
 
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    response = await async_client.get(f"/agent/{agent_id}", headers=auth_headers)
+    response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)
     assert response.status_code == 200
     agent = response.json()
-    assert agent["agent_id"] == str(agent_id)
+    assert agent["agent_id"] == test_agent
     assert agent["name"] == "Test Agent"
 
 async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
     update_data = {
         "agent_config": {
             "temperature": 0.8
         }
     }
-    response = await async_client.patch(f"/agent/{agent_id}", json=update_data, headers=auth_headers)
+    response = await async_client.patch(f"/agent/{test_agent}", json=update_data, headers=auth_headers)
     assert response.status_code == 200
     updated_agent = response.json()
     assert updated_agent["message"] == "Agent updated successfully"
 
 async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
-    agent_id = await test_agent
-    response = await async_client.delete(f"/agent/{agent_id}", headers=auth_headers)
+    response = await async_client.delete(f"/agent/{test_agent}", headers=auth_headers)
     assert response.status_code == 204
 
 async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):

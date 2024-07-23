@@ -28,6 +28,50 @@ httpx>=0.24.1,<1.0.0
 
 ```
 
+# pytest.ini
+
+```ini
+[pytest]
+asyncio_mode = auto
+env_files = .env.test
+
+```
+
+# docker-compose.yml
+
+```yml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - VALKEY_HOST=valkey
+      - DEBUG_MODE=false
+    depends_on:
+      - valkey
+    volumes:
+      - .:/app
+
+  valkey:
+    image: docker.io/valkey/valkey:latest
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes  # Recommended only for development
+      - VALKEY_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    ports:
+      - "6379:6379"
+    command: valkey-server --appendonly yes
+    volumes:
+      - valkey_data:/data
+
+volumes:
+  valkey_data:
+    driver: local
+
+```
+
 # README.md
 
 ```md
@@ -190,12 +234,15 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 /.pytest_cache/
 /.idea/
 /data/
+/logs/
 
 ```
 
 # tests/conftest.py
 
 ```py
+import tempfile
+import os
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
@@ -205,11 +252,12 @@ from app.api.models.agent import AgentConfig, MemoryConfig
 
 @pytest.fixture(scope="session")
 def test_settings():
+    temp_dir = tempfile.mkdtemp()
     return Settings(
-        API_KEY="test_api_key",
+        API_KEY="test_api_key",  # Make sure this matches the key used in auth_headers
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
-        REDIS_URL="redis://localhost:6379/15",  # Use test database
-        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
+        REDIS_URL="redis://localhost:6379/15",
+        CHROMA_PERSIST_DIRECTORY=os.path.join(temp_dir, "test_chroma_db"),
         OPENAI_API_KEY="test_openai_key",
         ANTHROPIC_API_KEY="test_anthropic_key",
         VLLM_API_BASE="http://test-vllm-api-endpoint",
@@ -397,723 +445,6 @@ filterwarnings =
 \`\`\`
 
 This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
-
-```
-
-# logs/test_results_detailed.txt
-
-```txt
-============================= test session starts ==============================
-platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.5.0
-rootdir: /Users/suparious/repos/srt-agentic-api
-plugins: asyncio-0.23.8, anyio-4.4.0
-asyncio: mode=Mode.STRICT
-collected 26 items
-
-tests/test_api/test_agent.py FFFFF                                       [ 19%]
-tests/test_api/test_function.py FFFFFF                                   [ 42%]
-tests/test_api/test_main.py F                                            [ 46%]
-tests/test_api/test_memory.py FFFFF                                      [ 65%]
-tests/test_api/test_message.py FFFF                                      [ 80%]
-tests/test_core/test_agent.py F                                          [ 84%]
-tests/test_core/test_memory.py .F..                                      [100%]
-
-=================================== FAILURES ===================================
-______________________________ test_create_agent _______________________________
-
-async_client = <async_generator object async_client at 0x116225b70>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    async def test_create_agent(async_client: AsyncClient, auth_headers):
-        agent_data = {
-            "agent_name": "Test Agent",
-            "agent_config": {
-                "llm_provider": "openai",
-                "model_name": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150,
-                "memory_config": {
-                    "use_long_term_memory": True,
-                    "use_redis_cache": True
-                }
-            },
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            },
-            "initial_prompt": "You are a helpful assistant."
-        }
->       response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_agent.py:26: AttributeError
----------------------------- Captured stdout setup -----------------------------
-Debug: ALLOWED_ORIGINS value received: ['http://testserver', 'http://localhost']
-Debug: ALLOWED_ORIGINS type: <class 'list'>
-Debug: ALLOWED_ORIGINS env var: None
-________________________________ test_get_agent ________________________________
-
-async_client = <async_generator object async_client at 0x116224d60>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a180>
-
-    async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
->       agent_id = await test_agent
-
-tests/test_api/test_agent.py:34: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116224d60>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    @pytest.fixture
-    async def test_agent(async_client, auth_headers):
-        agent_data = {
-            "agent_name": "Test Agent",
-            "agent_config": {
-                "llm_provider": "openai",
-                "model_name": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150,
-                "memory_config": {
-                    "use_long_term_memory": True,
-                    "use_redis_cache": True
-                }
-            },
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            },
-            "initial_prompt": "You are a helpful assistant."
-        }
->       response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/conftest.py:62: AttributeError
-______________________________ test_update_agent _______________________________
-
-async_client = <async_generator object async_client at 0x116226e30>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a510>
-
-    async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
->       agent_id = await test_agent
-
-tests/test_api/test_agent.py:42: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116226e30>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    @pytest.fixture
-    async def test_agent(async_client, auth_headers):
-        agent_data = {
-            "agent_name": "Test Agent",
-            "agent_config": {
-                "llm_provider": "openai",
-                "model_name": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150,
-                "memory_config": {
-                    "use_long_term_memory": True,
-                    "use_redis_cache": True
-                }
-            },
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            },
-            "initial_prompt": "You are a helpful assistant."
-        }
->       response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/conftest.py:62: AttributeError
-______________________________ test_delete_agent _______________________________
-
-async_client = <async_generator object async_client at 0x1162273d0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a8a0>
-
-    async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
->       agent_id = await test_agent
-
-tests/test_api/test_agent.py:54: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x1162273d0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    @pytest.fixture
-    async def test_agent(async_client, auth_headers):
-        agent_data = {
-            "agent_name": "Test Agent",
-            "agent_config": {
-                "llm_provider": "openai",
-                "model_name": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150,
-                "memory_config": {
-                    "use_long_term_memory": True,
-                    "use_redis_cache": True
-                }
-            },
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            },
-            "initial_prompt": "You are a helpful assistant."
-        }
->       response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/conftest.py:62: AttributeError
-_______________________________ test_list_agents _______________________________
-
-async_client = <async_generator object async_client at 0x116227a60>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621ad60>
-
-    async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
-        # Create a second agent to ensure we have at least two
->       await test_create_agent(async_client, auth_headers)
-
-tests/test_api/test_agent.py:60: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116227a60>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    async def test_create_agent(async_client: AsyncClient, auth_headers):
-        agent_data = {
-            "agent_name": "Test Agent",
-            "agent_config": {
-                "llm_provider": "openai",
-                "model_name": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150,
-                "memory_config": {
-                    "use_long_term_memory": True,
-                    "use_redis_cache": True
-                }
-            },
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            },
-            "initial_prompt": "You are a helpful assistant."
-        }
->       response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_agent.py:26: AttributeError
-____________________________ test_register_function ____________________________
-
-async_client = <async_generator object async_client at 0x116225a80>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    async def test_register_function(async_client: AsyncClient, auth_headers):
-        function_data = {
-            "function": {
-                "name": "test_function",
-                "description": "A test function",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "param1": {"type": "string"},
-                        "param2": {"type": "integer"}
-                    }
-                },
-                "return_type": "string"
-            }
-        }
->       response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_function.py:21: AttributeError
-______________________________ test_get_function _______________________________
-
-async_client = <async_generator object async_client at 0x116304400>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x116215900>
-
-    async def test_get_function(async_client: AsyncClient, auth_headers, test_function):
-        function_id = test_function
->       response = await async_client.get(f"/function/{function_id}", headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'get'
-
-tests/test_api/test_function.py:30: AttributeError
-_____________________________ test_update_function _____________________________
-
-async_client = <async_generator object async_client at 0x1163047c0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x116215c60>
-
-    async def test_update_function(async_client: AsyncClient, auth_headers, test_function):
-        function_id = test_function
-        update_data = {
-            "updated_function": {
-                "name": "updated_test_function",
-                "description": "An updated test function",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "param1": {"type": "string"},
-                        "param2": {"type": "integer"},
-                        "param3": {"type": "boolean"}
-                    }
-                },
-                "return_type": "string"
-            }
-        }
->       response = await async_client.put(f"/function/update", json=update_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'put'
-
-tests/test_api/test_function.py:53: AttributeError
-_____________________________ test_delete_function _____________________________
-
-async_client = <async_generator object async_client at 0x116304b80>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_function = <coroutine object test_function at 0x116214dc0>
-test_agent = <coroutine object test_agent at 0x11621b810>
-
-    async def test_delete_function(async_client: AsyncClient, auth_headers, test_function, test_agent):
-        function_id = test_function
->       response = await async_client.delete(f"/function/remove?agent_id={test_agent}&function_id={function_id}", headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'delete'
-
-tests/test_api/test_function.py:60: AttributeError
-_____________________________ test_list_functions ______________________________
-
-async_client = <async_generator object async_client at 0x116304f40>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621bba0>
-
-    async def test_list_functions(async_client: AsyncClient, auth_headers, test_agent):
-        # Register a couple of functions first
->       await test_register_function(async_client, auth_headers)
-
-tests/test_api/test_function.py:67: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116304f40>
-auth_headers = {'X-API-Key': 'test_api_key'}
-
-    async def test_register_function(async_client: AsyncClient, auth_headers):
-        function_data = {
-            "function": {
-                "name": "test_function",
-                "description": "A test function",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "param1": {"type": "string"},
-                        "param2": {"type": "integer"}
-                    }
-                },
-                "return_type": "string"
-            }
-        }
->       response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_function.py:21: AttributeError
-____________________________ test_execute_function _____________________________
-
-async_client = <async_generator object async_client at 0x116305300>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x116360170>
-test_function = <coroutine object test_function at 0x116216200>
-
-    async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent, test_function):
-        execution_data = {
-            "agent_id": test_agent,
-            "function_name": "test_function",
-            "parameters": {
-                "param1": "test",
-                "param2": 123
-            }
-        }
->       response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_function.py:85: AttributeError
-________________________________ test_read_main ________________________________
-
-async_client = <async_generator object async_client at 0x1163056c0>
-
-    async def test_read_main(async_client: AsyncClient):
->       response = await async_client.get("/")
-E       AttributeError: 'async_generator' object has no attribute 'get'
-
-tests/test_api/test_main.py:7: AttributeError
-_______________________________ test_add_memory ________________________________
-
-async_client = <async_generator object async_client at 0x116305a80>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x116360890>
-
-    async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
-        memory_data = {
-            "agent_id": test_agent,
-            "memory_type": MemoryType.SHORT_TERM,
-            "entry": {
-                "content": "Test memory content",
-                "metadata": {"key": "value"}
-            }
-        }
->       response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_memory.py:17: AttributeError
-_____________________________ test_retrieve_memory _____________________________
-
-async_client = <async_generator object async_client at 0x116227d30>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621bba0>
-
-    async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
->       memory_id = await test_add_memory(async_client, auth_headers, test_agent)
-
-tests/test_api/test_memory.py:25: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116227d30>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621bba0>
-
-    async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
-        memory_data = {
-            "agent_id": test_agent,
-            "memory_type": MemoryType.SHORT_TERM,
-            "entry": {
-                "content": "Test memory content",
-                "metadata": {"key": "value"}
-            }
-        }
->       response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_memory.py:17: AttributeError
-______________________________ test_search_memory ______________________________
-
-async_client = <async_generator object async_client at 0x1162276a0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621b940>
-
-    async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
->       await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
-
-tests/test_api/test_memory.py:38: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x1162276a0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621b940>
-
-    async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
-        memory_data = {
-            "agent_id": test_agent,
-            "memory_type": MemoryType.SHORT_TERM,
-            "entry": {
-                "content": "Test memory content",
-                "metadata": {"key": "value"}
-            }
-        }
->       response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_memory.py:17: AttributeError
-______________________________ test_delete_memory ______________________________
-
-async_client = <async_generator object async_client at 0x116226f20>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621b480>
-
-    async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
->       memory_id = await test_add_memory(async_client, auth_headers, test_agent)
-
-tests/test_api/test_memory.py:52: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116226f20>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621b480>
-
-    async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
-        memory_data = {
-            "agent_id": test_agent,
-            "memory_type": MemoryType.SHORT_TERM,
-            "entry": {
-                "content": "Test memory content",
-                "metadata": {"key": "value"}
-            }
-        }
->       response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_memory.py:17: AttributeError
-____________________________ test_memory_operation _____________________________
-
-async_client = <async_generator object async_client at 0x1162275b0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621b0f0>
-
-    async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
-        operation_data = {
-            "agent_id": test_agent,
-            "operation": MemoryOperation.ADD,
-            "memory_type": MemoryType.SHORT_TERM,
-            "data": {
-                "content": "Test operation memory content",
-                "metadata": {"operation": "test"}
-            }
-        }
->       response = await async_client.post("/memory/operate", json=operation_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_memory.py:73: AttributeError
-______________________________ test_send_message _______________________________
-
-async_client = <async_generator object async_client at 0x116224d60>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621ad60>
-
-    async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
-        message_data = {
-            "agent_id": test_agent,
-            "message": "Hello, agent!"
-        }
->       response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_message.py:11: AttributeError
-___________________________ test_get_message_history ___________________________
-
-async_client = <async_generator object async_client at 0x116305990>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a8a0>
-
-    async def test_get_message_history(async_client: AsyncClient, auth_headers, test_agent):
-        # First, send a message to ensure there's some history
->       sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-tests/test_api/test_message.py:21: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x116305990>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a8a0>
-
-    async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
-        message_data = {
-            "agent_id": test_agent,
-            "message": "Hello, agent!"
-        }
->       response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_message.py:11: AttributeError
-__________________________ test_clear_message_history __________________________
-
-async_client = <async_generator object async_client at 0x1163058a0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a640>
-
-    async def test_clear_message_history(async_client: AsyncClient, auth_headers, test_agent):
-        # First, send a message to ensure there's some history
->       sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-tests/test_api/test_message.py:36: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x1163058a0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a640>
-
-    async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
-        message_data = {
-            "agent_id": test_agent,
-            "message": "Hello, agent!"
-        }
->       response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_message.py:11: AttributeError
-___________________________ test_get_latest_message ____________________________
-
-async_client = <async_generator object async_client at 0x1163054e0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a2b0>
-
-    async def test_get_latest_message(async_client: AsyncClient, auth_headers, test_agent):
-        # First, send a message
->       sent_message = await test_send_message(async_client, auth_headers, test_agent)
-
-tests/test_api/test_message.py:58: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-async_client = <async_generator object async_client at 0x1163054e0>
-auth_headers = {'X-API-Key': 'test_api_key'}
-test_agent = <coroutine object test_agent at 0x11621a2b0>
-
-    async def test_send_message(async_client: AsyncClient, auth_headers, test_agent):
-        message_data = {
-            "agent_id": test_agent,
-            "message": "Hello, agent!"
-        }
->       response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
-E       AttributeError: 'async_generator' object has no attribute 'post'
-
-tests/test_api/test_message.py:11: AttributeError
-_________________________ test_agent_execute_function __________________________
-
-agent_config = AgentConfig(llm_provider='openai', model_name='gpt-3.5-turbo', temperature=0.7, max_tokens=100, memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True))
-
-    @pytest.mark.asyncio
-    async def test_agent_execute_function(agent_config):
-        agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    
-        with patch('app.core.agent.MemorySystem') as MockMemorySystem, \
-                patch('app.core.agent.create_llm_provider') as mock_create_llm_provider:
-            mock_memory = AsyncMock()
-            MockMemorySystem.return_value = mock_memory
-    
-            mock_llm_provider = AsyncMock()
-            mock_create_llm_provider.return_value = mock_llm_provider
-    
-            agent = Agent(
-                agent_id=agent_id,
-                name="Test Agent",
-                config=agent_config,
-                memory_config=agent_config.memory_config
-            )
-    
-            async def test_function(param1, param2):
-                return f"Executed with {param1} and {param2}"
-    
-            mock_function = AsyncMock(side_effect=test_function)
-            mock_function.id = "test_function_id"
-            agent.get_function_by_name = Mock(return_value=mock_function)
-    
-            with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
-                result = await agent.execute_function(
-                    function_name="test_function",
-                    parameters={"param1": "value1", "param2": "value2"}
-                )
-    
->       assert result == "Executed with value1 and value2"
-E       AssertionError: assert <AsyncMock name='mock.implementation()' id='4667744400'> == 'Executed with value1 and value2'
-
-tests/test_core/test_agent.py:52: AssertionError
------------------------------ Captured stderr call -----------------------------
-2024-07-22 20:32:11,389 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-22 20:32:11,390 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-22 20:32:11,391 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
------------------------------- Captured log call -------------------------------
-INFO     agent:agent.py:25 Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-INFO     agent:agent.py:49 Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-INFO     agent:agent.py:58 Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-______________________________ test_vector_memory ______________________________
-
-    @pytest.mark.asyncio
-    async def test_vector_memory():
-        with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
->           mock_client = Mock()
-E           NameError: name 'Mock' is not defined
-
-tests/test_core/test_memory.py:43: NameError
-=============================== warnings summary ===============================
-.venv/lib/python3.12/site-packages/pydantic/fields.py:814: 22 warnings
-  /Users/suparious/repos/srt-agentic-api/.venv/lib/python3.12/site-packages/pydantic/fields.py:814: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.8/migration/
-    warn(
-
-.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:291
-  /Users/suparious/repos/srt-agentic-api/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.8/migration/
-    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
-
-.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:341
-  /Users/suparious/repos/srt-agentic-api/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:341: UserWarning: Valid config keys have changed in V2:
-  * 'schema_extra' has been renamed to 'json_schema_extra'
-    warnings.warn(message, UserWarning)
-
-<frozen importlib._bootstrap>:488
-  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
-
-<frozen importlib._bootstrap>:488
-  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-FAILED tests/test_api/test_agent.py::test_create_agent - AttributeError: 'asy...
-FAILED tests/test_api/test_agent.py::test_get_agent - AttributeError: 'async_...
-FAILED tests/test_api/test_agent.py::test_update_agent - AttributeError: 'asy...
-FAILED tests/test_api/test_agent.py::test_delete_agent - AttributeError: 'asy...
-FAILED tests/test_api/test_agent.py::test_list_agents - AttributeError: 'asyn...
-FAILED tests/test_api/test_function.py::test_register_function - AttributeErr...
-FAILED tests/test_api/test_function.py::test_get_function - AttributeError: '...
-FAILED tests/test_api/test_function.py::test_update_function - AttributeError...
-FAILED tests/test_api/test_function.py::test_delete_function - AttributeError...
-FAILED tests/test_api/test_function.py::test_list_functions - AttributeError:...
-FAILED tests/test_api/test_function.py::test_execute_function - AttributeErro...
-FAILED tests/test_api/test_main.py::test_read_main - AttributeError: 'async_g...
-FAILED tests/test_api/test_memory.py::test_add_memory - AttributeError: 'asyn...
-FAILED tests/test_api/test_memory.py::test_retrieve_memory - AttributeError: ...
-FAILED tests/test_api/test_memory.py::test_search_memory - AttributeError: 'a...
-FAILED tests/test_api/test_memory.py::test_delete_memory - AttributeError: 'a...
-FAILED tests/test_api/test_memory.py::test_memory_operation - AttributeError:...
-FAILED tests/test_api/test_message.py::test_send_message - AttributeError: 'a...
-FAILED tests/test_api/test_message.py::test_get_message_history - AttributeEr...
-FAILED tests/test_api/test_message.py::test_clear_message_history - Attribute...
-FAILED tests/test_api/test_message.py::test_get_latest_message - AttributeErr...
-FAILED tests/test_core/test_agent.py::test_agent_execute_function - Assertion...
-FAILED tests/test_core/test_memory.py::test_vector_memory - NameError: name '...
-================== 23 failed, 3 passed, 26 warnings in 1.88s ===================
-
-```
-
-# logs/memory.log
-
-```log
-2024-07-22 20:32:11,397 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,407 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,408 INFO short_term memory added for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,409 INFO long_term memory added for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,410 INFO short_term memory deleted for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,412 INFO Redis connection established: redis://localhost:6379 for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,640 INFO ChromaDB collection initialized: agent_12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,640 INFO MemorySystem initialized for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:11,643 INFO short_term memory added for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:12,689 INFO long_term memory added for agent: 12345678-1234-5678-1234-567812345678
-2024-07-22 20:32:12,995 INFO short_term memory deleted for agent: 12345678-1234-5678-1234-567812345678
-
-```
-
-# logs/main.log
-
-```log
-2024-07-22 20:32:03,719 INFO Starting SolidRusT Agentic API
-
-```
-
-# logs/llm.log
-
-```log
-
-```
-
-# logs/function.log
-
-```log
-
-```
-
-# logs/agent.log
-
-```log
-2024-07-22 20:32:11,389 INFO Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678) initialized with openai provider
-2024-07-22 20:32:11,390 INFO Executing function test_function for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
-2024-07-22 20:32:11,391 INFO Function test_function executed successfully for Agent Test Agent (ID: 12345678-1234-5678-1234-567812345678)
 
 ```
 
@@ -1488,11 +819,10 @@ if __name__ == "__main__":
 ```py
 import os
 from typing import List, Dict, Any
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 class Settings(BaseSettings):
-    # API settings
     API_KEY: str
     API_VERSION: str = "v1"
 
@@ -1580,11 +910,7 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": True,
-        "env_file_encoding": "utf-8",
-    }
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 settings = Settings()
 print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
@@ -1880,9 +1206,10 @@ from app.api.models.memory import MemoryType, MemoryOperation
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.mark.asyncio
 async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_data = {
-        "agent_id": test_agent,
+        "agent_id": await test_agent,
         "memory_type": MemoryType.SHORT_TERM,
         "entry": {
             "content": "Test memory content",
@@ -1896,10 +1223,11 @@ async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     assert "memory_id" in added_memory
     return added_memory["memory_id"]
 
+@pytest.mark.asyncio
 async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_id = await test_add_memory(async_client, auth_headers, test_agent)
     retrieve_data = {
-        "agent_id": test_agent,
+        "agent_id": await test_agent,
         "memory_type": MemoryType.SHORT_TERM,
         "memory_id": memory_id
     }
@@ -2217,13 +1545,19 @@ from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN
 from app.config import settings
+import logging
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+logger = logging.getLogger(__name__)
 
 async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
+    logger.debug(f"Received API key: {api_key_header}")
+    logger.debug(f"Expected API key: {settings.API_KEY}")
+    logger.debug(f"Full settings object: {settings}")
     if api_key_header == settings.API_KEY:
         return api_key_header
     else:
+        logger.warning("API key validation failed")
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
         )
@@ -2832,14 +2166,14 @@ async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
 import asyncio
 from typing import Dict, Any, List
 import chromadb
-from chromadb.config import Settings
+from chromadb.config import Settings as ChromaSettings
 from app.utils.logging import memory_logger
 from app.config import settings as app_settings
 
 class VectorMemory:
-    def __init__(self, collection_name: str):
+    def __init__(self, collection_name: str, chroma_settings: ChromaSettings):
         try:
-            self.client = chromadb.Client(Settings(persist_directory=app_settings.chroma_persist_directory))
+            self.client = chromadb.Client(chroma_settings)
             self.collection = self.client.get_or_create_collection(collection_name)
             memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
         except Exception as e:
@@ -2877,13 +2211,14 @@ import json
 from uuid import UUID
 from typing import Dict, Any, List
 from redis import asyncio as aioredis
+from redis.asyncio import Redis
 from app.utils.logging import memory_logger
 from app.config import settings
 
 class RedisMemory:
     def __init__(self, agent_id: UUID):
         try:
-            self.redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+            self.redis = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
             self.agent_id = agent_id
             memory_logger.info(f"Redis connection established: {settings.redis_url} for agent: {agent_id}")
         except Exception as e:
@@ -2944,13 +2279,19 @@ from app.api.models.agent import MemoryConfig
 from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory
 from .vector_memory import VectorMemory
+from chromadb.config import Settings as ChromaSettings
+from app.config import settings as app_settings
 
 class MemorySystem:
     def __init__(self, agent_id: UUID, config: MemoryConfig):
         self.agent_id = agent_id
         self.config = config
         self.short_term = RedisMemory(agent_id)
-        self.long_term = VectorMemory(f"agent_{agent_id}")
+        chroma_settings = ChromaSettings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=app_settings.chroma_persist_directory
+        )
+        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_settings)
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
