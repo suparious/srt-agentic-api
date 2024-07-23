@@ -35,6 +35,19 @@ class Settings(BaseSettings):
     # Database settings
     REDIS_URL: str = "redis://localhost:6379"
     CHROMA_PERSIST_DIRECTORY: str = "/path/to/persist"
+    TEST_REDIS_URL: str = "redis://localhost:6379/15"  # Use database 15 for testing
+    TEST_CHROMA_PERSIST_DIRECTORY: str = "./test_chroma_db"
+
+    # Testing flag
+    TESTING: bool = False
+
+    @property
+    def redis_url(self):
+        return self.TEST_REDIS_URL if self.TESTING else self.REDIS_URL
+
+    @property
+    def chroma_persist_directory(self):
+        return self.TEST_CHROMA_PERSIST_DIRECTORY if self.TESTING else self.CHROMA_PERSIST_DIRECTORY
 
     # Logging settings
     LOG_DIR: str = "/path/to/logs"

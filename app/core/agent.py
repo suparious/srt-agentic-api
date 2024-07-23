@@ -125,7 +125,7 @@ async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[st
         return agent_id
     except Exception as e:
         agent_logger.error(f"Error creating Agent {name}: {str(e)}")
-        raise
+        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
 
 async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
     agent = agents.get(agent_id)

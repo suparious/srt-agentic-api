@@ -10,13 +10,14 @@ def test_settings():
     return Settings(
         API_KEY="test_api_key",
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
-        REDIS_URL="redis://localhost:6379/1",
+        REDIS_URL="redis://localhost:6379/15",  # Use test database
         CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
         OPENAI_API_KEY="test_openai_key",
         ANTHROPIC_API_KEY="test_anthropic_key",
         VLLM_API_BASE="http://test-vllm-api-endpoint",
         LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
         TGI_API_BASE="http://test-tgi-server-endpoint",
+        TESTING=True
     )
 
 @pytest.fixture(scope="module")

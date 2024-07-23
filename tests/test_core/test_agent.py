@@ -20,26 +20,35 @@ def agent_config():
 @pytest.mark.asyncio
 async def test_agent_execute_function(agent_config):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent = Agent(
-        agent_id=agent_id,
-        name="Test Agent",
-        config=agent_config,
-        memory_config=agent_config.memory_config
-    )
 
-    async def test_function(param1, param2):
-        return f"Executed with {param1} and {param2}"
+    with patch('app.core.agent.MemorySystem') as MockMemorySystem, \
+            patch('app.core.agent.create_llm_provider') as mock_create_llm_provider:
+        mock_memory = AsyncMock()
+        MockMemorySystem.return_value = mock_memory
 
-    mock_function = AsyncMock(side_effect=test_function)
-    mock_function.id = "test_function_id"
-    agent.get_function_by_name = Mock(return_value=mock_function)
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
 
-    with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
-        result = await agent.execute_function(
-            function_name="test_function",
-            parameters={"param1": "value1", "param2": "value2"}
+        agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            config=agent_config,
+            memory_config=agent_config.memory_config
         )
 
-    assert result == "Executed with value1 and value2"
-    agent.get_function_by_name.assert_called_once_with("test_function")
-    mock_function.assert_awaited_once_with(param1="value1", param2="value2")
+        async def test_function(param1, param2):
+            return f"Executed with {param1} and {param2}"
+
+        mock_function = AsyncMock(side_effect=test_function)
+        mock_function.id = "test_function_id"
+        agent.get_function_by_name = AsyncMock(return_value=mock_function)
+
+        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
+            result = await agent.execute_function(
+                function_name="test_function",
+                parameters={"param1": "value1", "param2": "value2"}
+            )
+
+        assert result == "Executed with value1 and value2"
+        agent.get_function_by_name.assert_awaited_once_with("test_function")
+        mock_function.assert_awaited_once_with(param1="value1", param2="value2")

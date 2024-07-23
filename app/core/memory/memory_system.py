@@ -1,107 +1,17 @@
-import asyncio
-import json
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Dict, Any, List, Optional
-from redis import asyncio as aioredis
-import chromadb
-from chromadb.config import Settings
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryOperation
 from app.api.models.agent import MemoryConfig
 from app.utils.logging import memory_logger
-
-
-class RedisMemory:
-    def __init__(self, redis_url: str, agent_id: UUID):
-        try:
-            self.redis = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            self.agent_id = agent_id
-            memory_logger.info(f"Redis connection established: {redis_url} for agent: {agent_id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to connect to Redis: {str(e)}")
-            raise
-
-    async def add(self, key: str, value: str, expire: int = 3600):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.set(full_key, value, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add key to Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def get(self, key: str) -> str:
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            value = await self.redis.get(full_key)
-            memory_logger.debug(f"Retrieved key from Redis: {full_key}")
-            return value
-        except Exception as e:
-            memory_logger.error(f"Failed to get key from Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def delete(self, key: str):
-        try:
-            full_key = f"agent:{self.agent_id}:{key}"
-            await self.redis.delete(full_key)
-            memory_logger.debug(f"Deleted key from Redis: {full_key}")
-        except Exception as e:
-            memory_logger.error(f"Failed to delete key from Redis: {full_key}. Error: {str(e)}")
-            raise
-
-    async def get_recent(self, limit: int = 5) -> List[Dict[str, Any]]:
-        try:
-            pattern = f"agent:{self.agent_id}:*"
-            keys = await self.redis.keys(pattern)
-            recent_memories = []
-            for key in keys[-limit:]:
-                value = await self.redis.get(key)
-                if value:
-                    recent_memories.append(json.loads(value))
-            return recent_memories
-        except Exception as e:
-            memory_logger.error(f"Failed to get recent memories from Redis for agent {self.agent_id}: {str(e)}")
-            raise
-
-class VectorMemory:
-    def __init__(self, collection_name: str):
-        try:
-            self.client = chromadb.Client()
-            self.collection = self.client.get_or_create_collection(collection_name)
-            memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
-        except Exception as e:
-            memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
-            raise
-
-    async def add(self, id: str, content: str, metadata: Dict[str, Any] = {}):
-        try:
-            await asyncio.to_thread(self.collection.add,
-                                    documents=[content],
-                                    metadatas=[metadata],
-                                    ids=[id])
-            memory_logger.debug(f"Added document to ChromaDB: {id}")
-        except Exception as e:
-            memory_logger.error(f"Failed to add document to ChromaDB: {id}. Error: {str(e)}")
-            raise
-
-    async def search(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        try:
-            results = await asyncio.to_thread(self.collection.query,
-                                              query_texts=[query],
-                                              n_results=n_results)
-            memory_logger.debug(f"Searched ChromaDB: {query}")
-            return [{"id": id, "content": doc, "metadata": meta}
-                    for id, doc, meta in zip(results['ids'][0], results['documents'][0], results['metadatas'][0])]
-        except Exception as e:
-            memory_logger.error(f"Failed to search ChromaDB: {query}. Error: {str(e)}")
-            raise
-
+from .redis_memory import RedisMemory
+from .vector_memory import VectorMemory
 
 class MemorySystem:
     def __init__(self, agent_id: UUID, config: MemoryConfig):
         self.agent_id = agent_id
         self.config = config
-        self.short_term = RedisMemory(settings.redis_url, agent_id)
-        self.long_term = VectorMemory(f"agent_{agent_id}", settings.chroma_persist_directory)
+        self.short_term = RedisMemory(agent_id)
+        self.long_term = VectorMemory(f"agent_{agent_id}")
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: MemoryType, content: str, metadata: Dict[str, Any] = {}) -> str:
@@ -222,4 +132,3 @@ async def perform_memory_operation(agent_id: UUID, operation: MemoryOperation, m
         return {"message": "Memory deleted successfully"}
     else:
         raise ValueError(f"Invalid memory operation: {operation}")
-
