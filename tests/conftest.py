@@ -1,16 +1,9 @@
-import asyncio
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 @pytest.fixture(scope="session")
 def test_settings():
@@ -59,33 +52,13 @@ async def test_agent(async_client, auth_headers):
                 use_long_term_memory=True,
                 use_redis_cache=True
             )
-        ).dict(),
+        ).model_dump(),
         "memory_config": MemoryConfig(
             use_long_term_memory=True,
             use_redis_cache=True
-        ).dict(),
+        ).model_dump(),
         "initial_prompt": "You are a helpful assistant."
     }
     response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
     return response.json()["agent_id"]
-
-@pytest.fixture
-async def test_function(async_client, auth_headers):
-    function_data = {
-        "function": {
-            "name": "test_function",
-            "description": "A test function",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string"},
-                    "param2": {"type": "integer"}
-                }
-            },
-            "return_type": "string"
-        }
-    }
-    response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
-    assert response.status_code == 201
-    return response.json()["function_id"]
