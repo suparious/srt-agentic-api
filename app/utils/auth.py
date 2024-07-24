@@ -2,22 +2,36 @@ from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from starlette.status import HTTP_403_FORBIDDEN
 from app.config import settings
-import logging
+from app.utils.logging import setup_logger
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-logger = logging.getLogger(__name__)
+auth_logger = setup_logger('auth', settings.LOG_DIR + '/auth.log')
+
 
 async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
-    logger.debug(f"Received API key: {api_key_header}")
-    logger.debug(f"Expected API key: {settings.API_KEY}")
-    logger.debug(f"Full settings object: {settings}")
+    auth_logger.debug(f"Received API key: {api_key_header}")
+    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
+
+    if not api_key_header:
+        auth_logger.warning("No API key provided")
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="No API key provided"
+        )
+
     if api_key_header == settings.API_KEY:
+        auth_logger.info("API key validation successful")
         return api_key_header
     else:
-        logger.warning("API key validation failed")
+        auth_logger.warning("API key validation failed")
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
         )
 
+
 def validate_api_key(api_key: str) -> bool:
-    return api_key == settings.API_KEY
+    is_valid = api_key == settings.API_KEY
+    if is_valid:
+        auth_logger.info("API key validation successful")
+    else:
+        auth_logger.warning("API key validation failed")
+    return is_valid
