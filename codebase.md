@@ -25,7 +25,7 @@ tenacity>=8.2.2,<9.0.0
 pytest>=7.3.1,<8.0.0
 pytest-asyncio
 httpx>=0.24.1,<1.0.0
-
+pytest-cov
 ```
 
 # pytest.ini
@@ -70,6 +70,28 @@ volumes:
   valkey_data:
     driver: local
 
+```
+
+# TESTING.md
+
+```md
+# Instructions for Running Tests
+
+1. Open a terminal window.
+2. Navigate to the root directory of the srt-agentic-api project.
+3. Ensure that all dependencies are installed by running:
+   \`\`\`
+   pip install -r requirements.txt
+   pip install -r requirements-testing.txt
+   \`\`\`
+4. Run the following command to execute the tests and capture the output:
+   \`\`\`
+   pytest --verbose --capture=no --cov=app --cov-report=term-missing > logs/test_results_detailed.txt
+   #pytest --verbose --capture=no > logs/test_results_detailed.txt
+   \`\`\`
+5. Once the command completes, please provide the contents of the `logs/test_results_detailed.txt` file as an artifact in your next message.
+
+Note: If you encounter any errors or issues while running the tests, please include those details in your response as well.
 ```
 
 # README.md
@@ -224,6 +246,10 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```
 
+# .coverage
+
+This is a binary file of the type: Binary
+
 # .aidigestignore
 
 ```
@@ -235,23 +261,29 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 /.idea/
 /data/
 /logs/
+/docs/
 
 ```
 
 # tests/conftest.py
 
 ```py
+import os
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig
+from dotenv import load_dotenv
+
+# Load the test environment variables
+load_dotenv('.env.test')
 
 @pytest.fixture(scope="session")
 def test_settings():
     return Settings(
-        API_KEY="test_api_key",
+        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),  # Use the API key from .env.test
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
         REDIS_URL="redis://localhost:6379/15",
         CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
@@ -423,331 +455,6 @@ filterwarnings =
 
 This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
 
-```
-
-# docs/custom-instructions.md
-
-```md
-Can you write me a good custom instructions prompt for development of this Python FastAPI srt-agentic-api AI Agentic API. Always write all the source files out in full, and use Claude Artifacts.
-
-\`\`\`plaintext
-# Custom Instructions for srt-agentic-api Development
-
-## Project Overview
-The `srt-agentic-api` is a Python FastAPI-based API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, including memory management, function execution, and message processing.
-
-## Development Guidelines
-
-### 1. Code Structure
-- Maintain the existing project structure:
-  \`\`\`
-  srt-agentic-api/
-  ├── app/
-  │   ├── api/
-  │   │   ├── endpoints/
-  │   │   └── models/
-  │   ├── core/
-  │   └── utils/
-  ├── tests/
-  ├── docs/
-  └── requirements.txt
-  \`\`\`
-- Keep related functionality together in modules.
-- Use clear, descriptive names for files, classes, and functions.
-
-### 2. Coding Style
-- Follow PEP 8 guidelines for Python code style.
-- Use type hints for function arguments and return values.
-- Write docstrings for all public classes and functions.
-- Use meaningful variable names that clearly describe their purpose.
-
-### 3. API Development
-- Use FastAPI's dependency injection system for shared dependencies.
-- Implement proper error handling and return appropriate HTTP status codes.
-- Use Pydantic models for request/response schemas.
-- Implement API versioning to allow for future changes without breaking existing clients.
-
-### 4. Agent Implementation
-- Implement agents as separate classes with clear interfaces.
-- Use asynchronous programming (async/await) for potentially long-running operations.
-- Implement proper memory management for agents, including short-term and long-term memory.
-
-### 5. Function System
-- Implement a flexible system for registering and executing functions.
-- Use dependency injection to provide necessary context to functions.
-- Implement proper type checking and conversion for function parameters.
-
-### 6. Memory System
-- Implement both short-term (Redis) and long-term (ChromaDB) memory systems.
-- Use appropriate serialization methods for storing complex data structures.
-- Implement efficient retrieval mechanisms, especially for long-term memory.
-
-### 7. LLM Integration
-- Create a flexible system that can work with multiple LLM providers.
-- Implement proper error handling and retries for LLM API calls.
-- Use environment variables for API keys and other sensitive information.
-
-### 8. Testing
-- Write unit tests for all core functionality.
-- Implement integration tests for API endpoints.
-- Use pytest for running tests.
-- Aim for high test coverage (at least 80%).
-
-### 9. Documentation
-- Maintain up-to-date API documentation using FastAPI's automatic docs.
-- Write clear and concise comments in the code where necessary.
-- Keep the README.md file updated with setup instructions and basic usage examples.
-
-### 10. Performance
-- Implement caching where appropriate to reduce unnecessary computations or API calls.
-- Use asynchronous programming to handle concurrent requests efficiently.
-- Monitor and optimize database queries for efficiency.
-
-### 11. Security
-- Implement proper authentication and authorization mechanisms.
-- Sanitize all user inputs to prevent injection attacks.
-- Use HTTPS for all communications in production.
-- Implement rate limiting to prevent abuse.
-
-### 12. Scalability
-- Design the system to be horizontally scalable.
-- Use message queues for handling long-running tasks if necessary.
-- Implement proper logging for debugging and monitoring.
-
-### 13. Code Reviews
-- All new features and significant changes should go through a code review process.
-- Use pull requests for proposing and reviewing changes.
-- Ensure all tests pass before merging new code.
-
-### 14. Versioning and Deployment
-- Use semantic versioning for the API.
-- Maintain a CHANGELOG.md file to document changes between versions.
-- Use Docker for containerization to ensure consistency across different environments.
-
-### 15. Continuous Integration/Continuous Deployment (CI/CD)
-- Set up CI/CD pipelines for automated testing and deployment.
-- Automate version bumping and changelog updates.
-
-Remember to always consider the end-user experience when developing new features or making changes. The API should be intuitive, well-documented, and robust.
-\`\`\`
-
-```
-
-# docs/NOTES.md
-
-```md
-
-## Function registration
-
-Example of how to register a new function.
-
-\`\`\`python
-def calculate_sum(a: int, b: int) -> int:
-    return a + b
-
-function_def = FunctionDefinition(
-    name="calculate_sum",
-    description="Calculates the sum of two numbers",
-    parameters={"a": {"type": "integer"}, "b": {"type": "integer"}},
-    return_type="integer",
-    implementation=calculate_sum
-)
-
-function_id = await register_function(function_def)
-\`\`\`
-
-## Formatting for summary
-
-How to generate the `codebase.md` file.
-
-\`\`\`bash
-npx ai-digest
-\`\`\`
-
-## Testing LLMProvider
-
-To manually test the provider library:
-
-\`\`\`python
-from app.config import settings
-from app.core.llm_provider import create_llm_provider
-
-provider_config = {
-    "provider_type": "openai",
-    "model_name": "gpt-3.5-turbo",
-    **settings.LLM_PROVIDER_CONFIGS["openai"]
-}
-
-llm_provider = create_llm_provider(provider_config)
-\`\`\`
-
-```
-
-# docs/DevelopmentPlan.md
-
-```md
-# Updated SolidRusT Agentic API Development Plan
-
-## Phase 1: Core Functionality and Testing (Immediate Priority)
-
-1. **Fix and Enhance Testing Framework**
-   - [ ] Resolve `test_client` fixture issues in API tests
-   - [ ] Update AsyncClient usage in tests to ensure proper asynchronous testing
-   - [ ] Implement comprehensive mocking of dependencies in tests
-   - [ ] Increase test coverage to at least 80% for core functionality
-
-2. **Address Core Functionality Issues**
-   - [ ] Debug and fix Agent initialization process
-   - [ ] Ensure proper function execution within the Agent class
-   - [ ] Resolve any issues with memory system integration (Redis and ChromaDB)
-   - [ ] Implement robust error handling and logging throughout the core modules
-
-3. **Refine API Endpoints and Models**
-   - [ ] Review and update all API endpoints for consistency and error handling
-   - [ ] Update Pydantic models to v2 syntax and resolve deprecation warnings
-   - [ ] Implement proper input validation and error responses for all endpoints
-   - [ ] Ensure all endpoints are properly documented with clear request/response examples
-
-4. **Enhance Memory System**
-   - [ ] Optimize memory retrieval algorithms for both short-term and long-term memory
-   - [ ] Implement more sophisticated memory search functionality
-   - [ ] Add support for memory context and relevance scoring
-
-5. **Improve LLM Provider Integration**
-   - [ ] Implement actual API calls to supported LLM providers (OpenAI, Anthropic, etc.)
-   - [ ] Add comprehensive error handling and retries for LLM API calls
-   - [ ] Develop a fallback mechanism for LLM provider failures
-
-## Phase 2: Advanced Features and Optimizations
-
-6. **Implement Advanced Agent Capabilities**
-   - [ ] Develop more sophisticated reasoning algorithms for agents
-   - [ ] Implement context-aware function calling
-   - [ ] Add support for multi-turn conversations and maintaining conversation state
-
-7. **Enhance Function System**
-   - [ ] Implement function versioning to allow for updates without breaking existing agents
-   - [ ] Add support for more complex parameter types and return values
-   - [ ] Develop a system for dynamic function discovery and registration
-
-8. **Security Enhancements**
-   - [ ] Implement role-based access control for API endpoints
-   - [ ] Add rate limiting and usage quotas to prevent abuse
-   - [ ] Conduct a comprehensive security audit of the entire system
-
-9. **Performance Optimizations**
-   - [ ] Implement caching mechanisms for frequently accessed data
-   - [ ] Optimize database queries and indexing strategies
-   - [ ] Implement parallel processing where applicable, especially for agent operations
-
-10. **Scalability Improvements**
-    - [ ] Design and implement horizontal scaling strategies
-    - [ ] Develop load balancing mechanisms for distributed deployments
-    - [ ] Optimize the system for cloud deployment (AWS, GCP, or Azure)
-
-## Phase 3: Production Readiness and Advanced Features
-
-11. **Monitoring and Observability**
-    - [ ] Implement comprehensive logging and monitoring throughout the application
-    - [ ] Develop a dashboard for system health and usage statistics
-    - [ ] Set up alerting for critical system events and errors
-
-12. **Documentation and User Guide**
-    - [ ] Create detailed API documentation with interactive examples
-    - [ ] Develop a comprehensive user guide for setting up and using the system
-    - [ ] Create tutorials and use-case examples for common scenarios
-
-13. **Continuous Integration and Deployment**
-    - [ ] Set up CI/CD pipelines for automated testing and deployment
-    - [ ] Implement automated version bumping and changelog generation
-    - [ ] Develop deployment scripts for various cloud providers
-
-14. **Advanced AI Features**
-    - [ ] Implement multi-agent collaboration systems
-    - [ ] Develop advanced planning and reasoning capabilities for agents
-    - [ ] Explore integration with other AI technologies (e.g., computer vision, speech recognition)
-
-15. **Ecosystem Development**
-    - [ ] Create SDKs for popular programming languages to interact with the API
-    - [ ] Develop tools for visual agent and workflow design
-    - [ ] Consider creating a marketplace for custom functions and agent templates
-
-## Ongoing Tasks
-
-- Regularly update dependencies and address security vulnerabilities
-- Conduct code reviews for all new features and significant changes
-- Maintain and update documentation as the system evolves
-- Gather and incorporate user feedback for continuous improvement
-- Stay updated with advancements in AI and LLM technologies, and integrate relevant improvements
-
-This updated plan addresses the immediate concerns highlighted in the current plan while also incorporating longer-term goals from the roadmap. It provides a clear, phased approach to development, focusing first on stabilizing core functionality and testing, then moving on to advanced features and optimizations, and finally preparing the system for production use and future expansion.
-```
-
-# docs/CurrentStatusSummary.md
-
-```md
-# SolidRusT Agentic API Project Status Summary
-
-## Current State
-
-The project has a good foundation with a well-structured FastAPI application. Key components include:
-
-1. API endpoints for agent, message, function, and memory operations
-2. Core functionality for agent management, LLM integration, and memory systems
-3. Pydantic models for request/response handling
-4. Basic configuration and logging setup
-
-## Progress on Development Plan
-
-### Phase 1: Core Functionality and Testing
-
-1. **Testing Framework**
-   - ✅ Basic test structure is in place
-   - ❌ Need to resolve `test_client` fixture issues
-   - ❌ Comprehensive mocking of dependencies not fully implemented
-   - ❌ Test coverage likely below 80% target
-
-2. **Core Functionality**
-   - ✅ Basic agent initialization and message processing implemented
-   - ❌ Function execution within Agent class needs debugging
-   - ✅ Memory system integration (Redis and ChromaDB) implemented
-   - ✅ Basic error handling and logging in place, but could be improved
-
-3. **API Endpoints and Models**
-   - ✅ API endpoints for core functionality implemented
-   - ✅ Pydantic models updated to v2 syntax
-   - ❌ Input validation and error responses could be improved
-   - ❌ API documentation needs enhancement
-
-4. **Memory System**
-   - ✅ Basic short-term and long-term memory implemented
-   - ❌ Memory retrieval algorithms could be optimized
-   - ❌ Advanced memory search functionality not yet implemented
-   - ❌ Memory context and relevance scoring not implemented
-
-5. **LLM Provider Integration**
-   - ✅ Basic structure for multiple LLM providers in place
-   - ❌ Actual API calls to LLM providers not implemented (using placeholders)
-   - ❌ Error handling and retries for LLM API calls not implemented
-   - ❌ Fallback mechanism for LLM provider failures not implemented
-
-### Areas Needing Immediate Attention
-
-1. Resolve testing framework issues and increase test coverage
-2. Implement actual LLM API calls and improve error handling
-3. Enhance memory system with advanced search and relevance scoring
-4. Improve API documentation and error responses
-5. Debug and refine function execution within the Agent class
-
-### Next Steps
-
-After addressing the immediate concerns, focus on:
-
-1. Implementing advanced agent capabilities (reasoning algorithms, context-aware function calling)
-2. Enhancing the function system (versioning, complex parameter types)
-3. Implementing security features (role-based access control, rate limiting)
-4. Optimizing performance (caching, query optimization)
-5. Preparing for scalability (horizontal scaling strategies, load balancing)
 ```
 
 # app/main.py
@@ -954,7 +661,11 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=".env" if not os.getenv("TESTING") else ".env.test",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
 
 settings = Settings()
 print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
@@ -967,425 +678,266 @@ print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
 
 ```
 
-# app/utils/logging.py
+# tests/test_core/test_memory.py
 
 ```py
-import logging
-from logging.handlers import RotatingFileHandler
-import os
-from app.config import settings
+import pytest
+from uuid import UUID
+from unittest.mock import AsyncMock, patch
+from app.core.memory import RedisMemory, VectorMemory, MemorySystem
+from app.api.models.memory import MemoryType, MemoryEntry
+from app.api.models.agent import MemoryConfig
 
-def setup_logger(name, log_file, level=logging.INFO):
-    """Function to set up a logger with file and console handlers."""
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+@pytest.fixture
+def memory_config():
+    return MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
 
-    # Ensure log directory exists
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+@pytest.mark.asyncio
+async def test_redis_memory():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
 
-    # File Handler
-    file_handler = RotatingFileHandler(log_file, maxBytes=10485760, backupCount=5)  # 10MB per file, keep 5 old versions
-    file_handler.setFormatter(formatter)
+    with patch('app.core.memory.redis_memory.aioredis') as mock_redis:
+        mock_redis_client = AsyncMock()
+        mock_redis.from_url.return_value = mock_redis_client
 
-    # Console Handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
+        redis_memory = RedisMemory("redis://localhost:6379", agent_id)
 
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+        # Test add
+        await redis_memory.add("test_key", "test_value")
+        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key", "test_value", ex=3600)
 
-    return logger
+        # Test get
+        mock_redis_client.get.return_value = "test_value"
+        value = await redis_memory.get("test_key")
+        assert value == "test_value"
+        mock_redis_client.get.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
 
-# Create loggers
-main_logger = setup_logger('main', settings.LOG_DIR + '/main.log')
-agent_logger = setup_logger('agent', settings.LOG_DIR + '/agent.log')
-memory_logger = setup_logger('memory', settings.LOG_DIR + '/memory.log')
-llm_logger = setup_logger('llm', settings.LOG_DIR + '/llm.log')
-function_logger = setup_logger('function', settings.LOG_DIR + '/function.log')  # New logger for function operations
+        # Test delete
+        await redis_memory.delete("test_key")
+        mock_redis_client.delete.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
+
+@pytest.mark.asyncio
+async def test_vector_memory():
+    with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
+        mock_client = AsyncMock()
+        mock_collection = AsyncMock()
+        mock_client.get_or_create_collection.return_value = mock_collection
+        mock_chromadb.Client.return_value = mock_client
+
+        vector_memory = VectorMemory("test_collection", mock_chromadb.config.Settings())
+
+        # Test add
+        await vector_memory.add("test_id", "test_content", {"key": "value"})
+        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}], ids=["test_id"])
+
+        # Test search
+        mock_collection.query.return_value = {
+            "ids": [["test_id"]],
+            "documents": [["test_content"]],
+            "metadatas": [[{"key": "value"}]]
+        }
+        results = await vector_memory.search("test query")
+        assert results == [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
+        mock_collection.query.assert_called_once_with(query_texts=["test query"], n_results=5)
+
+@pytest.mark.asyncio
+async def test_memory_system(memory_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+
+    with patch('app.core.memory.memory_system.RedisMemory') as MockRedisMemory, \
+            patch('app.core.memory.memory_system.VectorMemory') as MockVectorMemory:
+        mock_redis = AsyncMock()
+        mock_vector = AsyncMock()
+        MockRedisMemory.return_value = mock_redis
+        MockVectorMemory.return_value = mock_vector
+
+        memory_system = MemorySystem(agent_id, memory_config)
+
+        # Test add (short-term memory)
+        await memory_system.add(MemoryType.SHORT_TERM, "test_content", {"key": "value"})
+        mock_redis.add.assert_called_once()
+
+        # Test add (long-term memory)
+        await memory_system.add(MemoryType.LONG_TERM, "test_content", {"key": "value"})
+        mock_vector.add.assert_called_once()
+
+        # Test retrieve (short-term memory)
+        mock_redis.get.return_value = "test_content"
+        result = await memory_system.retrieve(MemoryType.SHORT_TERM, "test_id")
+        assert result == MemoryEntry(content="test_content")
+
+        # Test retrieve (long-term memory)
+        mock_vector.search.return_value = [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
+        result = await memory_system.retrieve(MemoryType.LONG_TERM, "test_id")
+        assert result == MemoryEntry(content="test_content", metadata={"key": "value"})
+
+        # Test search
+        results = await memory_system.search(MemoryType.LONG_TERM, "test query")
+        assert results == [MemoryEntry(content="test_content", metadata={"key": "value"})]
+
+        # Test delete
+        await memory_system.delete(MemoryType.SHORT_TERM, "test_id")
+        mock_redis.delete.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_memory_system_integration(memory_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    memory_system = MemorySystem(agent_id, memory_config)
+
+    # Test add and retrieve (short-term memory)
+    short_term_id = await memory_system.add(MemoryType.SHORT_TERM, "short-term content")
+    short_term_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
+    assert short_term_result.content == "short-term content"
+
+    # Test add and retrieve (long-term memory)
+    long_term_id = await memory_system.add(MemoryType.LONG_TERM, "long-term content", {"type": "test"})
+    long_term_result = await memory_system.retrieve(MemoryType.LONG_TERM, long_term_id)
+    assert long_term_result.content == "long-term content"
+    assert long_term_result.metadata == {"type": "test"}
+
+    # Test search
+    search_results = await memory_system.search(MemoryType.LONG_TERM, "long-term")
+    assert len(search_results) > 0
+    assert search_results[0].content == "long-term content"
+
+    # Test delete
+    await memory_system.delete(MemoryType.SHORT_TERM, short_term_id)
+    deleted_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
+    assert deleted_result is None
 
 ```
 
-# app/utils/auth.py
+# tests/test_core/test_agent.py
 
 ```py
-from fastapi import HTTPException, Security
-from fastapi.security import APIKeyHeader
-from starlette.status import HTTP_403_FORBIDDEN
-from app.config import settings
-import logging
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from uuid import UUID
+from app.core.agent import Agent
+from app.api.models.agent import AgentConfig, MemoryConfig
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-logger = logging.getLogger(__name__)
 
-async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
-    logger.debug(f"Received API key: {api_key_header}")
-    logger.debug(f"Expected API key: {settings.API_KEY}")
-    logger.debug(f"Full settings object: {settings}")
-    if api_key_header == settings.API_KEY:
-        return api_key_header
-    else:
-        logger.warning("API key validation failed")
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
+@pytest.fixture
+def agent_config():
+    return AgentConfig(
+        llm_provider="openai",
+        model_name="gpt-3.5-turbo",
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
         )
-
-def validate_api_key(api_key: str) -> bool:
-    return api_key == settings.API_KEY
-```
-
-# app/utils/__init__.py
-
-```py
-
-```
-
-# app/core/llm_provider.py
-
-```py
-import asyncio
-from typing import Dict, Any
-from abc import ABC, abstractmethod
-from app.config import settings
-
-class BaseLLMProvider(ABC):
-    @abstractmethod
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        pass
-
-class OpenAIProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-        # You might want to add API key handling here, e.g.:
-        # self.api_key = config['api_key']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement OpenAI API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from OpenAI model {self.model_name}: {prompt[:30]}..."
-
-class VLLMProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement vLLM API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from vLLM model {self.model_name}: {prompt[:30]}..."
-
-class LlamaCppServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement Llama.cpp server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from Llama.cpp model {self.model_name}: {prompt[:30]}..."
-
-class TGIServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement TGI server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from TGI model {self.model_name}: {prompt[:30]}..."
-
-class LLMProvider:
-    def __init__(self, provider_config: Dict[str, Any]):
-        self.provider_type = provider_config['provider_type']
-        self.config = provider_config
-        self.config['api_base'] = self.config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(self.provider_type, {}).get('api_base')
-        self.provider = self._get_provider()
-
-    def _get_provider(self) -> BaseLLMProvider:
-        if self.provider_type == "openai":
-            return OpenAIProvider(self.config)
-        elif self.provider_type == "vllm":
-            return VLLMProvider(self.config)
-        elif self.provider_type == "llamacpp":
-            return LlamaCppServerProvider(self.config)
-        elif self.provider_type == "tgi":
-            return TGIServerProvider(self.config)
-        else:
-            raise ValueError(f"Unsupported provider type: {self.provider_type}")
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        return await self.provider.generate(prompt, temperature, max_tokens)
-
-# Factory function to create LLMProvider instances
-def create_llm_provider(provider_config: Dict[str, Any]) -> LLMProvider:
-    return LLMProvider(provider_config)
-
-```
-
-# app/core/agent.py
-
-```py
-import inspect
-import asyncio
-from uuid import UUID, uuid4
-from typing import Dict, Any, Tuple, List, Optional
-from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
-from app.api.models.function import FunctionDefinition
-from app.api.models.memory import MemoryType
-from app.core.llm_provider import create_llm_provider
-from app.core.memory import MemorySystem
-from app.utils.logging import agent_logger
-from fastapi import HTTPException
-
-class Agent:
-    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
-        self.id = agent_id
-        self.name = name
-        self.config = config
-        self.llm_provider = create_llm_provider({
-            'provider_type': config.llm_provider,
-            'model_name': config.model_name
-        })
-        self.memory = MemorySystem(agent_id, memory_config)
-        self.conversation_history = []
-        self.available_function_ids: List[str] = []
-        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
-
-    async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
-        try:
-            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
-            self.conversation_history.append({"role": "user", "content": message})
-
-            relevant_context = await self.memory.retrieve_relevant(message)
-            prompt = self._prepare_prompt(relevant_context)
-
-            response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
-            response_text, function_calls = self._parse_response(response)
-
-            self.conversation_history.append({"role": "assistant", "content": response_text})
-            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
-
-            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
-            return response_text, function_calls
-        except Exception as e:
-            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
-            raise
-
-    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
-        try:
-            agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-            get_function = self.get_function_by_name(function_name)
-            if not get_function:
-                raise ValueError(f"Unknown function: {function_name}")
-
-            func_impl = registered_functions[get_function.id].implementation
-
-            result = await func_impl(**parameters)
-
-            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
-            return result
-        except Exception as e:
-            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
-            raise
-
-    def get_available_functions(self) -> List[FunctionDefinition]:
-        return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
-
-    def add_function(self, function_id: str):
-        if function_id not in registered_functions:
-            raise ValueError(f"Function with ID {function_id} is not registered")
-        if function_id not in self.available_function_ids:
-            self.available_function_ids.append(function_id)
-            agent_logger.info(f"Function {registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
-        else:
-            agent_logger.warning(f"Function {registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
-
-    def remove_function(self, function_id: str):
-        if function_id in self.available_function_ids:
-            self.available_function_ids.remove(function_id)
-            agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {self.name} (ID: {self.id})")
-        else:
-            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
-
-    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
-        for func_id in self.available_function_ids:
-            if func_id in registered_functions and registered_functions[func_id].name == function_name:
-                return registered_functions[func_id]
-        return None
-
-    def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
-        context_str = "\n".join([f"Context: {item['content']}" for item in context])
-        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
-        return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
-
-    def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:
-        function_calls = []
-        if "FUNCTION CALL:" in response:
-            parts = response.split("FUNCTION CALL:")
-            response = parts[0].strip()
-            for call in parts[1:]:
-                try:
-                    function_name, args = call.split("(", 1)
-                    args = args.rsplit(")", 1)[0]
-                    function_calls.append({
-                        "name": function_name.strip(),
-                        "arguments": eval(f"dict({args})")
-                    })
-                except Exception as e:
-                    agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
-        return response, function_calls
-
-# Global dictionaries
-agents: Dict[UUID, Agent] = {}
-registered_functions: Dict[str, FunctionDefinition] = {}
-
-# Facade functions for interacting with agents
-async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
-    try:
-        agent_id = uuid4()
-        agent_config = AgentConfig(**config)
-        mem_config = MemoryConfig(**memory_config)
-        agent = Agent(agent_id, name, agent_config, mem_config)
-        agents[agent_id] = agent
-        await agent.process_message(initial_prompt)
-        agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
-        return agent_id
-    except Exception as e:
-        agent_logger.error(f"Error creating Agent {name}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
-
-async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.warning(f"No agent found with id: {agent_id}")
-        return None
-
-    return AgentInfoResponse(
-        agent_id=agent.id,
-        name=agent.name,
-        config=agent.config,
-        memory_config=agent.memory.config,
-        conversation_history_length=len(agent.conversation_history)
     )
 
-async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.warning(f"No agent found with id: {agent_id} for update")
-        return False
 
-    try:
-        if 'config' in update_data:
-            agent.config = AgentConfig(**update_data['config'])
-        if 'memory_config' in update_data:
-            agent.memory.config = MemoryConfig(**update_data['memory_config'])
-        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
-        return True
-    except Exception as e:
-        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
-        return False
+@pytest.mark.asyncio
+async def test_agent_initialization(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
 
-async def delete_agent(agent_id: UUID) -> bool:
-    if agent_id in agents:
-        del agents[agent_id]
-        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
-        return True
-    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
-    return False
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
 
-async def list_agents() -> List[AgentInfoResponse]:
-    return [
-        AgentInfoResponse(
-            agent_id=agent.id,
-            name=agent.name,
-            config=agent.config,
-            memory_config=agent.memory.config,
-            conversation_history_length=len(agent.conversation_history)
-        )
-        for agent in agents.values()
-    ]
+        mock_memory_system = AsyncMock()
+        MockMemorySystem.return_value = mock_memory_system
 
-async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return agent.config.memory_config
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
 
-async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return await agent.process_message(message)
+        assert agent.id == agent_id
+        assert agent.name == agent_name
+        assert agent.config == agent_config
+        assert isinstance(agent.llm_provider, AsyncMock)
+        assert isinstance(agent.memory, AsyncMock)
 
-async def register_function(function: FunctionDefinition) -> str:
-    function_id = str(uuid4())
-    registered_functions[function_id] = function
-    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
-    return function_id
 
-async def execute_function(agent_id: UUID, function_name: str, parameters: Dict[str, Any]) -> Any:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return await agent.execute_function(function_name, parameters)
+@pytest.mark.asyncio
+async def test_agent_process_message(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+    test_message = "Hello, Agent!"
 
-async def get_available_functions(agent_id: UUID) -> List[FunctionDefinition]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return agent.get_available_functions()
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_llm_provider.generate.return_value = "Generated response"
+        mock_create_llm_provider.return_value = mock_llm_provider
 
-async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
+        mock_memory_system = AsyncMock()
+        mock_memory_system.retrieve_relevant.return_value = []
+        MockMemorySystem.return_value = mock_memory_system
 
-    registered_functions[function_id] = updated_function
-    agent_logger.info(f"Function with ID: {function_id} updated successfully")
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
 
-    for agent in agents.values():
-        if function_id in agent.available_function_ids:
-            agent.add_function(function_id)
-            agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
+        response, function_calls = await agent.process_message(test_message)
 
-async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
+        assert response == "Generated response"
+        assert function_calls == []
+        mock_memory_system.retrieve_relevant.assert_called_once_with(test_message)
+        mock_llm_provider.generate.assert_called_once()
+        mock_memory_system.add.assert_called_once()
 
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
 
-    agent.add_function(function_id)
-    agent_logger.info(f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
+@pytest.mark.asyncio
+async def test_agent_execute_function(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
 
-async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
+    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
+            patch('app.core.agent.MemorySystem') as MockMemorySystem:
+        mock_llm_provider = AsyncMock()
+        mock_create_llm_provider.return_value = mock_llm_provider
 
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
+        mock_memory_system = AsyncMock()
+        MockMemorySystem.return_value = mock_memory_system
 
-    agent.remove_function(function_id)
-    agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        async def test_function(param1, param2):
+            return f"Executed with {param1} and {param2}"
+
+        mock_function = AsyncMock(side_effect=test_function)
+        mock_function.id = "test_function_id"
+        agent.get_function_by_name = Mock(return_value=mock_function)
+
+        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
+            result = await agent.execute_function(
+                function_name="test_function",
+                parameters={"param1": "value1", "param2": "value2"}
+            )
+
+        assert result == "Executed with value1 and value2"
+        agent.get_function_by_name.assert_called_once_with("test_function")
+        mock_function.assert_awaited_once_with(param1="value1", param2="value2")
+
+
+@pytest.mark.asyncio
+async def test_agent_get_available_functions(agent_config):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    agent_name = "Test Agent"
+
+    with patch('app.core.agent.create_llm_provider'), patch('app.core.agent.MemorySystem'):
+        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+
+        mock_function1 = Mock(id="func1", name="Function 1")
+        mock_function2 = Mock(id="func2", name="Function 2")
+
+        with patch.dict('app.core.agent.registered_functions', {
+            "func1": mock_function1,
+            "func2": mock_function2
+        }):
+            agent.available_function_ids = ["func1", "func2"]
+            available_functions = agent.get_available_functions()
+
+        assert len(available_functions) == 2
+        assert available_functions[0].name == "Function 1"
+        assert available_functions[1].name == "Function 2"
 
 ```
 
-# app/core/__init__.py
+# tests/test_core/__init__.py
 
 ```py
 
@@ -1765,306 +1317,463 @@ async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
 
 ```
 
+# app/core/llm_provider.py
+
+```py
+import asyncio
+from typing import Dict, Any
+from abc import ABC, abstractmethod
+from app.config import settings
+
+class BaseLLMProvider(ABC):
+    @abstractmethod
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        pass
+
+class OpenAIProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+        # You might want to add API key handling here, e.g.:
+        # self.api_key = config['api_key']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement OpenAI API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from OpenAI model {self.model_name}: {prompt[:30]}..."
+
+class VLLMProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement vLLM API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from vLLM model {self.model_name}: {prompt[:30]}..."
+
+class LlamaCppServerProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement Llama.cpp server API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from Llama.cpp model {self.model_name}: {prompt[:30]}..."
+
+class TGIServerProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement TGI server API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from TGI model {self.model_name}: {prompt[:30]}..."
+
+class LLMProvider:
+    def __init__(self, provider_config: Dict[str, Any]):
+        self.provider_type = provider_config['provider_type']
+        self.config = provider_config
+        self.config['api_base'] = self.config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(self.provider_type, {}).get('api_base')
+        self.provider = self._get_provider()
+
+    def _get_provider(self) -> BaseLLMProvider:
+        if self.provider_type == "openai":
+            return OpenAIProvider(self.config)
+        elif self.provider_type == "vllm":
+            return VLLMProvider(self.config)
+        elif self.provider_type == "llamacpp":
+            return LlamaCppServerProvider(self.config)
+        elif self.provider_type == "tgi":
+            return TGIServerProvider(self.config)
+        else:
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        return await self.provider.generate(prompt, temperature, max_tokens)
+
+# Factory function to create LLMProvider instances
+def create_llm_provider(provider_config: Dict[str, Any]) -> LLMProvider:
+    return LLMProvider(provider_config)
+
+```
+
+# app/core/agent.py
+
+```py
+import inspect
+import asyncio
+from uuid import UUID, uuid4
+from typing import Dict, Any, Tuple, List, Optional
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
+from app.api.models.function import FunctionDefinition
+from app.api.models.memory import MemoryType
+from app.core.llm_provider import create_llm_provider
+from app.core.memory import MemorySystem
+from app.utils.logging import agent_logger
+from fastapi import HTTPException
+
+class Agent:
+    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
+        self.id = agent_id
+        self.name = name
+        self.config = config
+        self.llm_provider = create_llm_provider({
+            'provider_type': config.llm_provider,
+            'model_name': config.model_name
+        })
+        self.memory = MemorySystem(agent_id, memory_config)
+        self.conversation_history = []
+        self.available_function_ids: List[str] = []
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
+
+    async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+        try:
+            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
+            self.conversation_history.append({"role": "user", "content": message})
+
+            relevant_context = await self.memory.retrieve_relevant(message)
+            prompt = self._prepare_prompt(relevant_context)
+
+            response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
+            response_text, function_calls = self._parse_response(response)
+
+            self.conversation_history.append({"role": "assistant", "content": response_text})
+            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
+
+            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
+            return response_text, function_calls
+        except Exception as e:
+            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
+            raise
+
+    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+        try:
+            agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+            get_function = self.get_function_by_name(function_name)
+            if not get_function:
+                raise ValueError(f"Unknown function: {function_name}")
+
+            func_impl = registered_functions[get_function.id].implementation
+
+            result = await func_impl(**parameters)
+
+            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+            return result
+        except Exception as e:
+            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+            raise
+
+    def get_available_functions(self) -> List[FunctionDefinition]:
+        return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
+
+    def add_function(self, function_id: str):
+        if function_id not in registered_functions:
+            raise ValueError(f"Function with ID {function_id} is not registered")
+        if function_id not in self.available_function_ids:
+            self.available_function_ids.append(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(f"Function {registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
+
+    def remove_function(self, function_id: str):
+        if function_id in self.available_function_ids:
+            self.available_function_ids.remove(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
+
+    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
+        for func_id in self.available_function_ids:
+            if func_id in registered_functions and registered_functions[func_id].name == function_name:
+                return registered_functions[func_id]
+        return None
+
+    def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
+        context_str = "\n".join([f"Context: {item['content']}" for item in context])
+        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
+        return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
+
+    def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:
+        function_calls = []
+        if "FUNCTION CALL:" in response:
+            parts = response.split("FUNCTION CALL:")
+            response = parts[0].strip()
+            for call in parts[1:]:
+                try:
+                    function_name, args = call.split("(", 1)
+                    args = args.rsplit(")", 1)[0]
+                    function_calls.append({
+                        "name": function_name.strip(),
+                        "arguments": eval(f"dict({args})")
+                    })
+                except Exception as e:
+                    agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
+        return response, function_calls
+
+# Global dictionaries
+agents: Dict[UUID, Agent] = {}
+registered_functions: Dict[str, FunctionDefinition] = {}
+
+# Facade functions for interacting with agents
+async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
+    try:
+        agent_id = uuid4()
+        agent_config = AgentConfig(**config)
+        mem_config = MemoryConfig(**memory_config)
+        agent = Agent(agent_id, name, agent_config, mem_config)
+        agents[agent_id] = agent
+        await agent.process_message(initial_prompt)
+        agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
+        return agent_id
+    except Exception as e:
+        agent_logger.error(f"Error creating Agent {name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
+
+async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id}")
+        return None
+
+    return AgentInfoResponse(
+        agent_id=agent.id,
+        name=agent.name,
+        config=agent.config,
+        memory_config=agent.memory.config,
+        conversation_history_length=len(agent.conversation_history)
+    )
+
+async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id} for update")
+        return False
+
+    try:
+        if 'config' in update_data:
+            agent.config = AgentConfig(**update_data['config'])
+        if 'memory_config' in update_data:
+            agent.memory.config = MemoryConfig(**update_data['memory_config'])
+        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+        return True
+    except Exception as e:
+        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+        return False
+
+async def delete_agent(agent_id: UUID) -> bool:
+    if agent_id in agents:
+        del agents[agent_id]
+        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
+        return True
+    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
+    return False
+
+async def list_agents() -> List[AgentInfoResponse]:
+    return [
+        AgentInfoResponse(
+            agent_id=agent.id,
+            name=agent.name,
+            config=agent.config,
+            memory_config=agent.memory.config,
+            conversation_history_length=len(agent.conversation_history)
+        )
+        for agent in agents.values()
+    ]
+
+async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return agent.config.memory_config
+
+async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return await agent.process_message(message)
+
+async def register_function(function: FunctionDefinition) -> str:
+    function_id = str(uuid4())
+    registered_functions[function_id] = function
+    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
+    return function_id
+
+async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+    try:
+        agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+        get_function = self.get_function_by_name(function_name)
+        if not get_function:
+            raise ValueError(f"Unknown function: {function_name}")
+
+        func_impl = registered_functions[get_function.id].implementation
+
+        result = await func_impl(**parameters)  # Ensure this is awaited
+
+        agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+        return result
+    except Exception as e:
+        agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+        raise
+
+def get_available_functions(self) -> List[FunctionDefinition]:
+    return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
+
+async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    registered_functions[function_id] = updated_function
+    agent_logger.info(f"Function with ID: {function_id} updated successfully")
+
+    for agent in agents.values():
+        if function_id in agent.available_function_ids:
+            agent.add_function(function_id)
+            agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
+
+async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.add_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
+
+async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.remove_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
+
+```
+
+# app/core/__init__.py
+
+```py
+
+```
+
+# app/utils/logging.py
+
+```py
+import logging
+from logging.handlers import RotatingFileHandler
+import os
+from app.config import settings
+
+def setup_logger(name, log_file, level=logging.INFO):
+    """Function to set up a logger with file and console handlers."""
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Ensure log directory exists
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+    # File Handler
+    file_handler = RotatingFileHandler(log_file, maxBytes=10485760, backupCount=5)  # 10MB per file, keep 5 old versions
+    file_handler.setFormatter(formatter)
+
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
+
+# Create loggers
+main_logger = setup_logger('main', os.path.join(settings.LOG_DIR, 'main.log'))
+agent_logger = setup_logger('agent', os.path.join(settings.LOG_DIR, 'agent.log'))
+memory_logger = setup_logger('memory', os.path.join(settings.LOG_DIR, 'memory.log'))
+llm_logger = setup_logger('llm', os.path.join(settings.LOG_DIR, 'llm.log'))
+function_logger = setup_logger('function', os.path.join(settings.LOG_DIR, 'function.log'))
+auth_logger = setup_logger('auth', os.path.join(settings.LOG_DIR, 'auth.log'))
+
+def get_logger(name: str):
+    """Function to get or create a logger by name."""
+    if name not in logging.Logger.manager.loggerDict:
+        return setup_logger(name, os.path.join(settings.LOG_DIR, f"{name}.log"))
+    return logging.getLogger(name)
+
+```
+
+# app/utils/auth.py
+
+```py
+from fastapi import HTTPException, Security
+from fastapi.security import APIKeyHeader
+from starlette.status import HTTP_403_FORBIDDEN
+from app.config import settings
+from app.utils.logging import setup_logger
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+auth_logger = setup_logger('auth', settings.LOG_DIR + '/auth.log')
+
+async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
+    auth_logger.debug(f"Received API key: {api_key_header}")
+    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
+    auth_logger.debug(f"API keys match: {api_key_header == settings.API_KEY}")
+
+    if not api_key_header:
+        auth_logger.warning("No API key provided")
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="No API key provided"
+        )
+
+    if api_key_header == settings.API_KEY:
+        auth_logger.info("API key validation successful")
+        return api_key_header
+    else:
+        auth_logger.warning(f"API key validation failed. Received: {api_key_header}, Expected: {settings.API_KEY}")
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
+        )
+
+def validate_api_key(api_key: str) -> bool:
+    is_valid = api_key == settings.API_KEY
+    auth_logger.debug(f"Validating API key: {api_key}")
+    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
+    auth_logger.debug(f"API keys match: {is_valid}")
+    if is_valid:
+        auth_logger.info("API key validation successful")
+    else:
+        auth_logger.warning("API key validation failed")
+    return is_valid
+
+```
+
+# app/utils/__init__.py
+
+```py
+
+```
+
 # app/api/__init__.py
 
 ```py
-
-```
-
-# tests/test_core/test_memory.py
-
-```py
-import pytest
-from uuid import UUID
-from unittest.mock import AsyncMock, patch
-from app.core.memory import RedisMemory, VectorMemory, MemorySystem
-from app.api.models.memory import MemoryType, MemoryEntry
-from app.api.models.agent import MemoryConfig
-
-@pytest.fixture
-def memory_config():
-    return MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-
-@pytest.mark.asyncio
-async def test_redis_memory():
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-
-    with patch('app.core.memory.redis_memory.aioredis') as mock_redis:
-        mock_redis_client = AsyncMock()
-        mock_redis.from_url.return_value = mock_redis_client
-
-        redis_memory = RedisMemory("redis://localhost:6379", agent_id)
-
-        # Test add
-        await redis_memory.add("test_key", "test_value")
-        mock_redis_client.set.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key", "test_value", ex=3600)
-
-        # Test get
-        mock_redis_client.get.return_value = "test_value"
-        value = await redis_memory.get("test_key")
-        assert value == "test_value"
-        mock_redis_client.get.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
-
-        # Test delete
-        await redis_memory.delete("test_key")
-        mock_redis_client.delete.assert_called_once_with("agent:12345678-1234-5678-1234-567812345678:test_key")
-
-@pytest.mark.asyncio
-async def test_vector_memory():
-    with patch('app.core.memory.vector_memory.chromadb') as mock_chromadb:
-        mock_client = AsyncMock()
-        mock_collection = AsyncMock()
-        mock_client.get_or_create_collection.return_value = mock_collection
-        mock_chromadb.Client.return_value = mock_client
-
-        vector_memory = VectorMemory("test_collection", mock_chromadb.config.Settings())
-
-        # Test add
-        await vector_memory.add("test_id", "test_content", {"key": "value"})
-        mock_collection.add.assert_called_once_with(documents=["test_content"], metadatas=[{"key": "value"}], ids=["test_id"])
-
-        # Test search
-        mock_collection.query.return_value = {
-            "ids": [["test_id"]],
-            "documents": [["test_content"]],
-            "metadatas": [[{"key": "value"}]]
-        }
-        results = await vector_memory.search("test query")
-        assert results == [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
-        mock_collection.query.assert_called_once_with(query_texts=["test query"], n_results=5)
-
-@pytest.mark.asyncio
-async def test_memory_system(memory_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-
-    with patch('app.core.memory.memory_system.RedisMemory') as MockRedisMemory, \
-            patch('app.core.memory.memory_system.VectorMemory') as MockVectorMemory:
-        mock_redis = AsyncMock()
-        mock_vector = AsyncMock()
-        MockRedisMemory.return_value = mock_redis
-        MockVectorMemory.return_value = mock_vector
-
-        memory_system = MemorySystem(agent_id, memory_config)
-
-        # Test add (short-term memory)
-        await memory_system.add(MemoryType.SHORT_TERM, "test_content", {"key": "value"})
-        mock_redis.add.assert_called_once()
-
-        # Test add (long-term memory)
-        await memory_system.add(MemoryType.LONG_TERM, "test_content", {"key": "value"})
-        mock_vector.add.assert_called_once()
-
-        # Test retrieve (short-term memory)
-        mock_redis.get.return_value = "test_content"
-        result = await memory_system.retrieve(MemoryType.SHORT_TERM, "test_id")
-        assert result == MemoryEntry(content="test_content")
-
-        # Test retrieve (long-term memory)
-        mock_vector.search.return_value = [{"id": "test_id", "content": "test_content", "metadata": {"key": "value"}}]
-        result = await memory_system.retrieve(MemoryType.LONG_TERM, "test_id")
-        assert result == MemoryEntry(content="test_content", metadata={"key": "value"})
-
-        # Test search
-        results = await memory_system.search(MemoryType.LONG_TERM, "test query")
-        assert results == [MemoryEntry(content="test_content", metadata={"key": "value"})]
-
-        # Test delete
-        await memory_system.delete(MemoryType.SHORT_TERM, "test_id")
-        mock_redis.delete.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_memory_system_integration(memory_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    memory_system = MemorySystem(agent_id, memory_config)
-
-    # Test add and retrieve (short-term memory)
-    short_term_id = await memory_system.add(MemoryType.SHORT_TERM, "short-term content")
-    short_term_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
-    assert short_term_result.content == "short-term content"
-
-    # Test add and retrieve (long-term memory)
-    long_term_id = await memory_system.add(MemoryType.LONG_TERM, "long-term content", {"type": "test"})
-    long_term_result = await memory_system.retrieve(MemoryType.LONG_TERM, long_term_id)
-    assert long_term_result.content == "long-term content"
-    assert long_term_result.metadata == {"type": "test"}
-
-    # Test search
-    search_results = await memory_system.search(MemoryType.LONG_TERM, "long-term")
-    assert len(search_results) > 0
-    assert search_results[0].content == "long-term content"
-
-    # Test delete
-    await memory_system.delete(MemoryType.SHORT_TERM, short_term_id)
-    deleted_result = await memory_system.retrieve(MemoryType.SHORT_TERM, short_term_id)
-    assert deleted_result is None
-
-```
-
-# tests/test_core/test_agent.py
-
-```py
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from uuid import UUID
-from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
-
-
-@pytest.fixture
-def agent_config():
-    return AgentConfig(
-        llm_provider="openai",
-        model_name="gpt-3.5-turbo",
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        )
-    )
-
-
-@pytest.mark.asyncio
-async def test_agent_initialization(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-
-        mock_memory_system = AsyncMock()
-        MockMemorySystem.return_value = mock_memory_system
-
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        assert agent.id == agent_id
-        assert agent.name == agent_name
-        assert agent.config == agent_config
-        assert isinstance(agent.llm_provider, AsyncMock)
-        assert isinstance(agent.memory, AsyncMock)
-
-
-@pytest.mark.asyncio
-async def test_agent_process_message(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-    test_message = "Hello, Agent!"
-
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_llm_provider.generate.return_value = "Generated response"
-        mock_create_llm_provider.return_value = mock_llm_provider
-
-        mock_memory_system = AsyncMock()
-        mock_memory_system.retrieve_relevant.return_value = []
-        MockMemorySystem.return_value = mock_memory_system
-
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        response, function_calls = await agent.process_message(test_message)
-
-        assert response == "Generated response"
-        assert function_calls == []
-        mock_memory_system.retrieve_relevant.assert_called_once_with(test_message)
-        mock_llm_provider.generate.assert_called_once()
-        mock_memory_system.add.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_agent_execute_function(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-
-        mock_memory_system = AsyncMock()
-        MockMemorySystem.return_value = mock_memory_system
-
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        async def test_function(param1, param2):
-            return f"Executed with {param1} and {param2}"
-
-        mock_function = AsyncMock(side_effect=test_function)
-        mock_function.id = "test_function_id"
-        agent.get_function_by_name = Mock(return_value=mock_function)
-
-        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
-            result = await agent.execute_function(
-                function_name="test_function",
-                parameters={"param1": "value1", "param2": "value2"}
-            )
-
-        assert result == "Executed with value1 and value2"
-        agent.get_function_by_name.assert_called_once_with("test_function")
-        mock_function.assert_awaited_once_with(param1="value1", param2="value2")
-
-
-@pytest.mark.asyncio
-async def test_agent_get_available_functions(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-
-    with patch('app.core.agent.create_llm_provider'), patch('app.core.agent.MemorySystem'):
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        mock_function1 = Mock(id="func1", name="Function 1")
-        mock_function2 = Mock(id="func2", name="Function 2")
-
-        with patch.dict('app.core.agent.registered_functions', {
-            "func1": mock_function1,
-            "func2": mock_function2
-        }):
-            agent.available_function_ids = ["func1", "func2"]
-            available_functions = agent.get_available_functions()
-
-        assert len(available_functions) == 2
-        assert available_functions[0].name == "Function 1"
-        assert available_functions[1].name == "Function 2"
-
-```
-
-# tests/test_core/__init__.py
-
-```py
-
-```
-
-# docs/.pytest_cache/README.md
-
-```md
-# pytest cache directory #
-
-This directory contains data from the pytest's cache plugin,
-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
-
-**Do not** commit this to version control.
-
-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
-
-```
-
-# docs/.pytest_cache/CACHEDIR.TAG
-
-```TAG
-Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag created by pytest.
-# For information about cache directory tags, see:
-#	https://bford.info/cachedir/spec.html
-
-```
-
-# docs/.pytest_cache/.gitignore
-
-```
-# Created by pytest automatically.
-*
 
 ```
 
@@ -2073,13 +1782,13 @@ Signature: 8a477f597d28d172789f06886806bc55
 ```py
 import asyncio
 from typing import Dict, Any, List
-import chromadb
+from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 from app.utils.logging import memory_logger
 
 class VectorMemory:
     def __init__(self, collection_name: str, chroma_db_settings: ChromaDBSettings):
-        self.client = chromadb.Client(chroma_db_settings)
+        self.client = PersistentClient(path=chroma_db_settings.persist_directory)
         self.collection = self.client.get_or_create_collection(collection_name)
         memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
 
@@ -3164,17 +2873,5 @@ from .memory import router as memory_router
 
 __all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
-```
-
-# docs/.pytest_cache/v/cache/stepwise
-
-```
-[]
-```
-
-# docs/.pytest_cache/v/cache/nodeids
-
-```
-[]
 ```
 

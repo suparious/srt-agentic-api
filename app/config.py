@@ -91,7 +91,11 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=".env" if not os.getenv("TESTING") else ".env.test",
+        env_file_encoding="utf-8",
+        case_sensitive=True
+    )
 
 settings = Settings()
 print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")

@@ -198,19 +198,25 @@ async def register_function(function: FunctionDefinition) -> str:
     agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
     return function_id
 
-async def execute_function(agent_id: UUID, function_name: str, parameters: Dict[str, Any]) -> Any:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return await agent.execute_function(function_name, parameters)
+async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+    try:
+        agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+        get_function = self.get_function_by_name(function_name)
+        if not get_function:
+            raise ValueError(f"Unknown function: {function_name}")
 
-async def get_available_functions(agent_id: UUID) -> List[FunctionDefinition]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return agent.get_available_functions()
+        func_impl = registered_functions[get_function.id].implementation
+
+        result = await func_impl(**parameters)  # Ensure this is awaited
+
+        agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+        return result
+    except Exception as e:
+        agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+        raise
+
+def get_available_functions(self) -> List[FunctionDefinition]:
+    return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
 
 async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
     if function_id not in registered_functions:

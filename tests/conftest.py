@@ -1,14 +1,19 @@
+import os
 import pytest
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig
+from dotenv import load_dotenv
+
+# Load the test environment variables
+load_dotenv('.env.test')
 
 @pytest.fixture(scope="session")
 def test_settings():
     return Settings(
-        API_KEY="test_api_key",
+        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),  # Use the API key from .env.test
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
         REDIS_URL="redis://localhost:6379/15",
         CHROMA_PERSIST_DIRECTORY="./test_chroma_db",

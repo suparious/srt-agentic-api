@@ -100,3 +100,15 @@ The `srt-agentic-api` is a Python FastAPI-based API for creating, managing, and 
 
 Remember to always consider the end-user experience when developing new features or making changes. The API should be intuitive, well-documented, and robust.
 ```
+
+## Opener
+
+```plaintext
+OK, We are ready to begin another development cycle on this app. 
+
+Please review the `srt-agent-api.md` codebase artifact, to understand the current state of our agent API.
+
+Once you are familiar with the `SolidRusT/srt-agentic-api` repository, let's update the `CurrentStatusSummary.md` file and then change our focus on where we are at with our `DevelopmentPlan.md` file.
+
+Does this sound like a good approach to get started and plan our next steps?
+```

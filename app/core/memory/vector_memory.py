@@ -1,12 +1,12 @@
 import asyncio
 from typing import Dict, Any, List
-import chromadb
+from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 from app.utils.logging import memory_logger
 
 class VectorMemory:
     def __init__(self, collection_name: str, chroma_db_settings: ChromaDBSettings):
-        self.client = chromadb.Client(chroma_db_settings)
+        self.client = PersistentClient(path=chroma_db_settings.persist_directory)
         self.collection = self.client.get_or_create_collection(collection_name)
         memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
 
