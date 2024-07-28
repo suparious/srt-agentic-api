@@ -59,6 +59,32 @@ curl -X GET http://localhost:8000/agent/your_agent_id_here \
 
 See the [python_example.py](./python_example.py) file for a complete Python example.
 
+Using multiple providers as fallback:
+
+```python
+from app.core.llm_provider import create_llm_provider
+
+provider_configs = [
+    {
+        "provider_type": "openai",
+        "model_name": "gpt-3.5-turbo",
+        "api_key": "your-openai-api-key"
+    },
+    {
+        "provider_type": "vllm",
+        "model_name": "llama-7b",
+        "api_base": "http://your-vllm-server:8000"
+    },
+    {
+        "provider_type": "llamacpp",
+        "model_name": "llama-13b",
+        "api_base": "http://your-llamacpp-server:8080"
+    }
+]
+
+llm_provider = create_llm_provider(provider_configs)
+```
+
 ## JavaScript Example
 
 See the [javascript_example.js](./javascript_example.js) file for a complete JavaScript example.

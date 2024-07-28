@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from app.config import settings
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -149,28 +149,42 @@ class TGIServerProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing TGI server API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse TGI server API response: {str(e)}")
 
-class LLMProvider:
-    def __init__(self, provider_config: Dict[str, Any]):
-        self.provider_type = provider_config['provider_type']
-        self.config = provider_config
-        self.config['api_base'] = self.config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(self.provider_type, {}).get('api_base')
-        self.provider = self._get_provider()
 
-    def _get_provider(self) -> BaseLLMProvider:
-        if self.provider_type == "openai":
-            return OpenAIProvider(self.config)
-        elif self.provider_type == "vllm":
-            return VLLMProvider(self.config)
-        elif self.provider_type == "llamacpp":
-            return LlamaCppServerProvider(self.config)
-        elif self.provider_type == "tgi":
-            return TGIServerProvider(self.config)
+class LLMProvider:
+    def __init__(self, provider_configs: List[Dict[str, Any]]):
+        self.providers = []
+        for config in provider_configs:
+            provider_type = config['provider_type']
+            config['api_base'] = config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(provider_type, {}).get(
+                'api_base')
+            self.providers.append(self._get_provider(config))
+
+    def _get_provider(self, config: Dict[str, Any]) -> BaseLLMProvider:
+        provider_type = config['provider_type']
+        if provider_type == "openai":
+            return OpenAIProvider(config)
+        elif provider_type == "vllm":
+            return VLLMProvider(config)
+        elif provider_type == "llamacpp":
+            return LlamaCppServerProvider(config)
+        elif provider_type == "tgi":
+            return TGIServerProvider(config)
         else:
-            raise ValueError(f"Unsupported provider type: {self.provider_type}")
+            raise ValueError(f"Unsupported provider type: {provider_type}")
 
     async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        return await self.provider.generate(prompt, temperature, max_tokens)
+        for i, provider in enumerate(self.providers):
+            try:
+                return await provider.generate(prompt, temperature, max_tokens)
+            except Exception as e:
+                llm_logger.warning(f"Provider {i} ({provider.__class__.__name__}) failed: {str(e)}")
+                if i == len(self.providers) - 1:
+                    llm_logger.error("All providers failed. Raising the last exception.")
+                    raise
+                llm_logger.info(f"Trying next provider ({self.providers[i + 1].__class__.__name__})")
+
+        raise Exception("No providers available")
 
 # Factory function to create LLMProvider instances
-def create_llm_provider(provider_config: Dict[str, Any]) -> LLMProvider:
-    return LLMProvider(provider_config)
+def create_llm_provider(provider_configs: List[Dict[str, Any]]) -> LLMProvider:
+    return LLMProvider(provider_configs)
