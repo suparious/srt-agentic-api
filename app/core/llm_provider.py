@@ -43,10 +43,24 @@ class VLLMProvider(BaseLLMProvider):
         self.api_base = config['api_base']
 
     async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement vLLM API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from vLLM model {self.model_name}: {prompt[:30]}..."
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{self.api_base}/generate", headers=headers, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result['text']
+                else:
+                    error_content = await response.text()
+                    raise Exception(f"vLLM API error: {response.status} - {error_content}")
 
 class LlamaCppServerProvider(BaseLLMProvider):
     def __init__(self, config: Dict[str, Any]):
