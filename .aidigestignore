@@ -7,3 +7,5 @@
 /data/
 /logs/
 /docs/
+.coverage
+codebase.md

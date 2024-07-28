@@ -246,10 +246,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ```
 
-# .coverage
-
-This is a binary file of the type: Binary
-
 # .aidigestignore
 
 ```
@@ -262,198 +258,8 @@ This is a binary file of the type: Binary
 /data/
 /logs/
 /docs/
-
-```
-
-# tests/conftest.py
-
-```py
-import os
-import pytest
-from httpx import AsyncClient
-from fastapi.testclient import TestClient
-from app.main import app
-from app.config import Settings
-from app.api.models.agent import AgentConfig, MemoryConfig
-from dotenv import load_dotenv
-
-# Load the test environment variables
-load_dotenv('.env.test')
-
-@pytest.fixture(scope="session")
-def test_settings():
-    return Settings(
-        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),  # Use the API key from .env.test
-        ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
-        REDIS_URL="redis://localhost:6379/15",
-        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
-        OPENAI_API_KEY="test_openai_key",
-        ANTHROPIC_API_KEY="test_anthropic_key",
-        VLLM_API_BASE="http://test-vllm-api-endpoint",
-        LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
-        TGI_API_BASE="http://test-tgi-server-endpoint",
-        TESTING=True
-    )
-
-@pytest.fixture(scope="module")
-def test_app(test_settings):
-    app.dependency_overrides[Settings] = lambda: test_settings
-    yield app
-    app.dependency_overrides.clear()
-
-@pytest.fixture
-async def async_client(test_app):
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
-        yield client
-
-@pytest.fixture(scope="module")
-def sync_client(test_app):
-    return TestClient(test_app)
-
-@pytest.fixture(scope="module")
-def auth_headers(test_settings):
-    return {"X-API-Key": test_settings.API_KEY}
-
-@pytest.fixture
-async def test_agent(async_client, auth_headers):
-    agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": AgentConfig(
-            llm_provider="openai",
-            model_name="gpt-3.5-turbo",
-            temperature=0.7,
-            max_tokens=150,
-            memory_config=MemoryConfig(
-                use_long_term_memory=True,
-                use_redis_cache=True
-            )
-        ).model_dump(),
-        "memory_config": MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        ).model_dump(),
-        "initial_prompt": "You are a helpful assistant."
-    }
-    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
-    assert response.status_code == 201
-    return response.json()["agent_id"]
-
-```
-
-# tests/__init__.py
-
-```py
-
-```
-
-# tests/README.md
-
-```md
-# SolidRusT Agentic API Tests
-
-This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
-
-## Directory Structure
-
-\`\`\`
-tests/
-├── __init__.py
-├── conftest.py
-├── README.md
-├── test_api/
-│   ├── __init__.py
-│   ├── test_agent.py
-│   ├── test_function.py
-│   ├── test_main.py
-│   ├── test_memory.py
-│   └── test_message.py
-└── test_core/
-    ├── __init__.py
-    ├── test_agent.py
-    └── test_memory.py
-\`\`\`
-
-- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
-- `test_api/`: Contains tests for the API endpoints.
-- `test_core/`: Contains tests for the core functionality of the application.
-
-## Running Tests
-
-To run all tests, use the following command from the root directory of the project:
-
-\`\`\`
-pytest
-\`\`\`
-
-To run tests in a specific file, use:
-
-\`\`\`
-pytest tests/path/to/test_file.py
-\`\`\`
-
-For example, to run the main API tests:
-
-\`\`\`
-pytest tests/test_api/test_main.py
-\`\`\`
-
-## Test Categories
-
-### API Tests
-
-These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
-
-### Core Tests
-
-These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
-
-## Writing New Tests
-
-When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
-
-1. Place API-related tests in the `test_api/` directory.
-2. Place core functionality tests in the `test_core/` directory.
-3. Use descriptive names for test functions, starting with `test_`.
-4. Use pytest fixtures where appropriate to set up test environments.
-5. Aim for high test coverage, including both happy paths and edge cases.
-
-## Continuous Integration
-
-These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
-
-
-## Comments
-
-Now, let's address the warnings we're seeing in the test output:
-
-1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
-
-2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
-
-3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
-
-To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
-
-\`\`\`python
-from pydantic import BaseModel, ConfigDict
-
-class YourModel(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())
-    
-    # Your model fields here
-    model_name: str  # This field name is now allowed
-\`\`\`
-
-To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
-
-\`\`\`ini
-[pytest]
-filterwarnings =
-    ignore::DeprecationWarning:google._upb._message:
-    ignore::pydantic.PydanticDeprecatedSince20
-\`\`\`
-
-This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
+.coverage
+codebase.md
 
 ```
 
@@ -673,6 +479,658 @@ print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")
 ```
 
 # app/__init__.py
+
+```py
+
+```
+
+# tests/conftest.py
+
+```py
+import os
+import pytest
+from httpx import AsyncClient
+from fastapi.testclient import TestClient
+from app.main import app
+from app.config import Settings
+from app.api.models.agent import AgentConfig, MemoryConfig
+from dotenv import load_dotenv
+
+# Load the test environment variables
+load_dotenv('.env.test')
+
+@pytest.fixture(scope="session")
+def test_settings():
+    return Settings(
+        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),  # Use the API key from .env.test
+        ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
+        REDIS_URL="redis://localhost:6379/15",
+        CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
+        OPENAI_API_KEY="test_openai_key",
+        ANTHROPIC_API_KEY="test_anthropic_key",
+        VLLM_API_BASE="http://test-vllm-api-endpoint",
+        LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
+        TGI_API_BASE="http://test-tgi-server-endpoint",
+        TESTING=True
+    )
+
+@pytest.fixture(scope="module")
+def test_app(test_settings):
+    app.dependency_overrides[Settings] = lambda: test_settings
+    yield app
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+async def async_client(test_app):
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture(scope="module")
+def sync_client(test_app):
+    return TestClient(test_app)
+
+@pytest.fixture(scope="module")
+def auth_headers(test_settings):
+    return {"X-API-Key": test_settings.API_KEY}
+
+@pytest.fixture
+async def test_agent(async_client, auth_headers):
+    agent_data = {
+        "agent_name": "Test Agent",
+        "agent_config": AgentConfig(
+            llm_provider="openai",
+            model_name="gpt-3.5-turbo",
+            temperature=0.7,
+            max_tokens=150,
+            memory_config=MemoryConfig(
+                use_long_term_memory=True,
+                use_redis_cache=True
+            )
+        ).model_dump(),
+        "memory_config": MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        ).model_dump(),
+        "initial_prompt": "You are a helpful assistant."
+    }
+    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    assert response.status_code == 201
+    return response.json()["agent_id"]
+
+```
+
+# tests/__init__.py
+
+```py
+
+```
+
+# tests/README.md
+
+```md
+# SolidRusT Agentic API Tests
+
+This directory contains the tests for the SolidRusT Agentic API. The tests are organized into two main categories: API tests and Core tests.
+
+## Directory Structure
+
+\`\`\`
+tests/
+├── __init__.py
+├── conftest.py
+├── README.md
+├── test_api/
+│   ├── __init__.py
+│   ├── test_agent.py
+│   ├── test_function.py
+│   ├── test_main.py
+│   ├── test_memory.py
+│   └── test_message.py
+└── test_core/
+    ├── __init__.py
+    ├── test_agent.py
+    └── test_memory.py
+\`\`\`
+
+- `conftest.py`: Contains pytest fixtures that can be used across multiple test files.
+- `test_api/`: Contains tests for the API endpoints.
+- `test_core/`: Contains tests for the core functionality of the application.
+
+## Running Tests
+
+To run all tests, use the following command from the root directory of the project:
+
+\`\`\`
+pytest
+\`\`\`
+
+To run tests in a specific file, use:
+
+\`\`\`
+pytest tests/path/to/test_file.py
+\`\`\`
+
+For example, to run the main API tests:
+
+\`\`\`
+pytest tests/test_api/test_main.py
+\`\`\`
+
+## Test Categories
+
+### API Tests
+
+These tests check the functionality of the API endpoints. They ensure that the API responds correctly to various requests and handles different scenarios appropriately.
+
+### Core Tests
+
+These tests focus on the internal logic and functionality of the application, independent of the API layer. They verify that the core components of the system work as expected.
+
+## Writing New Tests
+
+When adding new functionality to the API or core components, please add corresponding tests. Follow these guidelines:
+
+1. Place API-related tests in the `test_api/` directory.
+2. Place core functionality tests in the `test_core/` directory.
+3. Use descriptive names for test functions, starting with `test_`.
+4. Use pytest fixtures where appropriate to set up test environments.
+5. Aim for high test coverage, including both happy paths and edge cases.
+
+## Continuous Integration
+
+These tests are run as part of our CI/CD pipeline. Ensure all tests pass locally before pushing changes to the repository.
+
+
+## Comments
+
+Now, let's address the warnings we're seeing in the test output:
+
+1. For the Pydantic warning about the "model_name" field, you might want to review your Pydantic models and consider renaming any fields that start with "model_" to avoid conflicts.
+
+2. The DeprecationWarnings about `google._upb._message` are likely coming from a dependency. For now, we can ignore these as they're not directly related to our code.
+
+3. The Pydantic deprecation warning about class-based `config` suggests updating your Pydantic models to use `ConfigDict` instead of class-based config. This is a change introduced in Pydantic v2.
+
+To address the Pydantic warnings, you may need to update your models. Here's an example of how to update a model using `ConfigDict`:
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class YourModel(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
+    # Your model fields here
+    model_name: str  # This field name is now allowed
+\`\`\`
+
+To suppress warnings during tests (if you're not ready to address them immediately), you can add a `pytest.ini` file in the root of your project:
+
+\`\`\`ini
+[pytest]
+filterwarnings =
+    ignore::DeprecationWarning:google._upb._message:
+    ignore::pydantic.PydanticDeprecatedSince20
+\`\`\`
+
+This will suppress the DeprecationWarnings from Google protobuf and the Pydantic v2 migration warnings during test runs.
+
+```
+
+# app/utils/logging.py
+
+```py
+import logging
+from logging.handlers import RotatingFileHandler
+import os
+from app.config import settings
+
+def setup_logger(name, log_file, level=logging.INFO):
+    """Function to set up a logger with file and console handlers."""
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Ensure log directory exists
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+    # File Handler
+    file_handler = RotatingFileHandler(log_file, maxBytes=10485760, backupCount=5)  # 10MB per file, keep 5 old versions
+    file_handler.setFormatter(formatter)
+
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
+
+# Create loggers
+main_logger = setup_logger('main', os.path.join(settings.LOG_DIR, 'main.log'))
+agent_logger = setup_logger('agent', os.path.join(settings.LOG_DIR, 'agent.log'))
+memory_logger = setup_logger('memory', os.path.join(settings.LOG_DIR, 'memory.log'))
+llm_logger = setup_logger('llm', os.path.join(settings.LOG_DIR, 'llm.log'))
+function_logger = setup_logger('function', os.path.join(settings.LOG_DIR, 'function.log'))
+auth_logger = setup_logger('auth', os.path.join(settings.LOG_DIR, 'auth.log'))
+
+def get_logger(name: str):
+    """Function to get or create a logger by name."""
+    if name not in logging.Logger.manager.loggerDict:
+        return setup_logger(name, os.path.join(settings.LOG_DIR, f"{name}.log"))
+    return logging.getLogger(name)
+
+```
+
+# app/utils/auth.py
+
+```py
+from fastapi import HTTPException, Security
+from fastapi.security import APIKeyHeader
+from starlette.status import HTTP_403_FORBIDDEN
+from app.config import settings
+from app.utils.logging import setup_logger
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+auth_logger = setup_logger('auth', settings.LOG_DIR + '/auth.log')
+
+async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
+    auth_logger.debug(f"Received API key: {api_key_header}")
+    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
+    auth_logger.debug(f"API keys match: {api_key_header == settings.API_KEY}")
+
+    if not api_key_header:
+        auth_logger.warning("No API key provided")
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="No API key provided"
+        )
+
+    if api_key_header == settings.API_KEY:
+        auth_logger.info("API key validation successful")
+        return api_key_header
+    else:
+        auth_logger.warning(f"API key validation failed. Received: {api_key_header}, Expected: {settings.API_KEY}")
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
+        )
+
+def validate_api_key(api_key: str) -> bool:
+    is_valid = api_key == settings.API_KEY
+    auth_logger.debug(f"Validating API key: {api_key}")
+    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
+    auth_logger.debug(f"API keys match: {is_valid}")
+    if is_valid:
+        auth_logger.info("API key validation successful")
+    else:
+        auth_logger.warning("API key validation failed")
+    return is_valid
+
+```
+
+# app/utils/__init__.py
+
+```py
+
+```
+
+# app/api/__init__.py
+
+```py
+
+```
+
+# app/core/llm_provider.py
+
+```py
+import asyncio
+from typing import Dict, Any
+from abc import ABC, abstractmethod
+from app.config import settings
+
+class BaseLLMProvider(ABC):
+    @abstractmethod
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        pass
+
+class OpenAIProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+        # You might want to add API key handling here, e.g.:
+        # self.api_key = config['api_key']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement OpenAI API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from OpenAI model {self.model_name}: {prompt[:30]}..."
+
+class VLLMProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement vLLM API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from vLLM model {self.model_name}: {prompt[:30]}..."
+
+class LlamaCppServerProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement Llama.cpp server API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from Llama.cpp model {self.model_name}: {prompt[:30]}..."
+
+class TGIServerProvider(BaseLLMProvider):
+    def __init__(self, config: Dict[str, Any]):
+        self.model_name = config['model_name']
+        self.api_base = config['api_base']
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Implement TGI server API call here
+        # This is a placeholder implementation
+        await asyncio.sleep(1)  # Simulating API call
+        return f"Response from TGI model {self.model_name}: {prompt[:30]}..."
+
+class LLMProvider:
+    def __init__(self, provider_config: Dict[str, Any]):
+        self.provider_type = provider_config['provider_type']
+        self.config = provider_config
+        self.config['api_base'] = self.config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(self.provider_type, {}).get('api_base')
+        self.provider = self._get_provider()
+
+    def _get_provider(self) -> BaseLLMProvider:
+        if self.provider_type == "openai":
+            return OpenAIProvider(self.config)
+        elif self.provider_type == "vllm":
+            return VLLMProvider(self.config)
+        elif self.provider_type == "llamacpp":
+            return LlamaCppServerProvider(self.config)
+        elif self.provider_type == "tgi":
+            return TGIServerProvider(self.config)
+        else:
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
+
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        return await self.provider.generate(prompt, temperature, max_tokens)
+
+# Factory function to create LLMProvider instances
+def create_llm_provider(provider_config: Dict[str, Any]) -> LLMProvider:
+    return LLMProvider(provider_config)
+
+```
+
+# app/core/agent.py
+
+```py
+import inspect
+import asyncio
+from uuid import UUID, uuid4
+from typing import Dict, Any, Tuple, List, Optional
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
+from app.api.models.function import FunctionDefinition
+from app.api.models.memory import MemoryType
+from app.core.llm_provider import create_llm_provider
+from app.core.memory import MemorySystem
+from app.utils.logging import agent_logger
+from fastapi import HTTPException
+
+class Agent:
+    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
+        self.id = agent_id
+        self.name = name
+        self.config = config
+        self.llm_provider = create_llm_provider({
+            'provider_type': config.llm_provider,
+            'model_name': config.model_name
+        })
+        self.memory = MemorySystem(agent_id, memory_config)
+        self.conversation_history = []
+        self.available_function_ids: List[str] = []
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
+
+    async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+        try:
+            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
+            self.conversation_history.append({"role": "user", "content": message})
+
+            relevant_context = await self.memory.retrieve_relevant(message)
+            prompt = self._prepare_prompt(relevant_context)
+
+            response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
+            response_text, function_calls = self._parse_response(response)
+
+            self.conversation_history.append({"role": "assistant", "content": response_text})
+            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
+
+            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
+            return response_text, function_calls
+        except Exception as e:
+            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
+            raise
+
+    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+        try:
+            agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+            get_function = self.get_function_by_name(function_name)
+            if not get_function:
+                raise ValueError(f"Unknown function: {function_name}")
+
+            func_impl = registered_functions[get_function.id].implementation
+
+            result = await func_impl(**parameters)
+
+            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+            return result
+        except Exception as e:
+            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+            raise
+
+    def get_available_functions(self) -> List[FunctionDefinition]:
+        return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
+
+    def add_function(self, function_id: str):
+        if function_id not in registered_functions:
+            raise ValueError(f"Function with ID {function_id} is not registered")
+        if function_id not in self.available_function_ids:
+            self.available_function_ids.append(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(f"Function {registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
+
+    def remove_function(self, function_id: str):
+        if function_id in self.available_function_ids:
+            self.available_function_ids.remove(function_id)
+            agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {self.name} (ID: {self.id})")
+        else:
+            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
+
+    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
+        for func_id in self.available_function_ids:
+            if func_id in registered_functions and registered_functions[func_id].name == function_name:
+                return registered_functions[func_id]
+        return None
+
+    def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
+        context_str = "\n".join([f"Context: {item['content']}" for item in context])
+        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
+        return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
+
+    def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:
+        function_calls = []
+        if "FUNCTION CALL:" in response:
+            parts = response.split("FUNCTION CALL:")
+            response = parts[0].strip()
+            for call in parts[1:]:
+                try:
+                    function_name, args = call.split("(", 1)
+                    args = args.rsplit(")", 1)[0]
+                    function_calls.append({
+                        "name": function_name.strip(),
+                        "arguments": eval(f"dict({args})")
+                    })
+                except Exception as e:
+                    agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
+        return response, function_calls
+
+# Global dictionaries
+agents: Dict[UUID, Agent] = {}
+registered_functions: Dict[str, FunctionDefinition] = {}
+
+# Facade functions for interacting with agents
+async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
+    try:
+        agent_id = uuid4()
+        agent_config = AgentConfig(**config)
+        mem_config = MemoryConfig(**memory_config)
+        agent = Agent(agent_id, name, agent_config, mem_config)
+        agents[agent_id] = agent
+        await agent.process_message(initial_prompt)
+        agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
+        return agent_id
+    except Exception as e:
+        agent_logger.error(f"Error creating Agent {name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
+
+async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id}")
+        return None
+
+    return AgentInfoResponse(
+        agent_id=agent.id,
+        name=agent.name,
+        config=agent.config,
+        memory_config=agent.memory.config,
+        conversation_history_length=len(agent.conversation_history)
+    )
+
+async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.warning(f"No agent found with id: {agent_id} for update")
+        return False
+
+    try:
+        if 'config' in update_data:
+            agent.config = AgentConfig(**update_data['config'])
+        if 'memory_config' in update_data:
+            agent.memory.config = MemoryConfig(**update_data['memory_config'])
+        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+        return True
+    except Exception as e:
+        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+        return False
+
+async def delete_agent(agent_id: UUID) -> bool:
+    if agent_id in agents:
+        del agents[agent_id]
+        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
+        return True
+    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
+    return False
+
+async def list_agents() -> List[AgentInfoResponse]:
+    return [
+        AgentInfoResponse(
+            agent_id=agent.id,
+            name=agent.name,
+            config=agent.config,
+            memory_config=agent.memory.config,
+            conversation_history_length=len(agent.conversation_history)
+        )
+        for agent in agents.values()
+    ]
+
+async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return agent.config.memory_config
+
+async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+    return await agent.process_message(message)
+
+async def register_function(function: FunctionDefinition) -> str:
+    function_id = str(uuid4())
+    registered_functions[function_id] = function
+    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
+    return function_id
+
+async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+    try:
+        agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+        get_function = self.get_function_by_name(function_name)
+        if not get_function:
+            raise ValueError(f"Unknown function: {function_name}")
+
+        func_impl = registered_functions[get_function.id].implementation
+
+        result = await func_impl(**parameters)  # Ensure this is awaited
+
+        agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+        return result
+    except Exception as e:
+        agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+        raise
+
+def get_available_functions(self) -> List[FunctionDefinition]:
+    return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
+
+async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    registered_functions[function_id] = updated_function
+    agent_logger.info(f"Function with ID: {function_id} updated successfully")
+
+    for agent in agents.values():
+        if function_id in agent.available_function_ids:
+            agent.add_function(function_id)
+            agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
+
+async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.add_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
+
+async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
+    agent = agents.get(agent_id)
+    if not agent:
+        agent_logger.error(f"No agent found with id: {agent_id}")
+        raise ValueError(f"No agent found with id: {agent_id}")
+
+    if function_id not in registered_functions:
+        agent_logger.error(f"No function found with id: {function_id}")
+        raise ValueError(f"No function found with id: {function_id}")
+
+    agent.remove_function(function_id)
+    agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
+
+```
+
+# app/core/__init__.py
 
 ```py
 
@@ -1317,463 +1775,499 @@ async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
 
 ```
 
-# app/core/llm_provider.py
+# app/api/endpoints/message.py
 
 ```py
-import asyncio
-from typing import Dict, Any
-from abc import ABC, abstractmethod
-from app.config import settings
-
-class BaseLLMProvider(ABC):
-    @abstractmethod
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        pass
-
-class OpenAIProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-        # You might want to add API key handling here, e.g.:
-        # self.api_key = config['api_key']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement OpenAI API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from OpenAI model {self.model_name}: {prompt[:30]}..."
-
-class VLLMProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement vLLM API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from vLLM model {self.model_name}: {prompt[:30]}..."
-
-class LlamaCppServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement Llama.cpp server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from Llama.cpp model {self.model_name}: {prompt[:30]}..."
-
-class TGIServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement TGI server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from TGI model {self.model_name}: {prompt[:30]}..."
-
-class LLMProvider:
-    def __init__(self, provider_config: Dict[str, Any]):
-        self.provider_type = provider_config['provider_type']
-        self.config = provider_config
-        self.config['api_base'] = self.config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(self.provider_type, {}).get('api_base')
-        self.provider = self._get_provider()
-
-    def _get_provider(self) -> BaseLLMProvider:
-        if self.provider_type == "openai":
-            return OpenAIProvider(self.config)
-        elif self.provider_type == "vllm":
-            return VLLMProvider(self.config)
-        elif self.provider_type == "llamacpp":
-            return LlamaCppServerProvider(self.config)
-        elif self.provider_type == "tgi":
-            return TGIServerProvider(self.config)
-        else:
-            raise ValueError(f"Unsupported provider type: {self.provider_type}")
-
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        return await self.provider.generate(prompt, temperature, max_tokens)
-
-# Factory function to create LLMProvider instances
-def create_llm_provider(provider_config: Dict[str, Any]) -> LLMProvider:
-    return LLMProvider(provider_config)
-
-```
-
-# app/core/agent.py
-
-```py
-import inspect
-import asyncio
-from uuid import UUID, uuid4
-from typing import Dict, Any, Tuple, List, Optional
-from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
-from app.api.models.function import FunctionDefinition
-from app.api.models.memory import MemoryType
-from app.core.llm_provider import create_llm_provider
-from app.core.memory import MemorySystem
+from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from app.api.models.agent import AgentMessageRequest, AgentMessageResponse
+from app.core.agent import process_message
+from app.utils.auth import get_api_key
 from app.utils.logging import agent_logger
-from fastapi import HTTPException
 
-class Agent:
-    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
-        self.id = agent_id
-        self.name = name
-        self.config = config
-        self.llm_provider = create_llm_provider({
-            'provider_type': config.llm_provider,
-            'model_name': config.model_name
-        })
-        self.memory = MemorySystem(agent_id, memory_config)
-        self.conversation_history = []
-        self.available_function_ids: List[str] = []
-        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
+router = APIRouter()
 
-    async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
-        try:
-            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
-            self.conversation_history.append({"role": "user", "content": message})
-
-            relevant_context = await self.memory.retrieve_relevant(message)
-            prompt = self._prepare_prompt(relevant_context)
-
-            response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
-            response_text, function_calls = self._parse_response(response)
-
-            self.conversation_history.append({"role": "assistant", "content": response_text})
-            await self.memory.add(MemoryType.SHORT_TERM, response_text, {"type": "assistant_response"})
-
-            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
-            return response_text, function_calls
-        except Exception as e:
-            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
-            raise
-
-    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
-        try:
-            agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-            get_function = self.get_function_by_name(function_name)
-            if not get_function:
-                raise ValueError(f"Unknown function: {function_name}")
-
-            func_impl = registered_functions[get_function.id].implementation
-
-            result = await func_impl(**parameters)
-
-            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
-            return result
-        except Exception as e:
-            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
-            raise
-
-    def get_available_functions(self) -> List[FunctionDefinition]:
-        return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
-
-    def add_function(self, function_id: str):
-        if function_id not in registered_functions:
-            raise ValueError(f"Function with ID {function_id} is not registered")
-        if function_id not in self.available_function_ids:
-            self.available_function_ids.append(function_id)
-            agent_logger.info(f"Function {registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
-        else:
-            agent_logger.warning(f"Function {registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
-
-    def remove_function(self, function_id: str):
-        if function_id in self.available_function_ids:
-            self.available_function_ids.remove(function_id)
-            agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {self.name} (ID: {self.id})")
-        else:
-            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
-
-    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
-        for func_id in self.available_function_ids:
-            if func_id in registered_functions and registered_functions[func_id].name == function_name:
-                return registered_functions[func_id]
-        return None
-
-    def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
-        context_str = "\n".join([f"Context: {item['content']}" for item in context])
-        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
-        return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
-
-    def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:
-        function_calls = []
-        if "FUNCTION CALL:" in response:
-            parts = response.split("FUNCTION CALL:")
-            response = parts[0].strip()
-            for call in parts[1:]:
-                try:
-                    function_name, args = call.split("(", 1)
-                    args = args.rsplit(")", 1)[0]
-                    function_calls.append({
-                        "name": function_name.strip(),
-                        "arguments": eval(f"dict({args})")
-                    })
-                except Exception as e:
-                    agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
-        return response, function_calls
-
-# Global dictionaries
-agents: Dict[UUID, Agent] = {}
-registered_functions: Dict[str, FunctionDefinition] = {}
-
-# Facade functions for interacting with agents
-async def create_agent(name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
+@router.post("/send", response_model=AgentMessageResponse)
+async def send_message_to_agent(request: AgentMessageRequest, api_key: str = Depends(get_api_key)):
     try:
-        agent_id = uuid4()
-        agent_config = AgentConfig(**config)
-        mem_config = MemoryConfig(**memory_config)
-        agent = Agent(agent_id, name, agent_config, mem_config)
-        agents[agent_id] = agent
-        await agent.process_message(initial_prompt)
-        agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
-        return agent_id
-    except Exception as e:
-        agent_logger.error(f"Error creating Agent {name}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
-
-async def get_agent_info(agent_id: UUID) -> Optional[AgentInfoResponse]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.warning(f"No agent found with id: {agent_id}")
-        return None
-
-    return AgentInfoResponse(
-        agent_id=agent.id,
-        name=agent.name,
-        config=agent.config,
-        memory_config=agent.memory.config,
-        conversation_history_length=len(agent.conversation_history)
-    )
-
-async def update_agent(agent_id: UUID, update_data: Dict[str, Any]) -> bool:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.warning(f"No agent found with id: {agent_id} for update")
-        return False
-
-    try:
-        if 'config' in update_data:
-            agent.config = AgentConfig(**update_data['config'])
-        if 'memory_config' in update_data:
-            agent.memory.config = MemoryConfig(**update_data['memory_config'])
-        agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
-        return True
-    except Exception as e:
-        agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
-        return False
-
-async def delete_agent(agent_id: UUID) -> bool:
-    if agent_id in agents:
-        del agents[agent_id]
-        agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
-        return True
-    agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
-    return False
-
-async def list_agents() -> List[AgentInfoResponse]:
-    return [
-        AgentInfoResponse(
-            agent_id=agent.id,
-            name=agent.name,
-            config=agent.config,
-            memory_config=agent.memory.config,
-            conversation_history_length=len(agent.conversation_history)
+        agent_logger.info(f"Received message for agent: {request.agent_id}")
+        response, function_calls = await process_message(request.agent_id, request.message)
+        agent_logger.info(f"Successfully processed message for agent: {request.agent_id}")
+        return AgentMessageResponse(
+            agent_id=request.agent_id,
+            response=response,
+            function_calls=function_calls
         )
-        for agent in agents.values()
-    ]
-
-async def get_agent_memory_config(agent_id: UUID) -> MemoryConfig:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return agent.config.memory_config
-
-async def process_message(agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-    return await agent.process_message(message)
-
-async def register_function(function: FunctionDefinition) -> str:
-    function_id = str(uuid4())
-    registered_functions[function_id] = function
-    agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
-    return function_id
-
-async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
-    try:
-        agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-        get_function = self.get_function_by_name(function_name)
-        if not get_function:
-            raise ValueError(f"Unknown function: {function_name}")
-
-        func_impl = registered_functions[get_function.id].implementation
-
-        result = await func_impl(**parameters)  # Ensure this is awaited
-
-        agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
-        return result
+    except ValueError as ve:
+        agent_logger.error(f"Agent not found: {request.agent_id}")
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
-        agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+        agent_logger.error(f"Error processing message for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the message")
+
+# Note: If we want to add an endpoint for retrieving message history, we would add it here.
+# This would require implementing a function in app/core/agent.py to retrieve the conversation history.
+
+# @router.get("/{agent_id}/history", response_model=List[MessageHistoryItem])
+# async def get_message_history(agent_id: UUID, limit: int = 10, api_key: str = Depends(get_api_key)):
+#     # Implementation for retrieving message history
+#     pass
+
+```
+
+# app/api/endpoints/memory.py
+
+```py
+from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from typing import List
+from app.api.models.memory import (
+    MemoryType,
+    MemoryEntry,
+    MemoryAddRequest,
+    MemoryAddResponse,
+    MemoryRetrieveRequest,
+    MemoryRetrieveResponse,
+    MemorySearchRequest,
+    MemorySearchResponse,
+    MemoryDeleteRequest,
+    MemoryDeleteResponse,
+    MemoryOperationRequest,
+    MemoryOperationResponse
+)
+from app.core.memory import (
+    add_to_memory,
+    retrieve_from_memory,
+    search_memory,
+    delete_from_memory,
+    perform_memory_operation
+)
+from app.core.agent import get_agent_memory_config  # Assuming this function exists to get MemoryConfig for an agent
+from app.utils.auth import get_api_key
+from app.utils.logging import memory_logger
+
+router = APIRouter()
+
+@router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
+async def add_memory_endpoint(
+    request: MemoryAddRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Add a new memory entry for an agent.
+
+    - **agent_id**: The ID of the agent to add the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **entry**: The memory entry to add
+    """
+    try:
+        agent_id = UUID(request.agent_id)
+        memory_logger.info(f"Adding memory for agent: {agent_id}")
+        memory_config = await get_agent_memory_config(agent_id)
+        memory_id = await add_to_memory(agent_id, request.memory_type, request.entry, memory_config)
+        memory_logger.info(f"Memory added successfully for agent: {agent_id}")
+        return MemoryAddResponse(
+            agent_id=agent_id,
+            memory_id=memory_id,
+            message="Memory added successfully"
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
+async def retrieve_memory_endpoint(
+    request: MemoryRetrieveRequest = Depends(),
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Retrieve a specific memory entry for an agent.
+
+    - **agent_id**: The ID of the agent to retrieve the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **memory_id**: The unique identifier of the memory to retrieve
+    """
+    try:
+        memory_logger.info(f"Retrieving memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        memory = await retrieve_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
+        if memory is None:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        memory_logger.info(f"Memory retrieved successfully for agent: {request.agent_id}")
+        return MemoryRetrieveResponse(
+            agent_id=request.agent_id,
+            memory=memory
+        )
+    except HTTPException:
         raise
+    except Exception as e:
+        memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-def get_available_functions(self) -> List[FunctionDefinition]:
-    return [registered_functions[func_id] for func_id in self.available_function_ids if func_id in registered_functions]
+@router.post("/search", response_model=MemorySearchResponse, summary="Search memory entries")
+async def search_memory_endpoint(
+    request: MemorySearchRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Search memory entries for an agent.
 
-async def update_function(function_id: str, updated_function: FunctionDefinition) -> None:
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
-
-    registered_functions[function_id] = updated_function
-    agent_logger.info(f"Function with ID: {function_id} updated successfully")
-
-    for agent in agents.values():
-        if function_id in agent.available_function_ids:
-            agent.add_function(function_id)
-            agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
-
-async def assign_function_to_agent(agent_id: UUID, function_id: str) -> None:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
-
-    agent.add_function(function_id)
-    agent_logger.info(f"Function {registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
-
-async def remove_function_from_agent(agent_id: UUID, function_id: str) -> None:
-    agent = agents.get(agent_id)
-    if not agent:
-        agent_logger.error(f"No agent found with id: {agent_id}")
-        raise ValueError(f"No agent found with id: {agent_id}")
-
-    if function_id not in registered_functions:
-        agent_logger.error(f"No function found with id: {function_id}")
-        raise ValueError(f"No function found with id: {function_id}")
-
-    agent.remove_function(function_id)
-    agent_logger.info(f"Function {registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
-
-```
-
-# app/core/__init__.py
-
-```py
-
-```
-
-# app/utils/logging.py
-
-```py
-import logging
-from logging.handlers import RotatingFileHandler
-import os
-from app.config import settings
-
-def setup_logger(name, log_file, level=logging.INFO):
-    """Function to set up a logger with file and console handlers."""
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # Ensure log directory exists
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-
-    # File Handler
-    file_handler = RotatingFileHandler(log_file, maxBytes=10485760, backupCount=5)  # 10MB per file, keep 5 old versions
-    file_handler.setFormatter(formatter)
-
-    # Console Handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-
-    return logger
-
-# Create loggers
-main_logger = setup_logger('main', os.path.join(settings.LOG_DIR, 'main.log'))
-agent_logger = setup_logger('agent', os.path.join(settings.LOG_DIR, 'agent.log'))
-memory_logger = setup_logger('memory', os.path.join(settings.LOG_DIR, 'memory.log'))
-llm_logger = setup_logger('llm', os.path.join(settings.LOG_DIR, 'llm.log'))
-function_logger = setup_logger('function', os.path.join(settings.LOG_DIR, 'function.log'))
-auth_logger = setup_logger('auth', os.path.join(settings.LOG_DIR, 'auth.log'))
-
-def get_logger(name: str):
-    """Function to get or create a logger by name."""
-    if name not in logging.Logger.manager.loggerDict:
-        return setup_logger(name, os.path.join(settings.LOG_DIR, f"{name}.log"))
-    return logging.getLogger(name)
-
-```
-
-# app/utils/auth.py
-
-```py
-from fastapi import HTTPException, Security
-from fastapi.security import APIKeyHeader
-from starlette.status import HTTP_403_FORBIDDEN
-from app.config import settings
-from app.utils.logging import setup_logger
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-auth_logger = setup_logger('auth', settings.LOG_DIR + '/auth.log')
-
-async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
-    auth_logger.debug(f"Received API key: {api_key_header}")
-    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
-    auth_logger.debug(f"API keys match: {api_key_header == settings.API_KEY}")
-
-    if not api_key_header:
-        auth_logger.warning("No API key provided")
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="No API key provided"
+    - **agent_id**: The ID of the agent to search memories for
+    - **memory_type**: The type of memory to search (short-term or long-term)
+    - **query**: The search query
+    - **limit**: The maximum number of results to return
+    """
+    try:
+        memory_logger.info(f"Searching memories for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        results = await search_memory(request.agent_id, request.memory_type, request.query, request.limit, memory_config)
+        memory_logger.info(f"Memory search completed for agent: {request.agent_id}")
+        return MemorySearchResponse(
+            agent_id=request.agent_id,
+            results=results
         )
+    except Exception as e:
+        memory_logger.error(f"Error searching memories for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    if api_key_header == settings.API_KEY:
-        auth_logger.info("API key validation successful")
-        return api_key_header
-    else:
-        auth_logger.warning(f"API key validation failed. Received: {api_key_header}, Expected: {settings.API_KEY}")
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
+@router.delete("/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry")
+async def delete_memory_endpoint(
+    request: MemoryDeleteRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Delete a specific memory entry for an agent.
+
+    - **agent_id**: The ID of the agent to delete the memory for
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **memory_id**: The unique identifier of the memory to delete
+    """
+    try:
+        memory_logger.info(f"Deleting memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        await delete_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
+        memory_logger.info(f"Memory deleted successfully for agent: {request.agent_id}")
+        return MemoryDeleteResponse(
+            agent_id=request.agent_id,
+            message="Memory deleted successfully"
         )
+    except Exception as e:
+        memory_logger.error(f"Error deleting memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-def validate_api_key(api_key: str) -> bool:
-    is_valid = api_key == settings.API_KEY
-    auth_logger.debug(f"Validating API key: {api_key}")
-    auth_logger.debug(f"Expected API key: {settings.API_KEY}")
-    auth_logger.debug(f"API keys match: {is_valid}")
-    if is_valid:
-        auth_logger.info("API key validation successful")
-    else:
-        auth_logger.warning("API key validation failed")
-    return is_valid
+@router.post("/operate", response_model=MemoryOperationResponse, summary="Perform a memory operation")
+async def memory_operation_endpoint(
+    request: MemoryOperationRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Perform a generic memory operation for an agent.
+
+    - **agent_id**: The ID of the agent
+    - **operation**: The memory operation to perform
+    - **memory_type**: The type of memory (short-term or long-term)
+    - **data**: Data required for the operation
+    """
+    try:
+        memory_logger.info(f"Performing {request.operation} operation for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        result = await perform_memory_operation(request.agent_id, request.operation, request.memory_type, request.data, memory_config)
+        memory_logger.info(f"{request.operation} operation completed for agent: {request.agent_id}")
+        return MemoryOperationResponse(
+            agent_id=request.agent_id,
+            operation=request.operation,
+            result=result,
+            message=f"{request.operation} operation completed successfully"
+        )
+    except Exception as e:
+        memory_logger.error(f"Error performing {request.operation} operation for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 ```
 
-# app/utils/__init__.py
+# app/api/endpoints/function.py
 
 ```py
+from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from typing import List
+from app.api.models.function import (
+    FunctionExecutionRequest,
+    FunctionExecutionResponse,
+    AvailableFunctionsRequest,
+    AvailableFunctionsResponse,
+    FunctionDefinition,
+    FunctionRegistrationRequest,
+    FunctionRegistrationResponse,
+    FunctionUpdateRequest,
+    FunctionUpdateResponse,
+    FunctionAssignmentRequest,
+    FunctionAssignmentResponse
+)
+from app.core.agent import (
+    execute_function,
+    get_available_functions,
+    register_function,
+    update_function,
+    assign_function_to_agent,
+    remove_function_from_agent
+)
+from app.utils.auth import get_api_key
+from app.utils.logging import function_logger
+
+router = APIRouter()
+
+@router.post("/execute", response_model=FunctionExecutionResponse, summary="Execute a function")
+async def execute_function_endpoint(
+    request: FunctionExecutionRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Execute a function for a specific agent.
+
+    - **agent_id**: The ID of the agent requesting the function execution
+    - **function_name**: The name of the function to execute
+    - **parameters**: The parameters to pass to the function
+    """
+    try:
+        function_logger.info(f"Executing function {request.function_name} for agent: {request.agent_id}")
+        result = await execute_function(request.agent_id, request.function_name, request.parameters)
+        function_logger.info(f"Function {request.function_name} executed successfully for agent: {request.agent_id}")
+        return FunctionExecutionResponse(
+            agent_id=request.agent_id,
+            function_name=request.function_name,
+            result=result
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function execution: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error executing function {request.function_name} for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while executing the function")
+
+@router.get("/available", response_model=AvailableFunctionsResponse, summary="Get available functions")
+async def get_available_functions_endpoint(
+    request: AvailableFunctionsRequest = Depends(),
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Retrieve available functions for a specific agent.
+
+    - **agent_id**: The ID of the agent to retrieve available functions for
+    """
+    try:
+        function_logger.info(f"Retrieving available functions for agent: {request.agent_id}")
+        functions = await get_available_functions(request.agent_id)
+        function_logger.info(f"Successfully retrieved available functions for agent: {request.agent_id}")
+        return AvailableFunctionsResponse(
+            agent_id=request.agent_id,
+            functions=functions
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in retrieving available functions: {str(ve)}")
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error retrieving available functions for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while retrieving available functions")
+
+@router.post("/register", response_model=FunctionRegistrationResponse, status_code=201, summary="Register a new function")
+async def register_function_endpoint(
+    request: FunctionRegistrationRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Register a new function for use by agents.
+
+    - **function**: The function definition to register
+    """
+    try:
+        function_logger.info(f"Registering new function: {request.function.name}")
+        function_id = await register_function(request.function)
+        function_logger.info(f"Successfully registered function: {function_id}")
+        return FunctionRegistrationResponse(
+            function_id=function_id,
+            message="Function registered successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function registration: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error registering function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while registering the function")
+
+@router.put("/update", response_model=FunctionUpdateResponse, summary="Update an existing function")
+async def update_function_endpoint(
+    request: FunctionUpdateRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Update an existing function definition.
+
+    - **function_id**: The unique identifier of the function to update
+    - **updated_function**: The updated function definition
+    """
+    try:
+        function_logger.info(f"Updating function: {request.function_id}")
+        await update_function(request.function_id, request.updated_function)
+        function_logger.info(f"Successfully updated function: {request.function_id}")
+        return FunctionUpdateResponse(
+            function_id=request.function_id,
+            message="Function updated successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function update: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error updating function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while updating the function")
+
+@router.post("/assign", response_model=FunctionAssignmentResponse, summary="Assign a function to an agent")
+async def assign_function_endpoint(
+    request: FunctionAssignmentRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Assign a function to a specific agent.
+
+    - **agent_id**: The ID of the agent to assign the function to
+    - **function_id**: The ID of the function to assign
+    """
+    try:
+        function_logger.info(f"Assigning function {request.function_id} to agent: {request.agent_id}")
+        await assign_function_to_agent(request.agent_id, request.function_id)
+        function_logger.info(f"Successfully assigned function {request.function_id} to agent: {request.agent_id}")
+        return FunctionAssignmentResponse(
+            agent_id=request.agent_id,
+            function_id=request.function_id,
+            message="Function assigned successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function assignment: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error assigning function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while assigning the function")
+
+@router.delete("/remove", response_model=FunctionAssignmentResponse, summary="Remove a function from an agent")
+async def remove_function_endpoint(
+    agent_id: UUID,
+    function_id: str,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Remove a function from a specific agent.
+
+    - **agent_id**: The ID of the agent to remove the function from
+    - **function_id**: The ID of the function to remove
+    """
+    try:
+        function_logger.info(f"Removing function {function_id} from agent: {agent_id}")
+        await remove_function_from_agent(agent_id, function_id)
+        function_logger.info(f"Successfully removed function {function_id} from agent: {agent_id}")
+        return FunctionAssignmentResponse(
+            agent_id=agent_id,
+            function_id=function_id,
+            message="Function removed successfully"
+        )
+    except ValueError as ve:
+        function_logger.error(f"Value error in function removal: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        function_logger.error(f"Error removing function: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while removing the function")
 
 ```
 
-# app/api/__init__.py
+# app/api/endpoints/agent.py
 
 ```py
+from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from typing import List
+from app.api.models.agent import AgentCreationRequest, AgentCreationResponse, AgentInfoResponse, AgentUpdateRequest, AgentUpdateResponse
+from app.core.agent import create_agent, get_agent_info, update_agent, delete_agent, list_agents
+from app.utils.auth import get_api_key
+
+router = APIRouter()
+
+@router.post("/create", response_model=AgentCreationResponse, status_code=201)
+async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = Depends(get_api_key)):
+    """
+    Create a new agent.
+
+    - **name**: The name of the agent
+    - **config**: Configuration for the agent's language model
+    - **memory_config**: Configuration for the agent's memory systems
+    - **initial_prompt**: The initial prompt to send to the agent upon creation
+    """
+    agent_id = await create_agent(
+        name=request.name,
+        config=request.config.dict(),
+        memory_config=request.memory_config.dict(),
+        initial_prompt=request.initial_prompt
+    )
+    return AgentCreationResponse(agent_id=agent_id, message="Agent created successfully")
+
+@router.get("/{agent_id}", response_model=AgentInfoResponse)
+async def get_agent_info_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
+    """
+    Retrieve information about a specific agent.
+
+    - **agent_id**: The unique identifier of the agent
+    """
+    agent_info = await get_agent_info(agent_id=agent_id)
+    if agent_info is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent_info
+
+@router.patch("/{agent_id}", response_model=AgentUpdateResponse)
+async def update_agent_endpoint(agent_id: UUID, request: AgentUpdateRequest, api_key: str = Depends(get_api_key)):
+    """
+    Update an existing agent.
+
+    - **agent_id**: The unique identifier of the agent to update
+    - **config**: Updated configuration for the agent's language model (optional)
+    - **memory_config**: Updated configuration for the agent's memory systems (optional)
+    """
+    updated = await update_agent(
+        agent_id=agent_id,
+        update_data=request.dict(exclude_unset=True)
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return AgentUpdateResponse(agent_id=agent_id, message="Agent updated successfully")
+
+@router.delete("/{agent_id}", status_code=204)
+async def delete_agent_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
+    """
+    Delete an agent.
+
+    - **agent_id**: The unique identifier of the agent to delete
+    """
+    deleted = await delete_agent(agent_id=agent_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+@router.get("/", response_model=List[AgentInfoResponse])
+async def list_agents_endpoint(api_key: str = Depends(get_api_key)):
+    """
+    List all agents.
+    """
+    return await list_agents()
+
+```
+
+# app/api/endpoints/__init__.py
+
+```py
+from .agent import router as agent_router
+from .message import router as message_router
+from .function import router as function_router
+from .memory import router as memory_router
+
+__all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
 ```
 
@@ -2376,502 +2870,6 @@ class AgentDeleteResponse(BaseModel):
 # app/api/models/__init__.py
 
 ```py
-
-```
-
-# app/api/endpoints/message.py
-
-```py
-from fastapi import APIRouter, HTTPException, Depends
-from uuid import UUID
-from app.api.models.agent import AgentMessageRequest, AgentMessageResponse
-from app.core.agent import process_message
-from app.utils.auth import get_api_key
-from app.utils.logging import agent_logger
-
-router = APIRouter()
-
-@router.post("/send", response_model=AgentMessageResponse)
-async def send_message_to_agent(request: AgentMessageRequest, api_key: str = Depends(get_api_key)):
-    try:
-        agent_logger.info(f"Received message for agent: {request.agent_id}")
-        response, function_calls = await process_message(request.agent_id, request.message)
-        agent_logger.info(f"Successfully processed message for agent: {request.agent_id}")
-        return AgentMessageResponse(
-            agent_id=request.agent_id,
-            response=response,
-            function_calls=function_calls
-        )
-    except ValueError as ve:
-        agent_logger.error(f"Agent not found: {request.agent_id}")
-        raise HTTPException(status_code=404, detail=str(ve))
-    except Exception as e:
-        agent_logger.error(f"Error processing message for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while processing the message")
-
-# Note: If we want to add an endpoint for retrieving message history, we would add it here.
-# This would require implementing a function in app/core/agent.py to retrieve the conversation history.
-
-# @router.get("/{agent_id}/history", response_model=List[MessageHistoryItem])
-# async def get_message_history(agent_id: UUID, limit: int = 10, api_key: str = Depends(get_api_key)):
-#     # Implementation for retrieving message history
-#     pass
-
-```
-
-# app/api/endpoints/memory.py
-
-```py
-from fastapi import APIRouter, HTTPException, Depends
-from uuid import UUID
-from typing import List
-from app.api.models.memory import (
-    MemoryType,
-    MemoryEntry,
-    MemoryAddRequest,
-    MemoryAddResponse,
-    MemoryRetrieveRequest,
-    MemoryRetrieveResponse,
-    MemorySearchRequest,
-    MemorySearchResponse,
-    MemoryDeleteRequest,
-    MemoryDeleteResponse,
-    MemoryOperationRequest,
-    MemoryOperationResponse
-)
-from app.core.memory import (
-    add_to_memory,
-    retrieve_from_memory,
-    search_memory,
-    delete_from_memory,
-    perform_memory_operation
-)
-from app.core.agent import get_agent_memory_config  # Assuming this function exists to get MemoryConfig for an agent
-from app.utils.auth import get_api_key
-from app.utils.logging import memory_logger
-
-router = APIRouter()
-
-@router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
-async def add_memory_endpoint(
-    request: MemoryAddRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Add a new memory entry for an agent.
-
-    - **agent_id**: The ID of the agent to add the memory for
-    - **memory_type**: The type of memory (short-term or long-term)
-    - **entry**: The memory entry to add
-    """
-    try:
-        agent_id = UUID(request.agent_id)
-        memory_logger.info(f"Adding memory for agent: {agent_id}")
-        memory_config = await get_agent_memory_config(agent_id)
-        memory_id = await add_to_memory(agent_id, request.memory_type, request.entry, memory_config)
-        memory_logger.info(f"Memory added successfully for agent: {agent_id}")
-        return MemoryAddResponse(
-            agent_id=agent_id,
-            memory_id=memory_id,
-            message="Memory added successfully"
-        )
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
-async def retrieve_memory_endpoint(
-    request: MemoryRetrieveRequest = Depends(),
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Retrieve a specific memory entry for an agent.
-
-    - **agent_id**: The ID of the agent to retrieve the memory for
-    - **memory_type**: The type of memory (short-term or long-term)
-    - **memory_id**: The unique identifier of the memory to retrieve
-    """
-    try:
-        memory_logger.info(f"Retrieving memory for agent: {request.agent_id}")
-        memory_config = await get_agent_memory_config(request.agent_id)
-        memory = await retrieve_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
-        if memory is None:
-            raise HTTPException(status_code=404, detail="Memory not found")
-        memory_logger.info(f"Memory retrieved successfully for agent: {request.agent_id}")
-        return MemoryRetrieveResponse(
-            agent_id=request.agent_id,
-            memory=memory
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/search", response_model=MemorySearchResponse, summary="Search memory entries")
-async def search_memory_endpoint(
-    request: MemorySearchRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Search memory entries for an agent.
-
-    - **agent_id**: The ID of the agent to search memories for
-    - **memory_type**: The type of memory to search (short-term or long-term)
-    - **query**: The search query
-    - **limit**: The maximum number of results to return
-    """
-    try:
-        memory_logger.info(f"Searching memories for agent: {request.agent_id}")
-        memory_config = await get_agent_memory_config(request.agent_id)
-        results = await search_memory(request.agent_id, request.memory_type, request.query, request.limit, memory_config)
-        memory_logger.info(f"Memory search completed for agent: {request.agent_id}")
-        return MemorySearchResponse(
-            agent_id=request.agent_id,
-            results=results
-        )
-    except Exception as e:
-        memory_logger.error(f"Error searching memories for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.delete("/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry")
-async def delete_memory_endpoint(
-    request: MemoryDeleteRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Delete a specific memory entry for an agent.
-
-    - **agent_id**: The ID of the agent to delete the memory for
-    - **memory_type**: The type of memory (short-term or long-term)
-    - **memory_id**: The unique identifier of the memory to delete
-    """
-    try:
-        memory_logger.info(f"Deleting memory for agent: {request.agent_id}")
-        memory_config = await get_agent_memory_config(request.agent_id)
-        await delete_from_memory(request.agent_id, request.memory_type, request.memory_id, memory_config)
-        memory_logger.info(f"Memory deleted successfully for agent: {request.agent_id}")
-        return MemoryDeleteResponse(
-            agent_id=request.agent_id,
-            message="Memory deleted successfully"
-        )
-    except Exception as e:
-        memory_logger.error(f"Error deleting memory for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/operate", response_model=MemoryOperationResponse, summary="Perform a memory operation")
-async def memory_operation_endpoint(
-    request: MemoryOperationRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Perform a generic memory operation for an agent.
-
-    - **agent_id**: The ID of the agent
-    - **operation**: The memory operation to perform
-    - **memory_type**: The type of memory (short-term or long-term)
-    - **data**: Data required for the operation
-    """
-    try:
-        memory_logger.info(f"Performing {request.operation} operation for agent: {request.agent_id}")
-        memory_config = await get_agent_memory_config(request.agent_id)
-        result = await perform_memory_operation(request.agent_id, request.operation, request.memory_type, request.data, memory_config)
-        memory_logger.info(f"{request.operation} operation completed for agent: {request.agent_id}")
-        return MemoryOperationResponse(
-            agent_id=request.agent_id,
-            operation=request.operation,
-            result=result,
-            message=f"{request.operation} operation completed successfully"
-        )
-    except Exception as e:
-        memory_logger.error(f"Error performing {request.operation} operation for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-```
-
-# app/api/endpoints/function.py
-
-```py
-from fastapi import APIRouter, HTTPException, Depends
-from uuid import UUID
-from typing import List
-from app.api.models.function import (
-    FunctionExecutionRequest,
-    FunctionExecutionResponse,
-    AvailableFunctionsRequest,
-    AvailableFunctionsResponse,
-    FunctionDefinition,
-    FunctionRegistrationRequest,
-    FunctionRegistrationResponse,
-    FunctionUpdateRequest,
-    FunctionUpdateResponse,
-    FunctionAssignmentRequest,
-    FunctionAssignmentResponse
-)
-from app.core.agent import (
-    execute_function,
-    get_available_functions,
-    register_function,
-    update_function,
-    assign_function_to_agent,
-    remove_function_from_agent
-)
-from app.utils.auth import get_api_key
-from app.utils.logging import function_logger
-
-router = APIRouter()
-
-@router.post("/execute", response_model=FunctionExecutionResponse, summary="Execute a function")
-async def execute_function_endpoint(
-    request: FunctionExecutionRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Execute a function for a specific agent.
-
-    - **agent_id**: The ID of the agent requesting the function execution
-    - **function_name**: The name of the function to execute
-    - **parameters**: The parameters to pass to the function
-    """
-    try:
-        function_logger.info(f"Executing function {request.function_name} for agent: {request.agent_id}")
-        result = await execute_function(request.agent_id, request.function_name, request.parameters)
-        function_logger.info(f"Function {request.function_name} executed successfully for agent: {request.agent_id}")
-        return FunctionExecutionResponse(
-            agent_id=request.agent_id,
-            function_name=request.function_name,
-            result=result
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in function execution: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error executing function {request.function_name} for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while executing the function")
-
-@router.get("/available", response_model=AvailableFunctionsResponse, summary="Get available functions")
-async def get_available_functions_endpoint(
-    request: AvailableFunctionsRequest = Depends(),
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Retrieve available functions for a specific agent.
-
-    - **agent_id**: The ID of the agent to retrieve available functions for
-    """
-    try:
-        function_logger.info(f"Retrieving available functions for agent: {request.agent_id}")
-        functions = await get_available_functions(request.agent_id)
-        function_logger.info(f"Successfully retrieved available functions for agent: {request.agent_id}")
-        return AvailableFunctionsResponse(
-            agent_id=request.agent_id,
-            functions=functions
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in retrieving available functions: {str(ve)}")
-        raise HTTPException(status_code=404, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error retrieving available functions for agent {request.agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while retrieving available functions")
-
-@router.post("/register", response_model=FunctionRegistrationResponse, status_code=201, summary="Register a new function")
-async def register_function_endpoint(
-    request: FunctionRegistrationRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Register a new function for use by agents.
-
-    - **function**: The function definition to register
-    """
-    try:
-        function_logger.info(f"Registering new function: {request.function.name}")
-        function_id = await register_function(request.function)
-        function_logger.info(f"Successfully registered function: {function_id}")
-        return FunctionRegistrationResponse(
-            function_id=function_id,
-            message="Function registered successfully"
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in function registration: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error registering function: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while registering the function")
-
-@router.put("/update", response_model=FunctionUpdateResponse, summary="Update an existing function")
-async def update_function_endpoint(
-    request: FunctionUpdateRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Update an existing function definition.
-
-    - **function_id**: The unique identifier of the function to update
-    - **updated_function**: The updated function definition
-    """
-    try:
-        function_logger.info(f"Updating function: {request.function_id}")
-        await update_function(request.function_id, request.updated_function)
-        function_logger.info(f"Successfully updated function: {request.function_id}")
-        return FunctionUpdateResponse(
-            function_id=request.function_id,
-            message="Function updated successfully"
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in function update: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error updating function: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while updating the function")
-
-@router.post("/assign", response_model=FunctionAssignmentResponse, summary="Assign a function to an agent")
-async def assign_function_endpoint(
-    request: FunctionAssignmentRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Assign a function to a specific agent.
-
-    - **agent_id**: The ID of the agent to assign the function to
-    - **function_id**: The ID of the function to assign
-    """
-    try:
-        function_logger.info(f"Assigning function {request.function_id} to agent: {request.agent_id}")
-        await assign_function_to_agent(request.agent_id, request.function_id)
-        function_logger.info(f"Successfully assigned function {request.function_id} to agent: {request.agent_id}")
-        return FunctionAssignmentResponse(
-            agent_id=request.agent_id,
-            function_id=request.function_id,
-            message="Function assigned successfully"
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in function assignment: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error assigning function: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while assigning the function")
-
-@router.delete("/remove", response_model=FunctionAssignmentResponse, summary="Remove a function from an agent")
-async def remove_function_endpoint(
-    agent_id: UUID,
-    function_id: str,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Remove a function from a specific agent.
-
-    - **agent_id**: The ID of the agent to remove the function from
-    - **function_id**: The ID of the function to remove
-    """
-    try:
-        function_logger.info(f"Removing function {function_id} from agent: {agent_id}")
-        await remove_function_from_agent(agent_id, function_id)
-        function_logger.info(f"Successfully removed function {function_id} from agent: {agent_id}")
-        return FunctionAssignmentResponse(
-            agent_id=agent_id,
-            function_id=function_id,
-            message="Function removed successfully"
-        )
-    except ValueError as ve:
-        function_logger.error(f"Value error in function removal: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        function_logger.error(f"Error removing function: {str(e)}")
-        raise HTTPException(status_code=500, detail="An error occurred while removing the function")
-
-```
-
-# app/api/endpoints/agent.py
-
-```py
-from fastapi import APIRouter, HTTPException, Depends
-from uuid import UUID
-from typing import List
-from app.api.models.agent import AgentCreationRequest, AgentCreationResponse, AgentInfoResponse, AgentUpdateRequest, AgentUpdateResponse
-from app.core.agent import create_agent, get_agent_info, update_agent, delete_agent, list_agents
-from app.utils.auth import get_api_key
-
-router = APIRouter()
-
-@router.post("/create", response_model=AgentCreationResponse, status_code=201)
-async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = Depends(get_api_key)):
-    """
-    Create a new agent.
-
-    - **name**: The name of the agent
-    - **config**: Configuration for the agent's language model
-    - **memory_config**: Configuration for the agent's memory systems
-    - **initial_prompt**: The initial prompt to send to the agent upon creation
-    """
-    agent_id = await create_agent(
-        name=request.name,
-        config=request.config.dict(),
-        memory_config=request.memory_config.dict(),
-        initial_prompt=request.initial_prompt
-    )
-    return AgentCreationResponse(agent_id=agent_id, message="Agent created successfully")
-
-@router.get("/{agent_id}", response_model=AgentInfoResponse)
-async def get_agent_info_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
-    """
-    Retrieve information about a specific agent.
-
-    - **agent_id**: The unique identifier of the agent
-    """
-    agent_info = await get_agent_info(agent_id=agent_id)
-    if agent_info is None:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent_info
-
-@router.patch("/{agent_id}", response_model=AgentUpdateResponse)
-async def update_agent_endpoint(agent_id: UUID, request: AgentUpdateRequest, api_key: str = Depends(get_api_key)):
-    """
-    Update an existing agent.
-
-    - **agent_id**: The unique identifier of the agent to update
-    - **config**: Updated configuration for the agent's language model (optional)
-    - **memory_config**: Updated configuration for the agent's memory systems (optional)
-    """
-    updated = await update_agent(
-        agent_id=agent_id,
-        update_data=request.dict(exclude_unset=True)
-    )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return AgentUpdateResponse(agent_id=agent_id, message="Agent updated successfully")
-
-@router.delete("/{agent_id}", status_code=204)
-async def delete_agent_endpoint(agent_id: UUID, api_key: str = Depends(get_api_key)):
-    """
-    Delete an agent.
-
-    - **agent_id**: The unique identifier of the agent to delete
-    """
-    deleted = await delete_agent(agent_id=agent_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Agent not found")
-
-@router.get("/", response_model=List[AgentInfoResponse])
-async def list_agents_endpoint(api_key: str = Depends(get_api_key)):
-    """
-    List all agents.
-    """
-    return await list_agents()
-
-```
-
-# app/api/endpoints/__init__.py
-
-```py
-from .agent import router as agent_router
-from .message import router as message_router
-from .function import router as function_router
-from .memory import router as memory_router
-
-__all__ = ["agent_router", "message_router", "function_router", "memory_router"]
 
 ```
 
