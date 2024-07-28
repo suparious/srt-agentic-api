@@ -68,10 +68,24 @@ class LlamaCppServerProvider(BaseLLMProvider):
         self.api_base = config['api_base']
 
     async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement Llama.cpp server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from Llama.cpp model {self.model_name}: {prompt[:30]}..."
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "prompt": prompt,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stop": ["\n"]  # Add appropriate stop tokens
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{self.api_base}/completion", headers=headers, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result['choices'][0]['text']
+                else:
+                    error_content = await response.text()
+                    raise Exception(f"Llama.cpp server API error: {response.status} - {error_content}")
 
 class TGIServerProvider(BaseLLMProvider):
     def __init__(self, config: Dict[str, Any]):
