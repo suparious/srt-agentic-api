@@ -1,4 +1,6 @@
 import asyncio
+import aiohttp
+import json
 from typing import Dict, Any
 from abc import ABC, abstractmethod
 from app.config import settings
@@ -12,14 +14,28 @@ class OpenAIProvider(BaseLLMProvider):
     def __init__(self, config: Dict[str, Any]):
         self.model_name = config['model_name']
         self.api_base = config['api_base']
-        # You might want to add API key handling here, e.g.:
-        # self.api_key = config['api_key']
+        self.api_key = config.get('api_key') or settings.OPENAI_API_KEY
 
     async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement OpenAI API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from OpenAI model {self.model_name}: {prompt[:30]}..."
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{self.api_base}/chat/completions", headers=headers, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result['choices'][0]['message']['content']
+                else:
+                    error_content = await response.text()
+                    raise Exception(f"OpenAI API error: {response.status} - {error_content}")
 
 class VLLMProvider(BaseLLMProvider):
     def __init__(self, config: Dict[str, Any]):
