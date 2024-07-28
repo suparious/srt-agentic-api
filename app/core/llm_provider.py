@@ -93,10 +93,26 @@ class TGIServerProvider(BaseLLMProvider):
         self.api_base = config['api_base']
 
     async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        # Implement TGI server API call here
-        # This is a placeholder implementation
-        await asyncio.sleep(1)  # Simulating API call
-        return f"Response from TGI model {self.model_name}: {prompt[:30]}..."
+        headers = {
+            "Content-Type": "application/json"
+        }
+        data = {
+            "inputs": prompt,
+            "parameters": {
+                "temperature": temperature,
+                "max_new_tokens": max_tokens,
+                "do_sample": True
+            }
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{self.api_base}/generate", headers=headers, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result['generated_text']
+                else:
+                    error_content = await response.text()
+                    raise Exception(f"TGI server API error: {response.status} - {error_content}")
 
 class LLMProvider:
     def __init__(self, provider_config: Dict[str, Any]):
