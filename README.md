@@ -7,7 +7,7 @@ SolidRusT Agentic API is a powerful and flexible API for creating, managing, and
 - Agent creation and management
 - Short-term (Redis) and long-term (ChromaDB) memory systems
 - Function calling capabilities
-- Flexible LLM provider integration
+- Flexible LLM provider integration with fallback mechanism
 - Scalable architecture
 
 ## Project Structure
@@ -63,6 +63,52 @@ srt-agentic-api/
 5. Set up the database:
    - Ensure Redis is running for short-term memory operations.
    - Set up ChromaDB for long-term memory operations.
+
+## LLM Provider Integration
+
+SolidRusT Agentic API now supports multiple LLM providers with a fallback mechanism. This means you can configure your agents to use multiple providers in a priority order. If the primary provider fails, the system will automatically try the next provider in the list.
+
+Supported providers:
+- OpenAI
+- vLLM
+- LlamaCpp
+- TGI (Text Generation Inference)
+
+To configure multiple providers for an agent, use the following format in your agent creation request:
+
+```json
+{
+  "agent_name": "MultiProviderAgent",
+  "agent_config": {
+    "llm_providers": [
+      {
+        "provider_type": "openai",
+        "model_name": "gpt-3.5-turbo",
+        "api_key": "your-openai-api-key"
+      },
+      {
+        "provider_type": "vllm",
+        "model_name": "llama-7b",
+        "api_base": "http://your-vllm-server:8000"
+      },
+      {
+        "provider_type": "llamacpp",
+        "model_name": "llama-13b",
+        "api_base": "http://your-llamacpp-server:8080"
+      }
+    ],
+    "temperature": 0.7,
+    "max_tokens": 150
+  },
+  "memory_config": {
+    "use_long_term_memory": true,
+    "use_redis_cache": true
+  },
+  "initial_prompt": "You are a helpful assistant."
+}
+```
+
+In this configuration, the system will first try to use OpenAI. If that fails, it will fall back to vLLM, and if that also fails, it will try LlamaCpp.
 
 ## Running the Application
 

@@ -12,14 +12,14 @@ async def create_agent_endpoint(request: AgentCreationRequest, api_key: str = De
     """
     Create a new agent.
 
-    - **name**: The name of the agent
-    - **config**: Configuration for the agent's language model
+    - **agent_name**: The name of the agent
+    - **agent_config**: Configuration for the agent's language model(s)
     - **memory_config**: Configuration for the agent's memory systems
     - **initial_prompt**: The initial prompt to send to the agent upon creation
     """
     agent_id = await create_agent(
-        name=request.name,
-        config=request.config.dict(),
+        name=request.agent_name,
+        config=request.agent_config.dict(),
         memory_config=request.memory_config.dict(),
         initial_prompt=request.initial_prompt
     )

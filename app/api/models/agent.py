@@ -3,17 +3,22 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID
 from enum import Enum
 
+class LLMProviderConfig(BaseModel):
+    provider_type: str = Field(..., description="The LLM provider type (e.g., 'openai', 'vllm', 'llamacpp', 'tgi')")
+    model_name: str = Field(..., description="The specific model name to use")
+    api_key: Optional[str] = Field(None, description="API key for the provider (if required)")
+    api_base: Optional[str] = Field(None, description="Base URL for the provider's API (if custom)")
+
 class MemoryConfig(BaseModel):
     use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
     use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
 
 class AgentConfig(BaseModel):
-    llm_provider: str = Field(..., description="The LLM provider to use for this agent (e.g., 'openai', 'anthropic', 'huggingface')")
+    llm_providers: List[LLMProviderConfig] = Field(..., min_items=1, description="List of LLM provider configurations")
     model_name: str = Field(..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')")
     temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
     max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
     memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
-
     model_config = ConfigDict(protected_namespaces=())
 
 class AgentCreationRequest(BaseModel):

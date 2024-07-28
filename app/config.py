@@ -53,10 +53,15 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # LLM Provider settings
-    DEFAULT_LLM_PROVIDER: str = "openai"
+    DEFAULT_LLM_PROVIDERS: List[Dict[str, Any]] = [
+        {
+            "provider_type": "openai",
+            "model_name": "gpt-3.5-turbo",
+            "api_key": ""
+        }
+    ]
     OPENAI_API_KEY: str = ""
     OPENAI_API_BASE: str = "https://api.openai.com/v1"
-    ANTHROPIC_API_KEY: str = ""
     VLLM_API_BASE: str = "http://vllm-api-endpoint"
     LLAMACPP_API_BASE: str = "http://llamacpp-server-endpoint"
     TGI_API_BASE: str = "http://tgi-server-endpoint"

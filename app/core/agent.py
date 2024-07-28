@@ -1,5 +1,3 @@
-import inspect
-import asyncio
 from uuid import UUID, uuid4
 from typing import Dict, Any, Tuple, List, Optional
 from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
@@ -9,20 +7,18 @@ from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
 from fastapi import HTTPException
+from app.config import settings
 
 class Agent:
     def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
         self.id = agent_id
         self.name = name
         self.config = config
-        self.llm_provider = create_llm_provider({
-            'provider_type': config.llm_provider,
-            'model_name': config.model_name
-        })
+        self.llm_provider = create_llm_provider(config.llm_providers)
         self.memory = MemorySystem(agent_id, memory_config)
         self.conversation_history = []
         self.available_function_ids: List[str] = []
-        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {config.llm_provider} provider")
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers")
 
     async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:
