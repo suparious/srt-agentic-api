@@ -17,6 +17,7 @@ from app.api.models.memory import (
     AdvancedSearchQuery
 )
 from app.core.memory import (
+    get_memory_system,
     add_to_memory,
     retrieve_from_memory,
     search_memory,

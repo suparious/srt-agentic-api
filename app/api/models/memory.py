@@ -26,11 +26,14 @@ class AdvancedSearchQuery(BaseModel):
     Represents an advanced search query for memory entries.
     """
     query: str = Field(..., description="The main search query")
-    memory_type: Optional[MemoryType] = Field(None, description="The type of memory to search (short-term, long-term, or both if None)")
-    time_range: Optional[Dict[str, datetime]] = Field(None, description="The time range to search within (e.g., {'start': datetime, 'end': datetime})")
+    memory_type: Optional[MemoryType] = Field(None,
+                                              description="The type of memory to search (SHORT_TERM, LONG_TERM, or both if None)")
+    time_range: Optional[Dict[str, datetime]] = Field(None,
+                                                      description="The time range to search within (e.g., {'start': datetime, 'end': datetime})")
     context_type: Optional[str] = Field(None, description="The type of context to search within")
     metadata_filters: Optional[Dict[str, Any]] = Field(None, description="Filters to apply on metadata")
-    relevance_threshold: Optional[float] = Field(None, ge=0, le=1, description="The minimum relevance score for results (0 to 1)")
+    relevance_threshold: Optional[float] = Field(None, ge=0, le=1,
+                                                 description="The minimum relevance score for results (0 to 1)")
     max_results: int = Field(default=10, ge=1, description="The maximum number of results to return")
 
 class MemoryAddRequest(BaseModel):

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime
 from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings

@@ -117,6 +117,24 @@ class MemorySystem:
             memory_logger.error(f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}")
             raise
 
+    async def advanced_search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
+        try:
+            results = []
+            if query.memory_type in (None, MemoryType.SHORT_TERM) and self.config.use_redis_cache:
+                short_term_results = await self.short_term.search(query)
+                results.extend(short_term_results)
+            if query.memory_type in (None, MemoryType.LONG_TERM) and self.config.use_long_term_memory:
+                long_term_results = await self.long_term.search(query)
+                results.extend(long_term_results)
+
+            # Merge and rank results
+            results.sort(key=lambda x: x["relevance_score"], reverse=True)
+            return results[:query.max_results]
+        except Exception as e:
+            memory_logger.error(
+                f"Failed to perform advanced search for agent: {self.agent_id}. Error: {str(e)}")
+            raise
+
 # Global dictionary to store active memory systems
 memory_systems: Dict[UUID, MemorySystem] = {}
 
