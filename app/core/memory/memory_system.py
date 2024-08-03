@@ -1,4 +1,4 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Dict, Any, List, Optional
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryOperation, AdvancedSearchQuery
 from app.api.models.agent import MemoryConfig
@@ -127,15 +127,15 @@ async def get_memory_system(agent_id: UUID, config: MemoryConfig) -> MemorySyste
 
 async def add_to_memory(agent_id: UUID, memory_type: MemoryType, entry: MemoryEntry, config: MemoryConfig) -> str:
     memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.add(memory_type, entry.content, entry.metadata)
+    return await memory_system.add(memory_type, entry)
 
 async def retrieve_from_memory(agent_id: UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig) -> Optional[MemoryEntry]:
     memory_system = await get_memory_system(agent_id, config)
     return await memory_system.retrieve(memory_type, memory_id)
 
-async def search_memory(agent_id: UUID, memory_type: MemoryType, query: str, limit: int, config: MemoryConfig) -> List[MemoryEntry]:
+async def search_memory(agent_id: UUID, query: AdvancedSearchQuery, config: MemoryConfig) -> List[Dict[str, Any]]:
     memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.search(memory_type, query, limit)
+    return await memory_system.search(query)
 
 async def delete_from_memory(agent_id: UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig):
     memory_system = await get_memory_system(agent_id, config)
