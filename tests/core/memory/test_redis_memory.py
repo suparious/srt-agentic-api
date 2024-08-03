@@ -1,0 +1,122 @@
+import pytest
+from uuid import UUID
+from datetime import datetime, timedelta
+from app.core.memory.redis_memory import RedisMemory
+from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
+
+
+@pytest.fixture
+async def redis_memory():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_memory = RedisMemory(agent_id)
+    yield redis_memory
+    # Clean up after tests
+    await redis_memory.redis.flushdb()
+
+
+@pytest.mark.asyncio
+async def test_add_and_retrieve_memory(redis_memory):
+    memory_entry = MemoryEntry(
+        content="Test memory content",
+        metadata={"key": "value"},
+        context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+    )
+    memory_id = await redis_memory.add("test_key", memory_entry)
+    retrieved_entry = await redis_memory.get("test_key")
+    assert retrieved_entry.content == memory_entry.content
+    assert retrieved_entry.metadata == memory_entry.metadata
+    assert retrieved_entry.context.context_type == memory_entry.context.context_type
+
+
+@pytest.mark.asyncio
+async def test_advanced_search_with_query(redis_memory):
+    # Add test data
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"index": i},
+            context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(query="content 3", max_results=2)
+    results = await redis_memory.search(query)
+
+    assert len(results) == 1
+    assert results[0]["memory_entry"].content == "Test memory content 3"
+
+
+@pytest.mark.asyncio
+async def test_advanced_search_with_metadata_filters(redis_memory):
+    # Add test data
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"index": i, "even": i % 2 == 0},
+            context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(query="content", metadata_filters={"even": True}, max_results=5)
+    results = await redis_memory.search(query)
+
+    assert len(results) == 3
+    assert all(result["memory_entry"].metadata["even"] for result in results)
+
+
+@pytest.mark.asyncio
+async def test_advanced_search_with_time_range(redis_memory):
+    now = datetime.now()
+    # Add test data
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"index": i},
+            context=MemoryContext(context_type="test", timestamp=now - timedelta(days=i), metadata={})
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(
+        query="content",
+        time_range={"start": now - timedelta(days=2), "end": now},
+        max_results=5
+    )
+    results = await redis_memory.search(query)
+
+    assert len(results) == 3
+    assert all(result["memory_entry"].context.timestamp >= now - timedelta(days=2) for result in results)
+
+
+@pytest.mark.asyncio
+async def test_advanced_search_with_relevance_threshold(redis_memory):
+    # Add test data
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"index": i},
+            context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(query="content", relevance_threshold=0.5, max_results=5)
+    results = await redis_memory.search(query)
+
+    assert all(result["relevance_score"] >= 0.5 for result in results)
+
+
+@pytest.mark.asyncio
+async def test_advanced_search_with_context_type(redis_memory):
+    # Add test data
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"index": i},
+            context=MemoryContext(context_type=f"type_{i % 2}", timestamp=datetime.now(), metadata={})
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(query="content", context_type="type_0", max_results=5)
+    results = await redis_memory.search(query)
+
+    assert len(results) == 3
+    assert all(result["memory_entry"].context.context_type == "type_0" for result in results)
