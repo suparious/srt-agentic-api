@@ -29,25 +29,14 @@ from app.utils.logging import memory_logger
 router = APIRouter()
 
 @router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
-async def add_memory_endpoint(
-    request: MemoryAddRequest,
-    api_key: str = Depends(get_api_key)
-):
-    """
-    Add a new memory entry for an agent.
-
-    - **agent_id**: The ID of the agent to add the memory for
-    - **memory_type**: The type of memory (short-term or long-term)
-    - **entry**: The memory entry to add
-    """
+async def add_memory_endpoint(request: MemoryAddRequest, api_key: str = Depends(get_api_key)):
     try:
-        agent_id = UUID(request.agent_id)
-        memory_logger.info(f"Adding memory for agent: {agent_id}")
-        memory_config = await get_agent_memory_config(agent_id)
-        memory_id = await add_to_memory(agent_id, request.memory_type, request.entry, memory_config)
-        memory_logger.info(f"Memory added successfully for agent: {agent_id}")
+        memory_logger.info(f"Adding memory for agent: {request.agent_id}")
+        memory_config = await get_agent_memory_config(request.agent_id)
+        memory_id = await add_to_memory(request.agent_id, request.memory_type, request.entry, memory_config)
+        memory_logger.info(f"Memory added successfully for agent: {request.agent_id}")
         return MemoryAddResponse(
-            agent_id=agent_id,
+            agent_id=request.agent_id,
             memory_id=memory_id,
             message="Memory added successfully"
         )
@@ -57,10 +46,8 @@ async def add_memory_endpoint(
         memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
-async def retrieve_memory_endpoint(
-    request: MemoryRetrieveRequest = Depends(),
-    api_key: str = Depends(get_api_key)
+@router.get("/retrieve", response_model=MemoryRetrieveResponse, status_code=201, summary="Retrieve a memory entry")
+async def retrieve_memory_endpoint(request: MemoryRetrieveRequest = Depends(), api_key: str = Depends(get_api_key)
 ):
     """
     Retrieve a specific memory entry for an agent.
@@ -80,6 +67,13 @@ async def retrieve_memory_endpoint(
             agent_id=request.agent_id,
             memory=memory
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
     except HTTPException:
         raise
     except Exception as e:
