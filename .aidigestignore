@@ -1,12 +1,37 @@
+# macOS directory metadata
 .DS_Store
+
+# Environment variables
 .env
+.env.test
+
+# Git metadata directory
 .git/
+
+# Python virtual environment
 .venv/
+venv/
+
+# Python bytecode cache
 __pycache__/
+
+# pytest cache
 .pytest_cache/
+
+# JetBrains IDE settings
 .idea/
+
+# Data directory
 data/
+
+# Logs directory
 logs/
+
+# Documentation directory
 docs/
+
+# Coverage data
 .coverage
+
+# Markdown file
 codebase.md

@@ -1,8 +1,28 @@
+# macOS directory metadata
 .DS_Store
+
+# Environment variables
 .env
 .env.test
+
+# Python virtual environment
 .venv/
+venv/
+
+# Python bytecode cache
 __pycache__/
-/logs/
-/data/
+
+# pytest cache
+.pytest_cache/
+
+# Data directory
+data/
+
+# Logs directory
+logs/
+
+# Coverage data
+.coverage
+
+# Markdown file
 codebase.md
