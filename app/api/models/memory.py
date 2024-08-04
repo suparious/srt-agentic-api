@@ -14,27 +14,35 @@ class MemoryOperation(str, Enum):
     SEARCH = "search"
     DELETE = "delete"
 
+class MemoryContext(BaseModel):
+    """
+    Represents the context of a memory entry.
+    """
+    context_type: str = Field(..., description="The type of context for the memory")
+    timestamp: datetime = Field(..., description="The timestamp of the memory context")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata for the context")
+
 class MemoryEntry(BaseModel):
     """
     Represents a single memory entry.
     """
     content: str = Field(..., description="The content of the memory")
     metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the memory")
+    context: MemoryContext = Field(..., description="The context of the memory entry")
 
 class AdvancedSearchQuery(BaseModel):
     """
     Represents an advanced search query for memory entries.
     """
     query: str = Field(..., description="The main search query")
-    memory_type: Optional[MemoryType] = Field(None,
-                                              description="The type of memory to search (SHORT_TERM, LONG_TERM, or both if None)")
-    time_range: Optional[Dict[str, datetime]] = Field(None,
-                                                      description="The time range to search within (e.g., {'start': datetime, 'end': datetime})")
+    memory_type: Optional[MemoryType] = Field(None, description="The type of memory to search (SHORT_TERM, LONG_TERM, or both if None)")
+    time_range: Optional[Dict[str, datetime]] = Field(None, description="The time range to search within (e.g., {'start': datetime, 'end': datetime})")
     context_type: Optional[str] = Field(None, description="The type of context to search within")
     metadata_filters: Optional[Dict[str, Any]] = Field(None, description="Filters to apply on metadata")
-    relevance_threshold: Optional[float] = Field(None, ge=0, le=1,
-                                                 description="The minimum relevance score for results (0 to 1)")
+    relevance_threshold: Optional[float] = Field(None, ge=0, le=1, description="The minimum relevance score for results (0 to 1)")
     max_results: int = Field(default=10, ge=1, description="The maximum number of results to return")
+
+# ... (rest of the existing models)
 
 class MemoryAddRequest(BaseModel):
     """

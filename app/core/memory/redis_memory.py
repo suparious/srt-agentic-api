@@ -59,20 +59,8 @@ class RedisMemory:
             for key in keys:
                 value = await self.redis.get(key)
                 if value:
-                    deserialized_entry = json.loads(value)
-                    context = MemoryContext(
-                        context_type=deserialized_entry["context"]["context_type"],
-                        timestamp=datetime.fromisoformat(deserialized_entry["context"]["timestamp"]),
-                        metadata=deserialized_entry["context"]["metadata"]
-                    )
-                    memory_entry = MemoryEntry(
-                        content=deserialized_entry["content"],
-                        metadata=deserialized_entry["metadata"],
-                        context=context
-                    )
-
-                    # Apply filters
-                    if self._matches_filters(memory_entry, query):
+                    memory_entry = MemoryEntry.parse_raw(value)
+                    if self._matches_query(memory_entry, query):
                         relevance_score = self._calculate_relevance(memory_entry, query)
                         results.append({
                             "id": key.split(":")[-1],
@@ -99,6 +87,19 @@ class RedisMemory:
         if query.time_range:
             if (memory_entry.context.timestamp < query.time_range["start"] or
                 memory_entry.context.timestamp > query.time_range["end"]):
+                return False
+        if query.metadata_filters:
+            for key, value in query.metadata_filters.items():
+                if key not in memory_entry.metadata or memory_entry.metadata[key] != value:
+                    return False
+        return True
+
+    def _matches_query(self, memory_entry: MemoryEntry, query: AdvancedSearchQuery) -> bool:
+        if query.context_type and memory_entry.context.context_type != query.context_type:
+            return False
+        if query.time_range:
+            if (memory_entry.context.timestamp < query.time_range["start"] or
+                    memory_entry.context.timestamp > query.time_range["end"]):
                 return False
         if query.metadata_filters:
             for key, value in query.metadata_filters.items():

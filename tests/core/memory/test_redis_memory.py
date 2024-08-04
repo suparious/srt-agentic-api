@@ -13,6 +13,44 @@ async def redis_memory():
     # Clean up after tests
     await redis_memory.redis.flushdb()
 
+@pytest.mark.asyncio
+async def test_advanced_search(redis_memory):
+    # Add test data
+    for i in range(10):
+        memory_entry = MemoryEntry(
+            content=f"Test memory content {i}",
+            metadata={"key": "value" if i % 2 == 0 else "other"},
+            context=MemoryContext(
+                context_type="test_context",
+                timestamp=datetime.now() - timedelta(hours=i),
+                metadata={}
+            )
+        )
+        await redis_memory.add(f"test_key_{i}", memory_entry)
+
+    query = AdvancedSearchQuery(
+        query="Test memory",
+        memory_type=MemoryType.SHORT_TERM,
+        context_type="test_context",
+        time_range={
+            "start": datetime.now() - timedelta(hours=5),
+            "end": datetime.now()
+        },
+        metadata_filters={"key": "value"},
+        relevance_threshold=0.5,
+        max_results=3
+    )
+
+    results = await redis_memory.search(query)
+
+    assert len(results) == 3
+    for result in results:
+        assert "Test memory" in result['memory_entry'].content
+        assert result['memory_entry'].metadata['key'] == "value"
+        assert result['memory_entry'].context.context_type == "test_context"
+        assert result['memory_entry'].context.timestamp >= query.time_range['start']
+        assert result['memory_entry'].context.timestamp <= query.time_range['end']
+        assert result['relevance_score'] >= 0.5
 
 @pytest.mark.asyncio
 async def test_add_and_retrieve_memory(redis_memory):

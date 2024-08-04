@@ -7,21 +7,24 @@ from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig
 from dotenv import load_dotenv
 
+# Set the TESTING environment variable
+os.environ["TESTING"] = "true"
+
 # Load the test environment variables
 load_dotenv('.env.test')
 
 @pytest.fixture(scope="session")
 def test_settings():
     return Settings(
-        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),  # Use the API key from .env.test
+        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
         REDIS_URL="redis://localhost:6379/15",
         CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
         OPENAI_API_KEY="test_openai_key",
-        ANTHROPIC_API_KEY="test_anthropic_key",
-        VLLM_API_BASE="http://test-vllm-api-endpoint",
+        VLLM_API_BASE="https://artemis.hq.solidrust.net/v1",
         LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
         TGI_API_BASE="http://test-tgi-server-endpoint",
+        ANTHROPIC_API_KEY="test_anthropic_key",
         TESTING=True
     )
 
@@ -49,8 +52,8 @@ async def test_agent(async_client, auth_headers):
     agent_data = {
         "agent_name": "Test Agent",
         "agent_config": AgentConfig(
-            llm_provider="openai",
-            model_name="gpt-3.5-turbo",
+            llm_provider="vllm",
+            model_name="mistral-7b-instruct-v0.1",
             temperature=0.7,
             max_tokens=150,
             memory_config=MemoryConfig(

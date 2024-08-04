@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
@@ -12,59 +12,27 @@ class Settings(BaseSettings):
     PORT: int = 8000
     ALLOWED_ORIGINS: List[str] = ["*"]
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: Any) -> List[str]:
-        print(f"Debug: ALLOWED_ORIGINS value received: {v}")
-        print(f"Debug: ALLOWED_ORIGINS type: {type(v)}")
-        print(f"Debug: ALLOWED_ORIGINS env var: {os.environ.get('ALLOWED_ORIGINS')}")
-
-        if isinstance(v, str):
-            # Handle comma-separated string
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        elif isinstance(v, list):
-            # Handle list of strings
-            return [str(origin) for origin in v if origin]
-        elif v is None:
-            # Default to allowing all origins if not set
-            return ["*"]
-        else:
-            raise ValueError(f"Invalid ALLOWED_ORIGINS format: {v}")
-
     # Database settings
     REDIS_URL: str = "redis://localhost:6379"
-    CHROMA_PERSIST_DIRECTORY: str = "/path/to/persist"
+    CHROMA_PERSIST_DIRECTORY: str = "./data"
     TEST_REDIS_URL: str = "redis://localhost:6379/15"  # Use database 15 for testing
     TEST_CHROMA_PERSIST_DIRECTORY: str = "./test_chroma_db"
 
     # Testing flag
     TESTING: bool = False
 
-    @property
-    def redis_url(self):
-        return self.TEST_REDIS_URL if self.TESTING else self.REDIS_URL
-
-    @property
-    def chroma_persist_directory(self):
-        return self.TEST_CHROMA_PERSIST_DIRECTORY if self.TESTING else self.CHROMA_PERSIST_DIRECTORY
-
     # Logging settings
-    LOG_DIR: str = "/path/to/logs"
+    LOG_DIR: str = "./logs"
     LOG_LEVEL: str = "INFO"
 
     # LLM Provider settings
-    DEFAULT_LLM_PROVIDERS: List[Dict[str, Any]] = [
-        {
-            "provider_type": "openai",
-            "model_name": "gpt-3.5-turbo",
-            "api_key": ""
-        }
-    ]
+    DEFAULT_LLM_PROVIDER: str = "vllm"
     OPENAI_API_KEY: str = ""
     OPENAI_API_BASE: str = "https://api.openai.com/v1"
-    VLLM_API_BASE: str = "http://vllm-api-endpoint"
+    VLLM_API_BASE: str = "https://artemis.hq.solidrust.net/v1"
     LLAMACPP_API_BASE: str = "http://llamacpp-server-endpoint"
     TGI_API_BASE: str = "http://tgi-server-endpoint"
+    ANTHROPIC_API_KEY: str = ""  # Added Anthropic API Key
 
     # LLM Provider configurations
     LLM_PROVIDER_CONFIGS: Dict[str, Dict[str, str]] = {}
@@ -86,6 +54,9 @@ class Settings(BaseSettings):
             "tgi": {
                 "api_base": info.data.get("TGI_API_BASE"),
             },
+            "anthropic": {
+                "api_key": info.data.get("ANTHROPIC_API_KEY"),
+            },
         }
 
     # Agent settings
@@ -103,4 +74,3 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
-print(f"Debug: Final ALLOWED_ORIGINS value: {settings.ALLOWED_ORIGINS}")

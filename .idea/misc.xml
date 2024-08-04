@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12 (srt-inference-perf)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (venv-srt-agentic-api)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (srt-agentic-api)" project-jdk-type="Python SDK" />
 </project>

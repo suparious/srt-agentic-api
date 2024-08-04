@@ -2,8 +2,57 @@ import pytest
 from httpx import AsyncClient
 from uuid import UUID
 from app.api.models.memory import MemoryType, MemoryOperation
+from datetime import datetime, timedelta
+import json
 
 pytestmark = pytest.mark.asyncio
+
+
+async def test_advanced_search(async_client: AsyncClient, auth_headers, test_agent):
+    # First, add some test memories
+    for i in range(5):
+        memory_data = {
+            "agent_id": test_agent,
+            "memory_type": "LONG_TERM",
+            "entry": {
+                "content": f"Test memory content {i}",
+                "metadata": {"key": "value" if i % 2 == 0 else "other"},
+                "context": {
+                    "context_type": "test_context",
+                    "timestamp": (datetime.now() - timedelta(hours=i)).isoformat(),
+                    "metadata": {}
+                }
+            }
+        }
+        response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+        assert response.status_code == 201
+
+    # Perform advanced search
+    search_params = {
+        "query": "Test memory",
+        "memory_type": "LONG_TERM",
+        "context_type": "test_context",
+        "time_range_start": (datetime.now() - timedelta(hours=3)).isoformat(),
+        "time_range_end": datetime.now().isoformat(),
+        "metadata_filters": json.dumps({"key": "value"}),
+        "relevance_threshold": 0.5,
+        "max_results": 2
+    }
+
+    response = await async_client.post(f"/memory/advanced-search?agent_id={test_agent}", params=search_params,
+                                       headers=auth_headers)
+    assert response.status_code == 200
+
+    results = response.json()
+    assert "agent_id" in results
+    assert "results" in results
+    assert "relevance_scores" in results
+    assert len(results["results"]) <= 2
+
+    for result, score in zip(results["results"], results["relevance_scores"]):
+        assert "Test memory" in result["content"]
+        assert result["metadata"]["key"] == "value"
+        assert score >= 0.5
 
 async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_data = {

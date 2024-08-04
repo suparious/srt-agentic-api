@@ -2,34 +2,20 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from uuid import UUID
 from typing import List, Optional
 from app.api.models.memory import (
-    MemoryType,
-    MemoryEntry,
-    MemoryAddRequest,
-    MemoryAddResponse,
-    MemoryRetrieveRequest,
-    MemoryRetrieveResponse,
-    MemorySearchRequest,
-    MemorySearchResponse,
-    MemoryDeleteRequest,
-    MemoryDeleteResponse,
-    MemoryOperationRequest,
-    MemoryOperationResponse,
-    AdvancedSearchQuery
+    MemoryType, MemoryEntry, MemoryAddRequest, MemoryAddResponse,
+    MemoryRetrieveRequest, MemoryRetrieveResponse, MemorySearchRequest,
+    MemorySearchResponse, MemoryDeleteRequest, MemoryDeleteResponse,
+    MemoryOperationRequest, MemoryOperationResponse, AdvancedSearchQuery
 )
 from app.core.memory import (
-    get_memory_system,
-    add_to_memory,
-    retrieve_from_memory,
-    search_memory,
-    delete_from_memory,
-    perform_memory_operation
+    get_memory_system, add_to_memory, retrieve_from_memory,
+    search_memory, delete_from_memory, perform_memory_operation
 )
 from app.core.agent import get_agent_memory_config
 from app.utils.auth import get_api_key
 from app.utils.logging import memory_logger
 
 router = APIRouter()
-
 
 @router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
 async def add_memory_endpoint(request: MemoryAddRequest, api_key: str = Depends(get_api_key)):
@@ -68,7 +54,6 @@ async def add_memory_endpoint(request: MemoryAddRequest, api_key: str = Depends(
         memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
 async def retrieve_memory_endpoint(request: MemoryRetrieveRequest = Depends(), api_key: str = Depends(get_api_key)):
     """
@@ -105,7 +90,6 @@ async def retrieve_memory_endpoint(request: MemoryRetrieveRequest = Depends(), a
     except Exception as e:
         memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/search", response_model=MemorySearchResponse, summary="Search memory entries")
 async def search_memory_endpoint(request: MemorySearchRequest, api_key: str = Depends(get_api_key)):
@@ -146,7 +130,6 @@ async def search_memory_endpoint(request: MemorySearchRequest, api_key: str = De
     except Exception as e:
         memory_logger.error(f"Error searching memories for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/advanced-search", response_model=MemorySearchResponse, summary="Advanced search memory entries")
 async def advanced_search_memory_endpoint(
@@ -229,7 +212,6 @@ async def advanced_search_memory_endpoint(
         memory_logger.error(f"Error performing advanced search for agent {agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.delete("/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry")
 async def delete_memory_endpoint(request: MemoryDeleteRequest, api_key: str = Depends(get_api_key)):
     """
@@ -261,7 +243,6 @@ async def delete_memory_endpoint(request: MemoryDeleteRequest, api_key: str = De
     except Exception as e:
         memory_logger.error(f"Error deleting memory for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/operate", response_model=MemoryOperationResponse, summary="Perform a memory operation")
 async def memory_operation_endpoint(request: MemoryOperationRequest, api_key: str = Depends(get_api_key)):

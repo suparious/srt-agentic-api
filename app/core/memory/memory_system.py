@@ -62,6 +62,11 @@ class MemorySystem:
 
             # Merge and rank results
             results.sort(key=lambda x: x["relevance_score"], reverse=True)
+
+            # Apply relevance threshold
+            if query.relevance_threshold is not None:
+                results = [r for r in results if r["relevance_score"] >= query.relevance_threshold]
+
             return results[:query.max_results]
         except Exception as e:
             memory_logger.error(

@@ -35,6 +35,48 @@ async def test_add_memory(vector_memory):
     await vector_memory.add("test_id", memory_entry)
     vector_memory.collection.add.assert_called_once()
 
+@pytest.mark.asyncio
+async def test_advanced_search(vector_memory):
+    query = AdvancedSearchQuery(
+        query="test query",
+        memory_type=MemoryType.LONG_TERM,
+        context_type="test_context",
+        time_range={
+            "start": datetime.now() - timedelta(days=1),
+            "end": datetime.now()
+        },
+        metadata_filters={"key": "value"},
+        relevance_threshold=0.5,
+        max_results=5
+    )
+
+    mock_results = {
+        'ids': [['1', '2']],
+        'documents': [['doc1', 'doc2']],
+        'metadatas': [[
+            {'context_type': 'test_context', 'context_timestamp': datetime.now().isoformat(), 'key': 'value'},
+            {'context_type': 'test_context', 'context_timestamp': datetime.now().isoformat(), 'key': 'value'}
+        ]],
+        'distances': [[0.1, 0.6]]
+    }
+    vector_memory.collection.query.return_value = mock_results
+
+    results = await vector_memory.search(query)
+
+    assert len(results) == 1  # Only one result should pass the relevance threshold
+    assert results[0]['id'] == '1'
+    assert isinstance(results[0]['memory_entry'], MemoryEntry)
+    assert results[0]['relevance_score'] >= 0.5
+
+    # Verify that the query was constructed correctly
+    vector_memory.collection.query.assert_called_once()
+    call_args = vector_memory.collection.query.call_args[1]
+    assert call_args['query_texts'] == ["test query"]
+    assert call_args['n_results'] == 5
+    assert call_args['where']['context_type'] == "test_context"
+    assert call_args['where']['context_timestamp']['$gte'] == query.time_range['start'].isoformat()
+    assert call_args['where']['context_timestamp']['$lte'] == query.time_range['end'].isoformat()
+    assert call_args['where']['key'] == "value"
 
 @pytest.mark.asyncio
 async def test_advanced_search_with_query(vector_memory):
