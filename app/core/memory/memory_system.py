@@ -1,4 +1,5 @@
-from uuid import UUID, uuid4
+from uuid import UUID
+import uuid
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import asyncio
@@ -20,7 +21,7 @@ class MemorySystem:
 
     async def add(self, memory_type: MemoryType, memory_entry: MemoryEntry) -> str:
         try:
-            memory_id = str(UUID.uuid4())
+            memory_id = str(uuid.uuid4())
             if memory_type == MemoryType.SHORT_TERM and self.config.use_redis_cache:
                 await self.short_term.add(memory_id, memory_entry)
             elif memory_type == MemoryType.LONG_TERM and self.config.use_long_term_memory:
