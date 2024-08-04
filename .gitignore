@@ -20,6 +20,7 @@ data/
 
 # Logs directory
 logs/
+*.log
 
 # Coverage data
 .coverage
