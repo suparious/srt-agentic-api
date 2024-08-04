@@ -1,6 +1,6 @@
 .env
 .venv/
-___pycache__/
+__pycache__/
 /logs/
 /data/
 codebase.md
