@@ -3,7 +3,6 @@
 
 # Environment variables
 .env
-.env.test
 
 # Git metadata directory
 .git/
@@ -23,6 +22,7 @@ __pycache__/
 
 # Data directory
 data/
+chroma/
 
 # Logs directory
 logs/

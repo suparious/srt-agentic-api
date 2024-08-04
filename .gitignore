@@ -17,6 +17,7 @@ __pycache__/
 
 # Data directory
 data/
+chroma/
 
 # Logs directory
 logs/
