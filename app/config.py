@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
 
+    # Memory consolidation settings
+    CONSOLIDATION_INTERVAL: int = 21600  # 6 hours in seconds
+    CONSOLIDATION_IMPORTANCE_THRESHOLD: float = 0.7
+    MAX_SHORT_TERM_MEMORIES: int = 1000  # Maximum number of short-term memories before forced consolidation
+
     model_config = SettingsConfigDict(
         env_file=".env" if not os.getenv("TESTING") else ".env.test",
         env_file_encoding="utf-8",

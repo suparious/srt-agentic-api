@@ -5,9 +5,14 @@ from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 from app.utils.logging import memory_logger
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
+from app.config import settings as app_settings
 
 class VectorMemory:
-    def __init__(self, collection_name: str, chroma_db_settings: ChromaDBSettings):
+    def __init__(self, collection_name: str):
+        chroma_db_settings = ChromaDBSettings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=app_settings.CHROMA_PERSIST_DIRECTORY
+        )
         self.client = PersistentClient(path=chroma_db_settings.persist_directory)
         self.collection = self.client.get_or_create_collection(collection_name)
         memory_logger.info(f"ChromaDB collection initialized: {collection_name}")

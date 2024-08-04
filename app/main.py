@@ -18,6 +18,7 @@ from app.api.endpoints import agent, message, function, memory
 from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
+from app.core.memory.memory_system import initialize_memory_systems
 
 app = FastAPI(
     title="SolidRusT Agentic API",
@@ -95,6 +96,11 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An unexpected error occurred. Please try again later."},
     )
+
+@app.on_event("startup")
+async def startup_event():
+    await initialize_memory_systems()
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,5 +1,7 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import asyncio
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryOperation, AdvancedSearchQuery
 from app.api.models.agent import MemoryConfig
 from app.utils.logging import memory_logger
@@ -13,11 +15,7 @@ class MemorySystem:
         self.agent_id = agent_id
         self.config = config
         self.short_term = RedisMemory(agent_id)
-        chroma_db_settings = ChromaDBSettings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=app_settings.chroma_persist_directory
-        )
-        self.long_term = VectorMemory(f"agent_{agent_id}", chroma_db_settings)
+        self.long_term = VectorMemory(f"agent_{agent_id}")
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: MemoryType, memory_entry: MemoryEntry) -> str:
@@ -177,3 +175,10 @@ async def perform_memory_operation(agent_id: UUID, operation: MemoryOperation, m
         return {"message": "Memory deleted successfully"}
     else:
         raise ValueError(f"Invalid memory operation: {operation}")
+
+async def initialize_memory_systems():
+    for agent_id, memory_system in memory_systems.items():
+        asyncio.create_task(memory_system.start_consolidation_job())
+
+# Call this function when your application starts
+# asyncio.create_task(initialize_memory_systems())

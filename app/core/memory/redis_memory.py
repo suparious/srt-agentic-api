@@ -10,10 +10,10 @@ from datetime import datetime
 class RedisMemory:
     def __init__(self, agent_id: UUID):
         self.agent_id = agent_id
-        self.redis = aioredis.from_url(app_settings.redis_url, encoding="utf-8", decode_responses=True)
+        self.redis = aioredis.from_url(app_settings.REDIS_URL, encoding="utf-8", decode_responses=True)
         memory_logger.info(f"Redis connection established for agent: {agent_id}")
 
-    async def add(self, key: str, memory_entry: MemoryEntry, expire: int = 3600):
+    async def add(self, key: str, memory_entry: MemoryEntry, expire: int = app_settings.SHORT_TERM_MEMORY_TTL):
         full_key = f"agent:{self.agent_id}:{key}"
         serialized_entry = json.dumps({
             "content": memory_entry.content,
@@ -81,19 +81,6 @@ class RedisMemory:
 
         return results
 
-    def _matches_filters(self, memory_entry: MemoryEntry, query: AdvancedSearchQuery) -> bool:
-        if query.context_type and memory_entry.context.context_type != query.context_type:
-            return False
-        if query.time_range:
-            if (memory_entry.context.timestamp < query.time_range["start"] or
-                memory_entry.context.timestamp > query.time_range["end"]):
-                return False
-        if query.metadata_filters:
-            for key, value in query.metadata_filters.items():
-                if key not in memory_entry.metadata or memory_entry.metadata[key] != value:
-                    return False
-        return True
-
     def _matches_query(self, memory_entry: MemoryEntry, query: AdvancedSearchQuery) -> bool:
         if query.context_type and memory_entry.context.context_type != query.context_type:
             return False
@@ -117,3 +104,51 @@ class RedisMemory:
             if keyword in content_words:
                 relevance += 1
         return relevance / len(keywords)
+
+    async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
+        pattern = f"agent:{self.agent_id}:*"
+        cursor = 0
+        results = []
+
+        while True:
+            cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
+            for key in keys:
+                value = await self.redis.get(key)
+                if value:
+                    memory_entry = MemoryEntry.parse_raw(value)
+                    results.append({
+                        "id": key.split(":")[-1],
+                        "memory_entry": memory_entry,
+                        "timestamp": memory_entry.context.timestamp
+                    })
+
+            if cursor == 0:
+                break
+
+        # Sort results by timestamp (most recent first) and limit the number of results
+        results.sort(key=lambda x: x["timestamp"], reverse=True)
+        return results[:limit]
+
+    async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
+        try:
+            pattern = f"agent:{self.agent_id}:*"
+            cursor = 0
+            old_memories = []
+
+            while True:
+                cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
+                for key in keys:
+                    value = await self.redis.get(key)
+                    if value:
+                        memory_entry = MemoryEntry.parse_raw(value)
+                        if memory_entry.context.timestamp < threshold:
+                            old_memories.append(memory_entry)
+
+                if cursor == 0:
+                    break
+
+            memory_logger.info(f"Retrieved {len(old_memories)} memories older than {threshold} for agent: {self.agent_id}")
+            return old_memories
+        except Exception as e:
+            memory_logger.error(f"Error getting old memories for agent {self.agent_id}: {str(e)}")
+            raise
