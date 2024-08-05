@@ -42,3 +42,11 @@ provider_config = {
 
 llm_provider = create_llm_provider(provider_config)
 ```
+
+## Testing memory
+
+```python
+from app.api.endpoints import memory
+
+app.include_router(memory.router, prefix="/memory", tags=["Memory"])
+```
