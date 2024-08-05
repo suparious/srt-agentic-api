@@ -146,3 +146,14 @@ async def test_search_long_term_memory(async_client: AsyncClient, auth_headers, 
     assert isinstance(results["results"], list)
     assert len(results["results"]) > 0
     assert "Long-term test memory content" in results["results"][0]["content"]
+
+@pytest.mark.asyncio
+async def test_send_message_invalid_agent(async_client: AsyncClient, auth_headers):
+    invalid_agent_id = "00000000-0000-0000-0000-000000000000"
+    message_data = {
+        "agent_id": invalid_agent_id,
+        "content": "This should fail"
+    }
+    response = await async_client.post("/message/send", json=message_data, headers=auth_headers)
+    assert response.status_code == 404
+    assert "detail" in response.json()

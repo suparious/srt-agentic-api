@@ -54,8 +54,8 @@ async def redis_memory(event_loop):
     await RedisMemory.close_pool()
 
 @pytest.fixture
-async def async_client(test_app):
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+async def async_client():
+    async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 @pytest.fixture(scope="module")
@@ -75,7 +75,7 @@ def mock_llm_provider():
 
 
 @pytest.fixture
-async def test_agent(async_client, auth_headers, redis_memory, mock_llm_provider):
+async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory, mock_llm_provider):
     agent_data = {
         "agent_name": "Test Agent",
         "agent_config": AgentConfig(

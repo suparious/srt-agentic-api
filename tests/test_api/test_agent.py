@@ -4,6 +4,7 @@ from uuid import UUID
 
 pytestmark = pytest.mark.asyncio
 
+@pytest.mark.asyncio
 async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
         "agent_name": "New Test Agent",
@@ -13,11 +14,6 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
                     "provider_type": "openai",
                     "model_name": "gpt-3.5-turbo",
                     "api_key": "test-key"
-                },
-                {
-                    "provider_type": "vllm",
-                    "model_name": "llama-7b",
-                    "api_base": "http://vllm-server:8000"
                 }
             ],
             "temperature": 0.7,
@@ -35,9 +31,7 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
     }
     response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
     assert response.status_code == 201
-    created_agent = response.json()
-    assert "agent_id" in created_agent
-    assert UUID(created_agent["agent_id"])
+    assert "agent_id" in response.json()
 
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)

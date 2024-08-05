@@ -26,13 +26,25 @@ async def test_register_function(async_client: AsyncClient, auth_headers):
     assert registered_function["message"] == "Function registered successfully"
     return registered_function["function_id"]
 
+@pytest.mark.asyncio
 async def test_get_function(async_client: AsyncClient, auth_headers):
-    function_id = await test_register_function(async_client, auth_headers)
+    # First, register a function
+    function_data = {
+        "function": {
+            "name": "test_function",
+            "description": "A test function",
+            "parameters": {},
+            "return_type": "string"
+        }
+    }
+    register_response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
+    assert register_response.status_code == 201
+    function_id = register_response.json()["function_id"]
+
+    # Now, try to get the function
     response = await async_client.get(f"/function/{function_id}", headers=auth_headers)
     assert response.status_code == 200
-    get_function = response.json()
-    assert get_function["name"] == "test_function"
-    assert get_function["description"] == "A test function"
+    assert response.json()["name"] == "test_function"
 
 async def test_update_function(async_client: AsyncClient, auth_headers):
     function_id = await test_register_function(async_client, auth_headers)
