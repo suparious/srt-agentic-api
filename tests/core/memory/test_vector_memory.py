@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, AsyncMock
 from app.core.memory.vector_memory import VectorMemory
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
-from chromadb.config import Settings as ChromaDBSettings
-
 
 @pytest.fixture
 def mock_chroma_client():
@@ -14,16 +12,13 @@ def mock_chroma_client():
     mock_client.get_or_create_collection.return_value = mock_collection
     return mock_client
 
-
 @pytest.fixture
 def vector_memory(mock_chroma_client):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    chroma_settings = ChromaDBSettings()
-    vector_memory = VectorMemory(f"agent_{agent_id}", chroma_settings)
+    vector_memory = VectorMemory(f"agent_{agent_id}")
     vector_memory.client = mock_chroma_client
     vector_memory.collection = mock_chroma_client.get_or_create_collection.return_value
     return vector_memory
-
 
 @pytest.mark.asyncio
 async def test_add_memory(vector_memory):
@@ -32,8 +27,13 @@ async def test_add_memory(vector_memory):
         metadata={"key": "value"},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
-    await vector_memory.add("test_id", memory_entry)
+    await vector_memory.add(memory_entry)
     vector_memory.collection.add.assert_called_once()
+    call_args = vector_memory.collection.add.call_args[1]
+    assert len(call_args['documents']) == 1
+    assert call_args['documents'][0] == memory_entry.content
+    assert 'key' in call_args['metadatas'][0]
+    assert call_args['metadatas'][0]['key'] == 'value'
 
 @pytest.mark.asyncio
 async def test_advanced_search(vector_memory):
@@ -175,3 +175,5 @@ async def test_advanced_search_with_max_results(vector_memory):
     results = await vector_memory.search(query)
 
     assert len(results) == 2  # Only two results should be returned due to max_results
+    assert results[0]['id'] == '1'
+    assert results[1]['id'] == '2'
