@@ -13,57 +13,95 @@ SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, manag
 - Performance-optimized for high-load scenarios
 
 ## Project Structure
-
+   
 ```plaintext
 srt-agentic-api/
-├── app/
+├── Dockerfile
+├── README.md
+├── TESTING.md
+├── app
 │   ├── __init__.py
-│   ├── main.py
-│   ├── config.py
-│   ├── api/
-│   │   ├── endpoints/
-│   │   │   ├── memory/
+│   ├── api
+│   │   ├── __init__.py
+│   │   ├── endpoints
+│   │   │   ├── __init__.py
+│   │   │   ├── agent.py
+│   │   │   ├── function.py
+│   │   │   ├── memory
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── add.py
 │   │   │   │   ├── delete.py
+│   │   │   │   ├── operate.py
 │   │   │   │   ├── retrieve.py
 │   │   │   │   ├── search.py
-│   │   │   │   ├── operate.py
 │   │   │   │   └── utils.py
-│   │   │   ├── agent.py
-│   │   │   ├── function.py
 │   │   │   ├── memory.py
 │   │   │   └── message.py
-│   │   └── models/
-│   ├── core/
-│   │   ├── memory/
-│   │   │   ├── __init__.py
-│   │   │   ├── memory_system.py
-│   │   │   ├── redis_memory.py
-│   │   │   └── vector_memory.py
+│   │   └── models
+│   │       ├── __init__.py
+│   │       ├── agent.py
+│   │       ├── function.py
+│   │       ├── memory.py
+│   │       └── message.py
+│   ├── config.py
+│   ├── core
+│   │   ├── __init__.py
 │   │   ├── agent.py
-│   │   └── llm_provider.py
-│   └── utils/
+│   │   ├── llm_provider.py
+│   │   └── memory
+│   │       ├── __init__.py
+│   │       ├── memory_system.py
+│   │       ├── redis_memory.py
+│   │       └── vector_memory.py
+│   ├── main.py
+│   └── utils
+│       ├── __init__.py
 │       ├── auth.py
 │       └── logging.py
-├── docs/
-├── examples/
-│   ├── README.md
-│   ├── python_example.py
-│   └── javascript_example.js
-├── logs/
-├── tests/
-│   ├── conftest.py
-│   ├── test_api/
-│   └── test_core/
-├── requirements.txt
-├── requirements-dev.txt
-├── Dockerfile
+├── codebase.md
 ├── docker-compose.yml
-├── .env.example
-├── .gitignore
+├── docs
+│   ├── CurrentStatusSummary.md
+│   ├── DevelopmentPlan.md
+│   ├── MemorySystemTasks.md
+│   ├── NOTES.md
+│   ├── TestImprovementPlan.md
+│   └── custom-instructions.md
+├── examples
+│   ├── README.md
+│   ├── javascript_example.js
+│   └── python_example.py
+├── logs
+│   ├── agent.log
+│   ├── auth.log
+│   ├── function.log
+│   ├── llm.log
+│   ├── main.log
+│   ├── memory.log
+│   └── test_results_detailed.txt
 ├── pytest.ini
-└── README.md
+├── requirements-testing.txt
+├── requirements.txt
+└── tests
+    ├── README.md
+    ├── __init__.py
+    ├── conftest.py
+    ├── core
+    │   └── memory
+    │       ├── test_redis_memory.py
+    │       └── test_vector_memory.py
+    ├── test_api
+    │   ├── __init__.py
+    │   ├── test_agent.py
+    │   ├── test_function.py
+    │   ├── test_main.py
+    │   ├── test_memory.py
+    │   └── test_message.py
+    └── test_core
+        ├── __init__.py
+        ├── test_agent.py
+        ├── test_llm_provider.py
+        └── test_memory.py
 ```
 
 ## Setup Instructions
