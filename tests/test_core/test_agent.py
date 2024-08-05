@@ -1,124 +1,132 @@
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from httpx import AsyncClient
 from uuid import UUID
-from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
+from datetime import datetime, timedelta
+from app.api.models.memory import MemoryType, MemoryOperation
+import json
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.fixture
-def agent_config():
-    return AgentConfig(
-        llm_provider="openai",
-        model_name="gpt-3.5-turbo",
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=MemoryConfig(
-            use_long_term_memory=True,
-            use_redis_cache=True
-        )
-    )
+async def test_advanced_search(async_client: AsyncClient, auth_headers, test_agent):
+    # First, add some test memories
+    for i in range(5):
+        memory_data = {
+            "agent_id": test_agent,
+            "memory_type": "LONG_TERM",
+            "entry": {
+                "content": f"Test memory content {i}",
+                "metadata": {"key": "value" if i % 2 == 0 else "other"},
+                "context": {
+                    "context_type": "test_context",
+                    "timestamp": (datetime.now() - timedelta(hours=i)).isoformat(),
+                    "metadata": {}
+                }
+            }
+        }
+        response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+        assert response.status_code == 201
 
+    # Perform advanced search
+    search_params = {
+        "query": "Test memory",
+        "memory_type": "LONG_TERM",
+        "context_type": "test_context",
+        "time_range_start": (datetime.now() - timedelta(hours=3)).isoformat(),
+        "time_range_end": datetime.now().isoformat(),
+        "metadata_filters": json.dumps({"key": "value"}),
+        "relevance_threshold": 0.5,
+        "max_results": 2
+    }
 
-@pytest.mark.asyncio
-async def test_agent_initialization(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
+    response = await async_client.post(f"/memory/advanced-search?agent_id={test_agent}", params=search_params, headers=auth_headers)
+    assert response.status_code == 200
 
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
+    results = response.json()
+    assert "agent_id" in results
+    assert "results" in results
+    assert "relevance_scores" in results
+    assert len(results["results"]) <= 2
 
-        mock_memory_system = AsyncMock()
-        MockMemorySystem.return_value = mock_memory_system
+    for result, score in zip(results["results"], results["relevance_scores"]):
+        assert "Test memory" in result["content"]
+        assert result["metadata"]["key"] == "value"
+        assert score >= 0.5
 
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
+async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "entry": {
+            "content": "Test memory content",
+            "metadata": {"key": "value"},
+            "context": {
+                "context_type": "test_context",
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {}
+            }
+        }
+    }
+    response = await async_client.post("/memory/add", json=memory_data, headers=auth_headers)
+    assert response.status_code == 201
+    added_memory = response.json()
+    assert "memory_id" in added_memory
+    assert added_memory["message"] == "Memory added successfully"
+    return added_memory["memory_id"]
 
-        assert agent.id == agent_id
-        assert agent.name == agent_name
-        assert agent.config == agent_config
-        assert isinstance(agent.llm_provider, AsyncMock)
-        assert isinstance(agent.memory, AsyncMock)
+async def test_retrieve_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    response = await async_client.get(f"/memory/retrieve?agent_id={test_agent}&memory_type={MemoryType.SHORT_TERM}&memory_id={memory_id}", headers=auth_headers)
+    assert response.status_code == 200
+    memory = response.json()
+    assert memory["content"] == "Test memory content"
+    assert memory["metadata"] == {"key": "value"}
+    assert "context" in memory
+    assert memory["context"]["context_type"] == "test_context"
 
+async def test_search_memory(async_client: AsyncClient, auth_headers, test_agent):
+    await test_add_memory(async_client, auth_headers, test_agent)  # Add a memory to search for
+    search_data = {
+        "agent_id": test_agent,
+        "memory_type": MemoryType.SHORT_TERM,
+        "query": "Test memory",
+        "limit": 5
+    }
+    response = await async_client.post("/memory/search", json=search_data, headers=auth_headers)
+    assert response.status_code == 200
+    results = response.json()
+    assert "results" in results
+    assert isinstance(results["results"], list)
+    assert len(results["results"]) > 0
+    assert "relevance_scores" in results
 
-@pytest.mark.asyncio
-async def test_agent_process_message(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-    test_message = "Hello, Agent!"
+async def test_delete_memory(async_client: AsyncClient, auth_headers, test_agent):
+    memory_id = await test_add_memory(async_client, auth_headers, test_agent)
+    response = await async_client.delete(f"/memory/delete?agent_id={test_agent}&memory_type={MemoryType.SHORT_TERM}&memory_id={memory_id}", headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "Memory deleted successfully"
 
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_llm_provider.generate.return_value = "Generated response"
-        mock_create_llm_provider.return_value = mock_llm_provider
+    # Verify the memory is deleted
+    response = await async_client.get(f"/memory/retrieve?agent_id={test_agent}&memory_type={MemoryType.SHORT_TERM}&memory_id={memory_id}", headers=auth_headers)
+    assert response.status_code == 404
 
-        mock_memory_system = AsyncMock()
-        mock_memory_system.retrieve_relevant.return_value = []
-        MockMemorySystem.return_value = mock_memory_system
-
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        response, function_calls = await agent.process_message(test_message)
-
-        assert response == "Generated response"
-        assert function_calls == []
-        mock_memory_system.retrieve_relevant.assert_called_once_with(test_message)
-        mock_llm_provider.generate.assert_called_once()
-        mock_memory_system.add.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_agent_execute_function(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-
-    with patch('app.core.agent.create_llm_provider') as mock_create_llm_provider, \
-            patch('app.core.agent.MemorySystem') as MockMemorySystem:
-        mock_llm_provider = AsyncMock()
-        mock_create_llm_provider.return_value = mock_llm_provider
-
-        mock_memory_system = AsyncMock()
-        MockMemorySystem.return_value = mock_memory_system
-
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        async def test_function(param1, param2):
-            return f"Executed with {param1} and {param2}"
-
-        mock_function = AsyncMock(side_effect=test_function)
-        mock_function.id = "test_function_id"
-        agent.get_function_by_name = Mock(return_value=mock_function)
-
-        with patch.dict('app.core.agent.registered_functions', {"test_function_id": mock_function}):
-            result = await agent.execute_function(
-                function_name="test_function",
-                parameters={"param1": "value1", "param2": "value2"}
-            )
-
-        assert result == "Executed with value1 and value2"
-        agent.get_function_by_name.assert_called_once_with("test_function")
-        mock_function.assert_awaited_once_with(param1="value1", param2="value2")
-
-
-@pytest.mark.asyncio
-async def test_agent_get_available_functions(agent_config):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    agent_name = "Test Agent"
-
-    with patch('app.core.agent.create_llm_provider'), patch('app.core.agent.MemorySystem'):
-        agent = Agent(agent_id=agent_id, name=agent_name, config=agent_config, memory_config=agent_config.memory_config)
-
-        mock_function1 = Mock(id="func1", name="Function 1")
-        mock_function2 = Mock(id="func2", name="Function 2")
-
-        with patch.dict('app.core.agent.registered_functions', {
-            "func1": mock_function1,
-            "func2": mock_function2
-        }):
-            agent.available_function_ids = ["func1", "func2"]
-            available_functions = agent.get_available_functions()
-
-        assert len(available_functions) == 2
-        assert available_functions[0].name == "Function 1"
-        assert available_functions[1].name == "Function 2"
+async def test_memory_operation(async_client: AsyncClient, auth_headers, test_agent):
+    operation_data = {
+        "agent_id": test_agent,
+        "operation": MemoryOperation.ADD,
+        "memory_type": MemoryType.SHORT_TERM,
+        "data": {
+            "content": "Test operation memory content",
+            "metadata": {"operation": "test"},
+            "context": {
+                "context_type": "test_operation",
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {}
+            }
+        }
+    }
+    response = await async_client.post("/memory/operate", json=operation_data, headers=auth_headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["message"] == "ADD operation completed successfully"
+    assert "result" in result
