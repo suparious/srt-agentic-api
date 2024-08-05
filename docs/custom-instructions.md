@@ -187,11 +187,9 @@ Once you are comfortable with the current state of the project, let' procees wit
 ```plaintext
 Hello. Today we need to complete a maintenance cycle on our app. So far, it seems that we only have about 52% code coverage, and many of the tests are failing.
 
-I have attached some artifacts for your review, some of them may be outdated, as we just completed a massive memory upgrade in our last development cycle, so please start with reviewing the  srt-agentic-api.md artifact, which should verbosely describe my current codebase. Then let's proceed with updating the CurrentStatusSummary.md artifact, based on what you've learned from my codebase.
-
-Then let's see where we are at with the MemorySystemTasks.md​artifact.
-
-Finally, we can update the DevelopmentPlan.md​.
+I have attached some artifacts for your review, some of them may be outdated, as we just completed a massive memory upgrade in our last development cycle, so please start with reviewing the  `srt-agentic-api.md` artifact, which should verbosely describe my current codebase. Then let's proceed with updating the `CurrentStatusSummary.md` artifact, based on what you've learned from my codebase.
+Then let's see where we are at with the `MemorySystemTasks.md`artifact.
+Finally, we can update the `DevelopmentPlan.md`​.
 
 Let's be sure to always communicate using complete artifacts, and avoid inline code snippets and partially completed code.
 ```

@@ -1,8 +1,8 @@
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import json
 from datetime import datetime
-from redis.asyncio import Redis
+from redis.asyncio import Redis, ConnectionPool
 from contextlib import asynccontextmanager
 
 from app.utils.logging import memory_logger
@@ -10,20 +10,53 @@ from app.config import settings as app_settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 
 class RedisMemory:
+    _connection_pool = None
+
+    @classmethod
+    async def get_connection_pool(cls):
+        if cls._connection_pool is None:
+            cls._connection_pool = ConnectionPool.from_url(
+                app_settings.REDIS_URL,
+                encoding="utf-8",
+                decode_responses=True
+            )
+        return cls._connection_pool
+
     def __init__(self, agent_id: uuid.UUID):
         self.agent_id = agent_id
-        self.redis = Redis.from_url(app_settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-        memory_logger.info(f"Redis connection established for agent: {agent_id}")
+        self.redis: Optional[Redis] = None
+        memory_logger.info(f"Redis connection initialized for agent: {agent_id}")
+
+    async def initialize(self):
+        if self.redis is None:
+            pool = await self.get_connection_pool()
+            self.redis = Redis(connection_pool=pool)
+            memory_logger.info(f"Redis connection established for agent: {self.agent_id}")
 
     @asynccontextmanager
     async def get_connection(self):
+        await self.initialize()
         try:
             yield self.redis
-        finally:
-            await self.redis.close()
+        except Exception as e:
+            memory_logger.error(f"Error in Redis connection: {str(e)}")
+            raise
 
-    async def add(self, key: str, memory_entry: MemoryEntry, expire: int = app_settings.SHORT_TERM_MEMORY_TTL):
+    async def add(self, key: str, memory_entry: Union[MemoryEntry, str],
+                  expire: int = app_settings.SHORT_TERM_MEMORY_TTL):
         full_key = f"agent:{self.agent_id}:{key}"
+
+        if isinstance(memory_entry, str):
+            memory_entry = MemoryEntry(
+                content=memory_entry,
+                metadata={},
+                context=MemoryContext(
+                    context_type="default",
+                    timestamp=datetime.now(),
+                    metadata={}
+                )
+            )
+
         serialized_entry = json.dumps({
             "content": memory_entry.content,
             "metadata": memory_entry.metadata,
@@ -33,6 +66,7 @@ class RedisMemory:
                 "metadata": memory_entry.context.metadata
             }
         })
+
         async with self.get_connection() as conn:
             await conn.set(full_key, serialized_entry, ex=expire)
         memory_logger.debug(f"Added key to Redis: {full_key}")
@@ -164,4 +198,14 @@ class RedisMemory:
             raise
 
     async def close(self):
-        await self.redis.close()
+        if self.redis:
+            await self.redis.close()
+            self.redis = None
+            memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
+
+    @classmethod
+    async def close_pool(cls):
+        if cls._connection_pool:
+            await cls._connection_pool.disconnect()
+            cls._connection_pool = None
+            memory_logger.info("Redis connection pool closed")

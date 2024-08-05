@@ -8,8 +8,13 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
         "agent_name": "New Test Agent",
         "agent_config": {
-            "llm_provider": "openai",
-            "model_name": "gpt-3.5-turbo",
+            "llm_providers": [
+                {
+                    "provider_type": "openai",
+                    "model_name": "gpt-3.5-turbo",
+                    "api_key": "test-key"
+                }
+            ],
             "temperature": 0.7,
             "max_tokens": 150,
             "memory_config": {
