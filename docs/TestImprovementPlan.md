@@ -1,132 +1,126 @@
 # Advanced Test Improvement Plan for srt-agentic-api
 
 ## Current Status
-- Test coverage: 56%
+- Test coverage: 63%
 - Passing tests: ~50%
 - Target: 80% code coverage with all tests passing
 
-## Critical Issues
+## Critical Issues and Improvement Strategies
 
-1. **MemorySystem.add() ArgumentError**
-   - Error: `MemorySystem.add() takes 3 positional arguments but 4 were given`
-   - This error is causing cascading failures across multiple tests and needs immediate attention.
+### 1. Redis Memory Implementation (High Priority)
+The most frequent errors are related to the Redis memory implementation, particularly in the `add` method.
 
-2. **LLM Provider Integration Issues**
-   - Multiple failures related to LLM provider initialization and mocking.
+**Issues:**
+- `AttributeError: 'str' object has no attribute 'content'` in `RedisMemory.add()`
+- Errors in Redis connection and cleanup
 
-3. **Redis Connection Problems**
-   - Errors indicating issues with Redis connections, possibly related to async context management.
+**Action Items:**
+1. Review and refactor `app/core/memory/redis_memory.py`:
+   - Fix the `add` method to correctly handle `MemoryEntry` objects
+   - Implement proper error handling for Redis connections
+2. Update tests in `tests/core/memory/test_redis_memory.py`:
+   - Ensure mock objects correctly simulate Redis behavior
+   - Add more granular tests for edge cases and error scenarios
 
-4. **API Endpoint Failures**
-   - Many API endpoints are returning 500 Internal Server Errors, likely due to the MemorySystem issue.
+### 2. Agent Implementation (High Priority)
+Several tests fail due to issues with the Agent implementation.
 
-5. **Pydantic Model Warnings**
-   - Deprecation warnings for Pydantic models, indicating a need for updates to newer Pydantic syntax.
+**Issues:**
+- `'LLMProviderConfig' object is not subscriptable`
+- `'UUID' object has no attribute 'name'`
+- `'UUID' object has no attribute 'available_function_ids'`
 
-6. **Asyncio and Event Loop Issues**
-   - Warnings and errors related to asyncio usage, particularly in test fixtures.
+**Action Items:**
+1. Refactor `app/core/agent.py`:
+   - Review and fix the `LLMProviderConfig` usage
+   - Implement proper attribute access for UUID objects
+   - Add necessary attributes or methods to the Agent class
+2. Update tests in `tests/test_api/test_agent.py` and `tests/test_core/test_agent.py`:
+   - Adjust test setup to match the new Agent implementation
+   - Add more unit tests for Agent methods
 
-## Improvement Strategy
+### 3. Async Testing and Event Loop Management (Medium Priority)
+There are issues with async testing and event loop management.
 
-### 1. Fix Critical MemorySystem Bug
+**Issues:**
+- RuntimeWarnings about coroutines never awaited
+- Errors about tasks attached to different event loops
 
-a) **Analyze MemorySystem.add() Method**
-   - Review `app/core/memory/memory_system.py`, focusing on the `add()` method.
-   - Correct the method signature and update all calls to this method throughout the codebase.
+**Action Items:**
+1. Review and update `tests/conftest.py`:
+   - Implement proper async fixture management
+   - Ensure consistent event loop usage across tests
+2. Refactor async tests:
+   - Use `pytest.mark.asyncio` consistently
+   - Implement proper cleanup for async resources
 
-b) **Update Test Fixtures**
-   - Modify test fixtures in `tests/conftest.py` to correctly initialize MemorySystem.
+### 4. LLM Provider Integration (Medium Priority)
+LLM provider integration tests are failing.
 
-### 2. Resolve LLM Provider Integration
+**Issues:**
+- Mocked LLM providers failing in sequence
 
-a) **Review LLM Provider Mocking**
-   - Examine `app/core/llm_provider.py` and related test files.
-   - Ensure proper mocking of LLM providers in test environments.
+**Action Items:**
+1. Review and update `app/core/llm_provider.py`:
+   - Implement more robust error handling and fallback mechanisms
+2. Enhance tests in `tests/test_core/test_llm_provider.py`:
+   - Implement more realistic mock scenarios
+   - Test each provider individually and in combination
 
-b) **Implement Robust Error Handling**
-   - Add comprehensive error handling in LLM provider classes.
+### 5. API Endpoint Implementation (Medium Priority)
+Many API endpoint tests are failing.
 
-### 3. Address Redis Connection Issues
+**Issues:**
+- Incorrect status codes returned
+- Errors in request handling
 
-a) **Audit Redis Connection Management**
-   - Review `app/core/memory/redis_memory.py` for proper async context management.
-   - Implement connection pooling if not already in place.
+**Action Items:**
+1. Review and update API endpoint implementations in `app/api/endpoints/`:
+   - Ensure proper error handling and status code returns
+   - Implement input validation using Pydantic models
+2. Enhance API tests in `tests/test_api/`:
+   - Add more comprehensive test cases
+   - Implement proper setup and teardown for API tests
 
-b) **Update Redis Test Configurations**
-   - Ensure test environment is correctly set up for Redis, possibly using a mock Redis server for tests.
+### 6. Memory System Integration (Low Priority)
+There are issues with the integration of different memory systems.
 
-### 4. Fix API Endpoint Failures
+**Issues:**
+- Errors in memory addition and retrieval across different memory types
 
-a) **Systematic Endpoint Testing**
-   - Review each API endpoint in `app/api/endpoints/`.
-   - Implement proper error handling and status code returns.
+**Action Items:**
+1. Review and update `app/core/memory/memory_system.py`:
+   - Ensure proper integration between short-term and long-term memory
+   - Implement robust error handling for memory operations
+2. Enhance tests in `tests/test_core/test_memory.py`:
+   - Add more integration tests for memory system operations
+   - Test edge cases and error scenarios
 
-b) **Improve Request Validation**
-   - Enhance input validation using Pydantic models.
+## Implementation Plan
 
-### 5. Update Pydantic Models
+1. **Week 1: Redis Memory and Agent Implementation**
+   - Day 1-2: Refactor Redis memory implementation
+   - Day 3-4: Update Agent implementation
+   - Day 5: Update corresponding tests
 
-a) **Migrate to Pydantic v2 Syntax**
-   - Update all Pydantic models in `app/api/models/` to use the latest v2 syntax.
-   - Replace deprecated `Config` classes with `model_config` attribute.
+2. **Week 2: Async Testing and LLM Provider Integration**
+   - Day 1-2: Refactor async testing setup
+   - Day 3-4: Enhance LLM provider integration
+   - Day 5: Update corresponding tests
 
-### 6. Resolve Asyncio and Event Loop Issues
+3. **Week 3: API Endpoint Implementation and Memory System Integration**
+   - Day 1-3: Refactor API endpoints
+   - Day 4-5: Enhance memory system integration
+   - Throughout: Update corresponding tests
 
-a) **Refactor Test Fixtures**
-   - Update `tests/conftest.py` to properly handle async fixtures and event loops.
+4. **Week 4: Final Testing and Coverage Improvement**
+   - Day 1-3: Add missing tests to improve coverage
+   - Day 4-5: Final review and optimization
 
-b) **Implement Proper Async Context Management**
-   - Ensure all async resources are properly managed, especially in test teardown.
+## Monitoring and Reporting
 
-### 7. Enhance Test Coverage
+- Implement daily test runs and coverage reports
+- Review progress weekly and adjust the plan as needed
+- Create a dashboard to visualize test coverage and passing/failing tests over time
 
-a) **Identify Low-Coverage Areas**
-   - Use coverage reports to identify modules with low test coverage.
-   - Focus on `app/api/models/message.py` (currently at 0% coverage).
-
-b) **Implement Missing Tests**
-   - Write new tests for uncovered code paths, especially in core functionality.
-
-### 8. Improve Test Isolation
-
-a) **Implement Test Database Transactions**
-   - Use database transactions to isolate test data and prevent test interdependence.
-
-b) **Enhance Mocking and Fixture Usage**
-   - Increase use of mocks and fixtures to isolate units of code during testing.
-
-### 9. Optimize Async Testing
-
-a) **Refactor Async Tests**
-   - Review and update async test patterns, ensuring proper use of `pytest.mark.asyncio`.
-   - Address warnings about deprecated asyncio patterns.
-
-### 10. Implement Continuous Integration Improvements
-
-a) **Enhance CI Pipeline**
-   - Set up a CI pipeline that runs tests on multiple Python versions.
-   - Implement automatic code formatting and linting checks.
-
-b) **Integrate Code Coverage Reporting**
-   - Add code coverage reporting to the CI pipeline.
-
-## Action Plan
-
-1. Fix the `MemorySystem.add()` method as the highest priority.
-2. Resolve LLM provider integration issues.
-3. Address Redis connection problems in tests.
-4. Systematically fix API endpoint failures.
-5. Update all Pydantic models to v2 syntax.
-6. Resolve asyncio and event loop issues in tests.
-7. Implement missing tests to increase coverage.
-8. Enhance test isolation and async testing practices.
-9. Set up and optimize the CI pipeline.
-
-## Success Metrics
-
-- Achieve 80% or higher code coverage.
-- All tests passing consistently.
-- No deprecation warnings in test output.
-- Stable CI pipeline with all checks passing.
-
-By methodically addressing these issues and following this improvement plan, we can significantly enhance the quality, reliability, and maintainability of the srt-agentic-api project.
+By following this plan, we should be able to achieve the goal of 80% code coverage with all tests passing. Regular reviews and adjustments will be crucial to ensure we're making steady progress towards our goal.

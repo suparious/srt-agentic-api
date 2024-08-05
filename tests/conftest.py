@@ -35,7 +35,8 @@ def test_settings():
 
 @pytest.fixture(scope="session")
 def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
@@ -51,7 +52,6 @@ async def redis_memory(event_loop):
     await redis_mem.initialize()
     yield redis_mem
     await redis_mem.close()
-    await RedisMemory.close_pool()
 
 @pytest.fixture
 async def async_client():
@@ -66,13 +66,11 @@ def sync_client(test_app):
 def auth_headers(test_settings):
     return {"X-API-Key": test_settings.API_KEY}
 
-
 @pytest.fixture
 def mock_llm_provider():
     mock_provider = AsyncMock(spec=LLMProvider)
     mock_provider.generate.return_value = "Mocked LLM response"
     return mock_provider
-
 
 @pytest.fixture
 async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory, mock_llm_provider):
@@ -115,7 +113,12 @@ async def cleanup_redis(redis_memory):
         await conn.flushdb()
 
 @pytest.fixture(autouse=True, scope="session")
-async def cleanup_after_tests(redis_memory):
+async def cleanup_after_tests(event_loop):
     yield
-    await redis_memory.close()
-    await RedisMemory.close_pool()
+    await RedisMemory.cleanup()
+    tasks = asyncio.all_tasks(event_loop)
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await event_loop.shutdown_asyncgens()
