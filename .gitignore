@@ -28,3 +28,6 @@ logs/
 
 # Markdown file
 codebase.md
+
+# Sphynx docs builds
+_build/
