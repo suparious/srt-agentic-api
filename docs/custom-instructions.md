@@ -182,14 +182,28 @@ Does this sound like a good approach to get started and plan our next steps?
 Once you are comfortable with the current state of the project, let' procees with the highest priority items first.
 ```
 
-## Debugger
+## Developer
 
 ```plaintext
 Hello. Today we need to complete a maintenance cycle on our app. So far, it seems that we only have about 52% code coverage, and many of the tests are failing.
 
-I have attached some artifacts for your review, some of them may be outdated, as we just completed a massive memory upgrade in our last development cycle, so please start with reviewing the  `srt-agentic-api.md` artifact, which should verbosely describe my current codebase. Then let's proceed with updating the `CurrentStatusSummary.md` artifact, based on what you've learned from my codebase.
-Then let's see where we are at with the `MemorySystemTasks.md`artifact.
-Finally, we can update the `DevelopmentPlan.md`​.
+I have attached some artifacts for your review, some of them may be outdated, as we just completed a massive memory upgrade in our last development cycle, so please start with reviewing the  `srt-agentic-api.md` artifact, which should verbosely describe my current codebase. Then let's proceed with updating the CurrentStatusSummary.md artifact, based on what you've learned from my codebase.
+Then let's see where we are at with the MemorySystemTasks.md artifact.
+Finally, we can update the DevelopmentPlan.md.
 
 Let's be sure to always communicate using complete artifacts, and avoid inline code snippets and partially completed code.
+```
+
+## Debugger
+
+```plaintext
+Please find attached, an Artifact containing the command and it's output, despite my attempt to put it all into a file, from running the pytest command.
+
+I have also updated the test_results_detailed.txt report, as n Artifact for your review.
+
+Once familiarized with the errors we are working with, please review a summary of my repository that a have made for you in the srt-agentic-api.md Artifact.
+
+A previous AI has created the TestImprovementPlan.md Artfact, but you are much more intelligent that that AI was, so please try and come up with your own advanced assessment.
+
+Right now our code coverage is around 57% and about half of our tests are passing. It's not great, but not bad. We have come along way. The current goal is to have 80% code coverage, with all the tests passing!
 ```

@@ -1,94 +1,127 @@
-# Test Improvement Plan
+# Advanced Test Improvement Plan for srt-agentic-api
 
-## Current Test Status
-- Overall test coverage: 52%
-- 6 failed tests
-- 41 errors
-- 7 passed tests
+## Current Status
+- Test coverage: 57%
+- Passing tests: ~50%
+- Goal: 80% code coverage with all tests passing
 
-## Categories of Issues
+## Critical Issues
 
-1. Pydantic Validation Errors
-   - Multiple tests are failing due to `pydantic_core._pydantic_core.ValidationError`
-   - This seems to be related to the `AgentConfig` model
+1. **MemorySystem.add() ArgumentError**
+   - Error: `MemorySystem.add() takes 3 positional arguments but 4 were given`
+   - This error is preventing agent creation and is the root cause of many test failures.
 
-2. Type Errors
-   - Some tests are failing due to `TypeError`, particularly in the `VectorMemory` class
+2. **LLM Provider Failures**
+   - All LLM providers (OpenAI, vLLM, LlamaCpp) are failing in succession.
 
-3. Runtime Errors
-   - Several tests are encountering `RuntimeError`, often related to asyncio and event loops
+3. **Redis Connection Issues**
+   - Some tests are failing due to Redis connection problems, possibly related to event loop management.
 
-4. Attribute Errors
-   - Some tests are failing due to `AttributeError`, particularly in memory-related modules
+4. **Pydantic Model Errors**
+   - Warnings about deprecated Pydantic features and potential model conflicts.
 
-5. HTTP Status Code Mismatches
-   - Some API tests are failing due to unexpected HTTP status codes
+5. **HTTP 500 Internal Server Errors**
+   - Many API endpoints are returning 500 errors, likely due to the MemorySystem issue.
+
+## Improvement Strategy
+
+### 1. Fix Critical Bugs
+
+a) **MemorySystem.add() Method**
+   - Review the `MemorySystem.add()` method in `app/core/memory/memory_system.py`.
+   - Ensure it accepts the correct number of arguments.
+   - Update all calls to this method throughout the codebase.
+
+b) **LLM Provider Integration**
+   - Debug each LLM provider integration (OpenAI, vLLM, LlamaCpp) individually.
+   - Ensure API keys and endpoints are correctly configured in the test environment.
+   - Implement better error handling and logging in the LLM provider classes.
+
+c) **Redis Connection Management**
+   - Review Redis connection setup in `app/core/memory/redis_memory.py`.
+   - Ensure proper async context management for Redis connections.
+   - Consider implementing connection pooling if not already in place.
+
+### 2. Update Deprecated Code
+
+a) **Pydantic Models**
+   - Update Pydantic models to use the latest v2 syntax.
+   - Replace deprecated `Config` classes with `model_config` attribute.
+   - Review and update field definitions, especially for fields starting with "model_".
+
+b) **FastAPI Lifecycle Events**
+   - Replace deprecated `@app.on_event("startup")` with the new lifespan system.
+
+### 3. Enhance Test Suite
+
+a) **Increase Test Coverage**
+   - Identify modules with low coverage (e.g., `app/api/models/message.py` at 0%).
+   - Write new tests for uncovered code paths, especially in core functionality.
+
+b) **Improve Test Isolation**
+   - Ensure each test uses a clean state, possibly by implementing database transactions or better fixture management.
+   - Use mocking more extensively to isolate units of code.
+
+c) **Asynchronous Testing**
+   - Review and update async test patterns, ensuring proper use of `pytest.mark.asyncio`.
+   - Address warnings about deprecated asyncio patterns.
+
+### 4. Refactor for Testability
+
+a) **Dependency Injection**
+   - Implement a more robust dependency injection system to make components easier to mock and test.
+
+b) **Separation of Concerns**
+   - Review and refactor code to ensure clear separation between different layers (API, business logic, data access).
+
+### 5. Continuous Integration Improvements
+
+a) **Test Matrix**
+   - Implement a test matrix to run tests against different Python versions and dependency combinations.
+
+b) **Pre-commit Hooks**
+   - Set up pre-commit hooks for linting, formatting, and running a subset of critical tests.
+
+c) **Code Coverage Reports**
+   - Integrate code coverage reporting into the CI pipeline.
+
+### 6. Documentation and Logging
+
+a) **Improve Docstrings and Comments**
+   - Ensure all public methods and classes have clear, informative docstrings.
+   - Add inline comments for complex logic.
+
+b) **Enhance Logging**
+   - Implement more detailed logging throughout the application.
+   - Ensure logs provide actionable information for debugging.
+
+### 7. Performance Testing
+
+a) **Load Testing**
+   - Implement load tests for key API endpoints.
+   - Identify and address performance bottlenecks.
+
+b) **Memory Profiling**
+   - Profile memory usage, especially for long-running operations.
+   - Address any memory leaks or excessive memory usage.
 
 ## Action Plan
 
-1. Fix Pydantic Validation Errors
-   - Review and update the `AgentConfig` model in `app/api/models/agent.py`
-   - Ensure all required fields are properly defined
-   - Update tests to use the correct model structure
+1. Address the `MemorySystem.add()` error as the highest priority.
+2. Fix LLM provider integrations and Redis connection issues.
+3. Update Pydantic models and FastAPI lifecycle events.
+4. Increase test coverage for low-coverage modules.
+5. Refactor code for better testability and separation of concerns.
+6. Enhance CI/CD pipeline with more comprehensive checks.
+7. Improve documentation and logging.
+8. Implement performance and load testing.
 
-2. Address Type Errors
-   - Review the `VectorMemory` class implementation
-   - Ensure type hints are correctly used and followed
-   - Update method signatures if necessary
+## Success Metrics
 
-3. Resolve Runtime Errors
-   - Review asyncio usage across the codebase
-   - Ensure proper event loop management in tests
-   - Consider using `pytest-asyncio` for better async test support
+- Achieve 80% or higher code coverage.
+- All tests passing consistently.
+- No deprecation warnings in test output.
+- Stable CI/CD pipeline with all checks passing.
+- Improved application performance and reliability under load.
 
-4. Fix Attribute Errors
-   - Review memory-related modules, particularly `redis_memory.py` and `vector_memory.py`
-   - Ensure all referenced attributes and methods exist
-   - Update method calls if API has changed
-
-5. Correct HTTP Status Code Mismatches
-   - Review API endpoint implementations
-   - Ensure correct status codes are returned for different scenarios
-   - Update tests to expect the correct status codes
-
-6. Increase Test Coverage
-   - Identify modules with low coverage
-   - Add new test cases for untested code paths
-   - Ensure all edge cases are covered
-
-## Step-by-step Approach
-
-1. Start with fixing Pydantic Validation Errors
-   - This seems to be causing the most widespread issues
-   - Update `AgentConfig` model and related tests
-
-2. Move on to Type Errors and Attribute Errors
-   - These are likely related and can be addressed together
-   - Focus on `VectorMemory` and memory-related modules
-
-3. Address Runtime Errors
-   - Review and update asyncio usage in tests
-   - Ensure proper setup and teardown of async resources
-
-4. Fix HTTP Status Code Mismatches
-   - Review and update API endpoint tests
-   - Ensure alignment between implementation and test expectations
-
-5. Add New Tests to Increase Coverage
-   - Focus on modules with less than 80% coverage
-   - Add tests for edge cases and error scenarios
-
-6. Run Tests Frequently
-   - After each significant change, run the full test suite
-   - Address any new issues that arise immediately
-
-7. Document Changes
-   - Update relevant documentation as tests are fixed and added
-   - Note any API changes or behavior modifications
-
-## Success Criteria
-- All tests passing
-- Test coverage increased to at least 80% for each module
-- No remaining Pydantic validation errors
-- Consistent use of async/await throughout the codebase
-- Accurate API endpoint behavior reflected in tests
+By systematically addressing these issues and following this improvement plan, we can significantly enhance the quality, reliability, and maintainability of the srt-agentic-api project.
