@@ -1,14 +1,16 @@
 # SolidRusT Agentic API
 
-SolidRusT Agentic API is a powerful and flexible API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, including memory management, function execution, and message processing.
+SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, featuring advanced memory management, dynamic function execution, and sophisticated message processing.
 
 ## Key Features
 
-- Agent creation and management
-- Short-term (Redis) and long-term (ChromaDB) memory systems
-- Function calling capabilities
-- Flexible LLM provider integration with fallback mechanism
-- Scalable architecture
+- Advanced agent creation and management
+- Dual-layer memory system: Short-term (Redis) and long-term (ChromaDB) with efficient retrieval mechanisms
+- Dynamic function calling capabilities with runtime registration
+- Flexible LLM provider integration with intelligent fallback mechanism
+- Highly scalable and modular architecture
+- Comprehensive test suite with high code coverage
+- Performance-optimized for high-load scenarios
 
 ## Project Structure
 
@@ -20,9 +22,30 @@ srt-agentic-api/
 │   ├── config.py
 │   ├── api/
 │   │   ├── endpoints/
+│   │   │   ├── memory/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── add.py
+│   │   │   │   ├── delete.py
+│   │   │   │   ├── retrieve.py
+│   │   │   │   ├── search.py
+│   │   │   │   ├── operate.py
+│   │   │   │   └── utils.py
+│   │   │   ├── agent.py
+│   │   │   ├── function.py
+│   │   │   ├── memory.py
+│   │   │   └── message.py
 │   │   └── models/
 │   ├── core/
+│   │   ├── memory/
+│   │   │   ├── __init__.py
+│   │   │   ├── memory_system.py
+│   │   │   ├── redis_memory.py
+│   │   │   └── vector_memory.py
+│   │   ├── agent.py
+│   │   └── llm_provider.py
 │   └── utils/
+│       ├── auth.py
+│       └── logging.py
 ├── docs/
 ├── examples/
 │   ├── README.md
@@ -30,8 +53,16 @@ srt-agentic-api/
 │   └── javascript_example.js
 ├── logs/
 ├── tests/
+│   ├── conftest.py
+│   ├── test_api/
+│   └── test_core/
 ├── requirements.txt
+├── requirements-dev.txt
 ├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+├── pytest.ini
 └── README.md
 ```
 
@@ -52,6 +83,7 @@ srt-agentic-api/
 3. Install the required dependencies:
    ```
    pip install -r requirements.txt
+   pip install -r requirements-dev.txt  # For development and testing
    ```
 
 4. Copy the `.env.example` file to `.env` and update the values:
@@ -60,13 +92,13 @@ srt-agentic-api/
    ```
    Edit the `.env` file with your specific configuration values.
 
-5. Set up the database:
+5. Set up the databases:
    - Ensure Redis is running for short-term memory operations.
    - Set up ChromaDB for long-term memory operations.
 
-## LLM Provider Integration
+## Advanced LLM Provider Integration
 
-SolidRusT Agentic API now supports multiple LLM providers with a fallback mechanism. This means you can configure your agents to use multiple providers in a priority order. If the primary provider fails, the system will automatically try the next provider in the list.
+SolidRusT Agentic API supports multiple LLM providers with an intelligent fallback mechanism. Configure your agents to use multiple providers in priority order for enhanced reliability.
 
 Supported providers:
 - OpenAI
@@ -74,7 +106,7 @@ Supported providers:
 - LlamaCpp
 - TGI (Text Generation Inference)
 
-To configure multiple providers for an agent, use the following format in your agent creation request:
+Example configuration:
 
 ```json
 {
@@ -108,8 +140,6 @@ To configure multiple providers for an agent, use the following format in your a
 }
 ```
 
-In this configuration, the system will first try to use OpenAI. If that fails, it will fall back to vLLM, and if that also fails, it will try LlamaCpp.
-
 ## Running the Application
 
 To run the application locally:
@@ -118,51 +148,72 @@ To run the application locally:
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`. You can access the API documentation at `http://localhost:8000/docs`.
-
-## Examples
-
-We provide example scripts to help you get started with the SolidRusT Agentic API. You can find these in the `examples/` directory:
-
-- `README.md`: Contains curl commands for direct API interaction.
-- `python_example.py`: A Python script demonstrating how to use the API.
-- `javascript_example.js`: A JavaScript script showing API usage.
-
-These examples cover basic operations such as creating an agent, sending messages, and retrieving agent information. They serve as a great starting point for AI scientists and university students to understand and experiment with our agentic API framework.
+Access the API at `http://localhost:8000` and the API documentation at `http://localhost:8000/docs`.
 
 ## Development
 
 ### Running Tests
 
-To run the test suite:
+Execute the comprehensive test suite:
 
 ```
-pip install -U -r requirements-test.txt
-pytest
+pytest --verbose --capture=no --cov=app --cov-report=term-missing
+```
+
+### Code Quality
+
+Maintain code quality using pre-commit hooks:
+
+```
+pre-commit install
+pre-commit run --all-files
+```
+
+### Performance Testing
+
+Run load tests and profile memory usage:
+
+```
+locust -f tests/performance/locustfile.py
 ```
 
 ### Adding New Endpoints
 
-1. Create a new file in `app/api/endpoints/` for your endpoint.
-2. Define the necessary models in `app/api/models/`.
-3. Implement the core logic in `app/core/` if needed.
+1. Create a new file in the appropriate subdirectory under `app/api/endpoints/`.
+2. Define necessary models in `app/api/models/`.
+3. Implement core logic in `app/core/` if needed.
 4. Update `app/main.py` to include your new endpoint router.
+5. Write comprehensive tests for the new endpoint.
 
-### Contributing
+## Docker Deployment
+
+Build and run the Docker container:
+
+```
+docker-compose up --build
+```
+
+For production deployment, refer to the `docker-compose.prod.yml` file.
+
+## Contributing
 
 1. Fork the repository.
 2. Create a new branch for your feature or bug fix.
-3. Make your changes and write tests if applicable.
-4. Run the test suite to ensure all tests pass.
+3. Make your changes and write tests to maintain or improve code coverage.
+4. Run the test suite and ensure all tests pass.
 5. Submit a pull request with a clear description of your changes.
 
-## Docker
+## Documentation
 
-To build and run the Docker container:
+For detailed API documentation, refer to the `/docs` endpoint when running the application. Additional technical documentation can be found in the `docs/` directory.
 
-```
-docker build -t srt-agentic-api .
-docker run -p 8000:8000 srt-agentic-api
-```
+## License
 
-For more detailed information about the API endpoints and request/response formats, please refer to the API documentation available at the `/docs` endpoint when running the application.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all contributors who have helped shape and improve this project.
+- Special thanks to the open-source communities behind FastAPI, Redis, and ChromaDB.
+
+For any questions or support, please open an issue on the GitHub repository.
