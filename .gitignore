@@ -24,7 +24,7 @@ logs/
 *.log
 
 # Coverage data
-.coverage
+.coverage*
 
 # Markdown file
 codebase.md
