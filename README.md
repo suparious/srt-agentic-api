@@ -52,7 +52,9 @@ srt-agentic-api/
 │   │   ├── llm_provider.py
 │   │   └── memory
 │   │       ├── __init__.py
+│   │       ├── memory_operations.py
 │   │       ├── memory_system.py
+│   │       ├── memory_utils.py
 │   │       ├── redis_memory.py
 │   │       └── vector_memory.py
 │   ├── main.py
