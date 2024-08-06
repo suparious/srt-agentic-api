@@ -15,8 +15,6 @@ from app.api.models.function import (
     FunctionAssignmentResponse
 )
 from app.core.agent_manager import AgentManager
-from app.core.function_manager import FunctionManager
-
 from app.utils.auth import get_api_key
 from app.utils.logging import function_logger
 
@@ -25,13 +23,10 @@ router = APIRouter()
 def get_agent_manager():
     return AgentManager()
 
-def get_function_manager():
-    return FunctionManager()
-
 @router.post("/execute", response_model=FunctionExecutionResponse, summary="Execute a function")
 async def execute_function_endpoint(
     request: FunctionExecutionRequest,
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -43,7 +38,10 @@ async def execute_function_endpoint(
     """
     try:
         function_logger.info(f"Executing function {request.function_name} for agent: {request.agent_id}")
-        result = await function_manager.execute_function(request.agent_id, request.function_name, request.parameters)
+        agent = agent_manager.agents.get(request.agent_id)
+        if not agent:
+            raise ValueError(f"Agent not found: {request.agent_id}")
+        result = await agent.execute_function(request.function_name, request.parameters)
         function_logger.info(f"Function {request.function_name} executed successfully for agent: {request.agent_id}")
         return FunctionExecutionResponse(
             agent_id=request.agent_id,
@@ -52,7 +50,7 @@ async def execute_function_endpoint(
         )
     except ValueError as ve:
         function_logger.error(f"Value error in function execution: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         function_logger.error(f"Error executing function {request.function_name} for agent {request.agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while executing the function")
@@ -60,7 +58,7 @@ async def execute_function_endpoint(
 @router.get("/available", response_model=AvailableFunctionsResponse, summary="Get available functions")
 async def get_available_functions_endpoint(
     request: AvailableFunctionsRequest = Depends(),
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -70,7 +68,10 @@ async def get_available_functions_endpoint(
     """
     try:
         function_logger.info(f"Retrieving available functions for agent: {request.agent_id}")
-        functions = await function_manager.get_available_functions(request.agent_id)
+        agent = agent_manager.agents.get(request.agent_id)
+        if not agent:
+            raise ValueError(f"Agent not found: {request.agent_id}")
+        functions = agent.get_available_functions()
         function_logger.info(f"Successfully retrieved available functions for agent: {request.agent_id}")
         return AvailableFunctionsResponse(
             agent_id=request.agent_id,
@@ -86,7 +87,7 @@ async def get_available_functions_endpoint(
 @router.post("/register", response_model=FunctionRegistrationResponse, status_code=201, summary="Register a new function")
 async def register_function_endpoint(
     request: FunctionRegistrationRequest,
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -96,7 +97,9 @@ async def register_function_endpoint(
     """
     try:
         function_logger.info(f"Registering new function: {request.function.name}")
-        function_id = await function_manager.register_function(request.function)
+        function_id = str(UUID.uuid4())  # Generate a new UUID for the function
+        for agent in agent_manager.agents.values():
+            agent.add_function(request.function)
         function_logger.info(f"Successfully registered function: {function_id}")
         return FunctionRegistrationResponse(
             function_id=function_id,
@@ -112,7 +115,7 @@ async def register_function_endpoint(
 @router.put("/update", response_model=FunctionUpdateResponse, summary="Update an existing function")
 async def update_function_endpoint(
     request: FunctionUpdateRequest,
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -123,7 +126,9 @@ async def update_function_endpoint(
     """
     try:
         function_logger.info(f"Updating function: {request.function_id}")
-        await function_manager.update_function(request.function_id, request.updated_function)
+        for agent in agent_manager.agents.values():
+            if request.updated_function.name in agent.available_functions:
+                agent.available_functions[request.updated_function.name] = request.updated_function
         function_logger.info(f"Successfully updated function: {request.function_id}")
         return FunctionUpdateResponse(
             function_id=request.function_id,
@@ -139,7 +144,7 @@ async def update_function_endpoint(
 @router.post("/assign", response_model=FunctionAssignmentResponse, summary="Assign a function to an agent")
 async def assign_function_endpoint(
     request: FunctionAssignmentRequest,
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -150,7 +155,13 @@ async def assign_function_endpoint(
     """
     try:
         function_logger.info(f"Assigning function {request.function_id} to agent: {request.agent_id}")
-        await function_manager.assign_function_to_agent(request.agent_id, request.function_id)
+        agent = agent_manager.agents.get(request.agent_id)
+        if not agent:
+            raise ValueError(f"Agent not found: {request.agent_id}")
+        function = next((f for f in agent.available_functions.values() if str(f.id) == request.function_id), None)
+        if not function:
+            raise ValueError(f"Function not found: {request.function_id}")
+        agent.add_function(function)
         function_logger.info(f"Successfully assigned function {request.function_id} to agent: {request.agent_id}")
         return FunctionAssignmentResponse(
             agent_id=request.agent_id,
@@ -159,7 +170,7 @@ async def assign_function_endpoint(
         )
     except ValueError as ve:
         function_logger.error(f"Value error in function assignment: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         function_logger.error(f"Error assigning function: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while assigning the function")
@@ -168,7 +179,7 @@ async def assign_function_endpoint(
 async def remove_function_endpoint(
     agent_id: UUID,
     function_id: str,
-    function_manager: FunctionManager = Depends(get_function_manager),
+    agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -179,7 +190,13 @@ async def remove_function_endpoint(
     """
     try:
         function_logger.info(f"Removing function {function_id} from agent: {agent_id}")
-        await function_manager.remove_function_from_agent(agent_id, function_id)
+        agent = agent_manager.agents.get(agent_id)
+        if not agent:
+            raise ValueError(f"Agent not found: {agent_id}")
+        function_name = next((name for name, func in agent.available_functions.items() if str(func.id) == function_id), None)
+        if not function_name:
+            raise ValueError(f"Function not found: {function_id}")
+        agent.remove_function(function_name)
         function_logger.info(f"Successfully removed function {function_id} from agent: {agent_id}")
         return FunctionAssignmentResponse(
             agent_id=agent_id,
@@ -188,7 +205,7 @@ async def remove_function_endpoint(
         )
     except ValueError as ve:
         function_logger.error(f"Value error in function removal: {str(ve)}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         function_logger.error(f"Error removing function: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while removing the function")

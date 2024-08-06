@@ -9,7 +9,10 @@ class LLMProviderConfig(BaseModel):
     api_key: Optional[str] = Field(None, description="API key for the provider (if required)")
     api_base: Optional[str] = Field(None, description="Base URL for the provider's API (if custom)")
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(
+        extra='forbid',
+        protected_namespaces=()
+    )
 
 class MemoryConfig(BaseModel):
     use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")

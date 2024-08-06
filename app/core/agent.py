@@ -5,13 +5,7 @@ from app.api.models.agent import AgentConfig, MemoryConfig
 from app.api.models.function import FunctionDefinition
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext
 from app.core.llm_provider import create_llm_provider
-from app.core.memory import (
-    MemorySystem,
-    add_to_memory,
-    retrieve_from_memory,
-    search_memory,
-    calculate_relevance_score
-)
+from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
 
 class Agent:
@@ -19,7 +13,7 @@ class Agent:
     Represents an AI agent capable of processing messages, managing memory, and executing functions.
     """
 
-    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig, function_manager):
+    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
         """
         Initialize a new Agent instance.
 
@@ -28,7 +22,6 @@ class Agent:
             name (str): The name of the agent.
             config (AgentConfig): The configuration for the agent's language model.
             memory_config (MemoryConfig): The configuration for the agent's memory system.
-            function_manager: The function manager instance to use for this agent.
         """
         self.id = agent_id
         self.name = name
@@ -36,8 +29,7 @@ class Agent:
         self.llm_provider = create_llm_provider(config.llm_providers)
         self.memory = MemorySystem(agent_id, memory_config)
         self.conversation_history = []
-        self.available_function_ids: List[str] = []
-        self.function_manager = function_manager
+        self.available_functions: Dict[str, FunctionDefinition] = {}
         agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers")
 
     async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -98,13 +90,11 @@ class Agent:
         """
         try:
             agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
-            get_function = self.get_function_by_name(function_name)
-            if not get_function:
+            function = self.get_function_by_name(function_name)
+            if not function:
                 raise ValueError(f"Unknown function: {function_name}")
 
-            func_impl = self.function_manager.registered_functions[get_function.id].implementation
-
-            result = await func_impl(**parameters)
+            result = await function.implementation(**parameters)
 
             agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
             return result
@@ -119,39 +109,33 @@ class Agent:
         Returns:
             List[FunctionDefinition]: A list of available function definitions.
         """
-        return [self.function_manager.registered_functions[func_id] for func_id in self.available_function_ids 
-                if func_id in self.function_manager.registered_functions]
+        return list(self.available_functions.values())
 
-    def add_function(self, function_id: str):
+    def add_function(self, function: FunctionDefinition):
         """
         Add a function to the agent's available functions.
 
         Args:
-            function_id (str): The ID of the function to add.
-
-        Raises:
-            ValueError: If the function is not registered.
+            function (FunctionDefinition): The function to add.
         """
-        if function_id not in self.function_manager.registered_functions:
-            raise ValueError(f"Function with ID {function_id} is not registered")
-        if function_id not in self.available_function_ids:
-            self.available_function_ids.append(function_id)
-            agent_logger.info(f"Function {self.function_manager.registered_functions[function_id].name} added for Agent {self.name} (ID: {self.id})")
+        if function.name not in self.available_functions:
+            self.available_functions[function.name] = function
+            agent_logger.info(f"Function {function.name} added for Agent {self.name} (ID: {self.id})")
         else:
-            agent_logger.warning(f"Function {self.function_manager.registered_functions[function_id].name} already available for Agent {self.name} (ID: {self.id})")
+            agent_logger.warning(f"Function {function.name} already available for Agent {self.name} (ID: {self.id})")
 
-    def remove_function(self, function_id: str):
+    def remove_function(self, function_name: str):
         """
         Remove a function from the agent's available functions.
 
         Args:
-            function_id (str): The ID of the function to remove.
+            function_name (str): The name of the function to remove.
         """
-        if function_id in self.available_function_ids:
-            self.available_function_ids.remove(function_id)
-            agent_logger.info(f"Function {function_id} removed from Agent {self.name} (ID: {self.id})")
+        if function_name in self.available_functions:
+            del self.available_functions[function_name]
+            agent_logger.info(f"Function {function_name} removed from Agent {self.name} (ID: {self.id})")
         else:
-            agent_logger.warning(f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})")
+            agent_logger.warning(f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})")
 
     def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
         """
@@ -163,10 +147,7 @@ class Agent:
         Returns:
             Optional[FunctionDefinition]: The function definition if found, None otherwise.
         """
-        for func_id in self.available_function_ids:
-            if func_id in self.function_manager.registered_functions and self.function_manager.registered_functions[func_id].name == function_name:
-                return self.function_manager.registered_functions[func_id]
-        return None
+        return self.available_functions.get(function_name)
 
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         """

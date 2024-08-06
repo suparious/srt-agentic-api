@@ -8,7 +8,6 @@ Welcome to SolidRusT Agentic API's documentation!
    project/project_overview.md
    project/development_plan.md
    project/current_status.md
-   project/immediate_actions
    project/memory_system.md
    api/endpoints/agent
    api/endpoints/message

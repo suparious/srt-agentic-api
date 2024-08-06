@@ -5,6 +5,7 @@ from app.core.agent import Agent
 from app.utils.logging import agent_logger
 from fastapi import HTTPException
 
+
 class AgentManager:
     """
     Manages the lifecycle and operations of agents in the system.
@@ -16,7 +17,8 @@ class AgentManager:
         """
         self.agents: Dict[UUID, Agent] = {}
 
-    async def create_agent(self, name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
+    async def create_agent(self, name: str, config: Dict[str, Any], memory_config: Dict[str, Any],
+                           initial_prompt: str) -> UUID:
         """
         Create a new agent with the given configuration and initial prompt.
 
@@ -38,7 +40,7 @@ class AgentManager:
             mem_config = MemoryConfig(**memory_config)
             agent = Agent(agent_id, name, agent_config, mem_config)
             self.agents[agent_id] = agent
-            await agent.process_message(initial_prompt)
+            response, _ = await agent.process_message(initial_prompt)
             agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
             return agent_id
         except Exception as e:
@@ -147,7 +149,7 @@ class AgentManager:
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
-        return agent.config.memory_config
+        return agent.memory.config
 
     async def process_message(self, agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
         """
@@ -168,6 +170,59 @@ class AgentManager:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
         return await agent.process_message(message)
+
+    async def add_function_to_agent(self, agent_id: UUID, function: Dict[str, Any]) -> bool:
+        """
+        Add a function to a specific agent.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent.
+            function (Dict[str, Any]): The function definition to add.
+
+        Returns:
+            bool: True if the function was successfully added, False otherwise.
+
+        Raises:
+            ValueError: If the agent is not found.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.error(f"No agent found with id: {agent_id}")
+            raise ValueError(f"No agent found with id: {agent_id}")
+
+        try:
+            from app.api.models.function import FunctionDefinition
+            function_def = FunctionDefinition(**function)
+            agent.add_function(function_def)
+            agent_logger.info(f"Function {function_def.name} added to Agent {agent.name} (ID: {agent_id})")
+            return True
+        except Exception as e:
+            agent_logger.error(f"Error adding function to Agent {agent.name} (ID: {agent_id}): {str(e)}")
+            return False
+
+    async def remove_function_from_agent(self, agent_id: UUID, function_name: str) -> bool:
+        """
+        Remove a function from a specific agent.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent.
+            function_name (str): The name of the function to remove.
+
+        Returns:
+            bool: True if the function was successfully removed, False otherwise.
+
+        Raises:
+            ValueError: If the agent is not found.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.error(f"No agent found with id: {agent_id}")
+            raise ValueError(f"No agent found with id: {agent_id}")
+
+        agent.remove_function(function_name)
+        agent_logger.info(f"Function {function_name} removed from Agent {agent.name} (ID: {agent_id})")
+        return True
+
 
 # Global instance of AgentManager
 agent_manager = AgentManager()

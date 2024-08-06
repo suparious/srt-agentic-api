@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from uuid import UUID
 from typing import List
 from app.api.models.agent import AgentCreationRequest, AgentCreationResponse, AgentInfoResponse, AgentUpdateRequest, AgentUpdateResponse
+from app.api.models.function import FunctionDefinition
 from app.core.agent_manager import AgentManager
-from app.core.function_manager import FunctionManager
 from app.utils.auth import get_api_key
 
 router = APIRouter()
@@ -11,14 +11,10 @@ router = APIRouter()
 def get_agent_manager():
     return AgentManager()
 
-def get_function_manager():
-    return FunctionManager()
-
 @router.post("/create", response_model=AgentCreationResponse, status_code=201)
 async def create_agent_endpoint(
-    request: AgentCreationRequest, 
+    request: AgentCreationRequest,
     agent_manager: AgentManager = Depends(get_agent_manager),
-    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -34,8 +30,7 @@ async def create_agent_endpoint(
             name=request.agent_name,
             config=request.agent_config.dict(),
             memory_config=request.memory_config.dict(),
-            initial_prompt=request.initial_prompt,
-            function_manager=function_manager
+            initial_prompt=request.initial_prompt
         )
         return AgentCreationResponse(agent_id=agent_id, message="Agent created successfully")
     except Exception as e:
@@ -43,7 +38,7 @@ async def create_agent_endpoint(
 
 @router.get("/{agent_id}", response_model=AgentInfoResponse)
 async def get_agent_info_endpoint(
-    agent_id: UUID, 
+    agent_id: UUID,
     agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
@@ -59,8 +54,8 @@ async def get_agent_info_endpoint(
 
 @router.patch("/{agent_id}", response_model=AgentUpdateResponse)
 async def update_agent_endpoint(
-    agent_id: UUID, 
-    request: AgentUpdateRequest, 
+    agent_id: UUID,
+    request: AgentUpdateRequest,
     agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
@@ -81,7 +76,7 @@ async def update_agent_endpoint(
 
 @router.delete("/{agent_id}", status_code=204)
 async def delete_agent_endpoint(
-    agent_id: UUID, 
+    agent_id: UUID,
     agent_manager: AgentManager = Depends(get_agent_manager),
     api_key: str = Depends(get_api_key)
 ):
@@ -103,3 +98,48 @@ async def list_agents_endpoint(
     List all agents.
     """
     return await agent_manager.list_agents()
+
+@router.post("/{agent_id}/functions", status_code=201)
+async def add_function_to_agent_endpoint(
+    agent_id: UUID,
+    function: FunctionDefinition,
+    agent_manager: AgentManager = Depends(get_agent_manager),
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Add a function to an agent.
+
+    - **agent_id**: The unique identifier of the agent
+    - **function**: The function definition to add to the agent
+    """
+    try:
+        success = await agent_manager.add_function_to_agent(agent_id, function.dict())
+        if not success:
+            raise HTTPException(status_code=404, detail="Agent not found or function addition failed")
+        return {"message": f"Function {function.name} added to agent successfully"}
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add function to agent: {str(e)}")
+
+@router.delete("/{agent_id}/functions/{function_name}", status_code=204)
+async def remove_function_from_agent_endpoint(
+    agent_id: UUID,
+    function_name: str,
+    agent_manager: AgentManager = Depends(get_agent_manager),
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Remove a function from an agent.
+
+    - **agent_id**: The unique identifier of the agent
+    - **function_name**: The name of the function to remove from the agent
+    """
+    try:
+        success = await agent_manager.remove_function_from_agent(agent_id, function_name)
+        if not success:
+            raise HTTPException(status_code=404, detail="Agent or function not found")
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to remove function from agent: {str(e)}")

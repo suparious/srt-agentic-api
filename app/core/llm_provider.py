@@ -149,6 +149,10 @@ class TGIServerProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing TGI server API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse TGI server API response: {str(e)}")
 
+# TODO: add Anthropic provider
+# TODO: add Groq provider
+# TODO: add MistralAI provider
+# TODO: add Cohere provider
 
 class LLMProvider:
     def __init__(self, provider_configs: List[Dict[str, Any]]):
