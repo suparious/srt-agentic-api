@@ -1,215 +1,118 @@
-Can you write me a good custom instructions prompt for development of this Python FastAPI srt-agentic-api AI Agentic API. Always write all the source files out in full, and use Claude Artifacts.
+# CI Formulae
+
+To write a set of custom instructions intended to guide an Claude AI agent in writing python code within controlled development and maintenance cycles, guided by a human user and using Claude Artifacts.
 
 ```plaintext
-# Custom Instructions for srt-agentic-api Development
+Always comunicate with the user using complete Claude Artifacts.
+```
+Review my current codebase summary contained within the srt-agent-api.md Artifact.
+Generate a set of custom instructions for an AI Agent to understand how to make reference to this Artifact, in order to guide it's long-term and short term memory about how to solve testing errors and follow a structured approach and priorities based on a development plan provided by the user.
 
-## Project Overview
-The `srt-agentic-api` is a Python FastAPI-based API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, including memory management, function execution, and message processing.
+I have attached a version of the custom instructions, that wre created by some other AI, a long time ago, before our project was mature. You are a far more powerful AI, so I would expect that you can think differently about waht we want to acheive and articulate it in a superior manner for a Claude Sonnet AI to truly align with our design, architecture and strategy.Honestly, I think the current version is for a really dumb AI, like CHatGPT, and may no longer be usefule. I updated the directory tree, so that is accurate.
+Good luck.
+If you succeed in this refactoring task, then the engineering team will approve your Artifact, and hire you for some development and maintenance cycles where we can put these custom instruction to good use!
 
-## Development Guidelines
+## Custom Instructions
 
-### 1. Code Structure
-- Maintain the existing project structure:
-  ```
-  srt-agentic-api/
-  ├── Dockerfile
-  ├── README.md
-  ├── TESTING.md
-  ├── app
-  │   ├── __init__.py
-  │   ├── api
-  │   │   ├── __init__.py
-  │   │   ├── endpoints
-  │   │   │   ├── __init__.py
-  │   │   │   ├── agent.py
-  │   │   │   ├── function.py
-  │   │   │   ├── memory.py
-  │   │   │   └── message.py
-  │   │   └── models
-  │   │       ├── __init__.py
-  │   │       ├── agent.py
-  │   │       ├── function.py
-  │   │       ├── memory.py
-  │   │       └── message.py
-  │   ├── config.py
-  │   ├── core
-  │   │   ├── __init__.py
-  │   │   ├── agent.py
-  │   │   ├── llm_provider.py
-  │   │   └── memory
-  │   │       ├── __init__.py
-  │   │       ├── memory_system.py
-  │   │       ├── redis_memory.py
-  │   │       └── vector_memory.py
-  │   ├── main.py
-  │   └── utils
-  │       ├── __init__.py
-  │       ├── auth.py
-  │       └── logging.py
-  ├── docker-compose.yml
-  ├── docs
-  │   ├── CurrentStatusSummary.md
-  │   ├── DevelopmentPlan.md
-  │   ├── MemorySystemTasks.md
-  │   ├── NOTES.md
-  │   └── custom-instructions.md
-  ├── examples
-  │   ├── README.md
-  │   ├── javascript_example.js
-  │   └── python_example.py
-  ├── logs
-  │   ├── agent.log
-  │   ├── auth.log
-  │   ├── function.log
-  │   ├── llm.log
-  │   ├── main.log
-  │   ├── memory.log
-  │   └── test_results_detailed.txt
-  ├── pytest.ini
-  ├── requirements-testing.txt
-  ├── requirements.txt
-  └── tests
-      ├── README.md
-      ├── __init__.py
-      ├── conftest.py
-      ├── core
-      │   └── memory
-      │       ├── test_redis_memory.py
-      │       └── test_vector_memory.py
-      ├── test_api
-      │   ├── __init__.py
-      │   ├── test_agent.py
-      │   ├── test_function.py
-      │   ├── test_main.py
-      │   ├── test_memory.py
-      │   └── test_message.py
-      └── test_core
-          ├── __init__.py
-          ├── test_agent.py
-          ├── test_llm_provider.py
-          └── test_memory.py
-  ```
-- Keep related functionality together in modules.
-- Use clear, descriptive names for files, classes, and functions.
+```plaintext
+# Custom Instructions for SRT Agentic API Development
 
-### 2. Coding Style
-- Follow PEP 8 guidelines for Python code style.
-- Use type hints for function arguments and return values.
-- Write docstrings for all public classes and functions.
-- Use meaningful variable names that clearly describe their purpose.
+## Project Context and Artifact Usage
 
-### 3. API Development
-- Use FastAPI's dependency injection system for shared dependencies.
-- Implement proper error handling and return appropriate HTTP status codes.
-- Use Pydantic models for request/response schemas.
-- Implement API versioning to allow for future changes without breaking existing clients.
+1. **Codebase Familiarity:**
+   - Begin each session by thoroughly reviewing the `srt-agent-api.md` Artifact. This document contains the most up-to-date summary of the project's codebase and architecture.
+   - Use this Artifact as your primary reference for understanding the current state of the project, its structure, and the relationships between different components.
 
-### 4. Agent Implementation
-- Implement agents as separate classes with clear interfaces.
-- Use asynchronous programming (async/await) for potentially long-running operations.
-- Implement proper memory management for agents, including short-term and long-term memory.
+2. **Artifact-Driven Development:**
+   - Constantly refer back to the `srt-agent-api.md` Artifact when discussing or modifying any part of the codebase. This ensures consistency and prevents working with outdated information.
+   - When suggesting changes or improvements, always contextualize them within the existing architecture described in the Artifact.
 
-### 5. Function System
-- Implement a flexible system for registering and executing functions.
-- Use dependency injection to provide necessary context to functions.
-- Implement proper type checking and conversion for function parameters.
+3. **Memory Management:**
+   - Treat the `srt-agent-api.md` Artifact as your long-term memory for the project. Use it to maintain a consistent understanding of the project across multiple development sessions.
+   - For short-term memory, focus on the specific task or issue at hand, but always validate your approach against the long-term context provided by the Artifact.
 
-### 6. Memory System
-- Implement both short-term (Redis) and long-term (ChromaDB) memory systems.
-- Use appropriate serialization methods for storing complex data structures.
-- Implement efficient retrieval mechanisms, especially for long-term memory.
+## Testing and Code Coverage Strategy
 
-### 7. LLM Integration
-- Create a flexible system that can work with multiple LLM providers.
-- Implement proper error handling and retries for LLM API calls.
-- Use environment variables for API keys and other sensitive information.
+1. **Prioritized Testing Approach:**
+   - Focus on increasing the overall code coverage to 80%, with an emphasis on critical path components identified in the `srt-agent-api.md` Artifact.
+   - Prioritize fixing failing tests before writing new ones. Use the test results provided in the `test_results_detailed.txt` Artifact to guide your efforts.
 
-### 8. Testing
-- Write unit tests for all core functionality.
-- Implement integration tests for API endpoints.
-- Use pytest for running tests.
-- Aim for high test coverage (at least 80%).
+2. **Test-Driven Development (TDD):**
+   - For any new features or bug fixes, start by writing or updating the corresponding tests before modifying the implementation.
+   - Ensure that each test is meaningful and tests a specific, well-defined behavior of the system.
 
-### 9. Documentation
-- Maintain up-to-date API documentation using FastAPI's automatic docs.
-- Write clear and concise comments in the code where necessary.
-- Keep the README.md file updated with setup instructions and basic usage examples.
+3. **Comprehensive Test Suite:**
+   - Aim for a balance between unit tests, integration tests, and end-to-end tests as described in the project architecture.
+   - Pay special attention to edge cases and error handling scenarios, which are often overlooked but critical for system stability.
 
-### 10. Performance
-- Implement caching where appropriate to reduce unnecessary computations or API calls.
-- Use asynchronous programming to handle concurrent requests efficiently.
-- Monitor and optimize database queries for efficiency.
+4. **Performance and Scalability Testing:**
+   - Implement performance tests for critical operations, especially those involving the memory system and LLM integrations.
+   - Use benchmarking tools to establish performance baselines and monitor improvements or regressions.
 
-### 11. Security
-- Implement proper authentication and authorization mechanisms.
-- Sanitize all user inputs to prevent injection attacks.
-- Use HTTPS for all communications in production.
-- Implement rate limiting to prevent abuse.
+## Development Plan Execution
 
-### 12. Scalability
-- Design the system to be horizontally scalable.
-- Use message queues for handling long-running tasks if necessary.
-- Implement proper logging for debugging and monitoring.
+1. **Artifact-Based Planning:**
+   - At the beginning of each development cycle, review and update the `DevelopmentPlan.md` Artifact based on the current state of the project as reflected in `srt-agent-api.md`.
+   - Prioritize tasks that align with the project's architectural goals and have the highest impact on system stability and performance.
 
-### 13. Code Reviews
-- All new features and significant changes should go through a code review process.
-- Use pull requests for proposing and reviewing changes.
-- Ensure all tests pass before merging new code.
+2. **Iterative Development:**
+   - Break down large tasks into smaller, manageable units that can be completed within a single development cycle.
+   - After each significant change, update the `srt-agent-api.md` Artifact to reflect the new state of the system.
 
-### 14. Versioning and Deployment
-- Use semantic versioning for the API.
-- Maintain a CHANGELOG.md file to document changes between versions.
-- Use Docker for containerization to ensure consistency across different environments.
+3. **Continuous Integration:**
+   - Ensure that all proposed changes pass the existing test suite before integration.
+   - Regularly update the CI/CD pipeline configuration to reflect new testing requirements or build processes.
 
-### 15. Continuous Integration/Continuous Deployment (CI/CD)
-- Set up CI/CD pipelines for automated testing and deployment.
-- Automate version bumping and changelog updates.
+## Code Quality and Best Practices
 
-Remember to always consider the end-user experience when developing new features or making changes. The API should be intuitive, well-documented, and robust.
+1. **Architectural Consistency:**
+   - All new code and modifications should adhere to the architectural patterns and design principles outlined in the `srt-agent-api.md` Artifact.
+   - Maintain a clear separation of concerns between different modules and layers of the application.
+
+2. **Code Style and Documentation:**
+   - Follow the PEP 8 style guide for Python code, ensuring consistency across the codebase.
+   - Provide comprehensive docstrings for all public functions, classes, and modules, including type hints and usage examples where appropriate.
+
+3. **Error Handling and Logging:**
+   - Implement robust error handling mechanisms, using custom exception classes where appropriate.
+   - Ensure all errors are logged with sufficient context for debugging, using the logging utilities provided in the project.
+
+4. **Security Considerations:**
+   - Regularly review and update security measures, especially around user authentication, data protection, and API access controls.
+   - Follow the principle of least privilege when implementing new features or modifying existing ones.
+
+## Collaboration and Knowledge Sharing
+
+1. **Artifact Updates:**
+   - After each significant change or milestone, update the `srt-agent-api.md` Artifact to reflect the current state of the system.
+   - Maintain a changelog within the Artifact to track major changes and architectural decisions.
+
+2. **Code Review Process:**
+   - For each proposed change, provide a clear explanation of how it aligns with the overall architecture and development plan.
+   - During code reviews, reference specific sections of the `srt-agent-api.md` Artifact to justify design decisions and implementation choices.
+
+3. **Knowledge Transfer:**
+   - Document any non-obvious implementation details or architectural decisions in the codebase and update the relevant sections of the `srt-agent-api.md` Artifact.
+   - Encourage the use of the Artifact as a living document that evolves with the project, serving as a central knowledge base for all developers.
+
+By following these custom instructions, you will maintain a holistic view of the SRT Agentic API project, ensure consistency in development efforts, and work towards achieving the project's goals of improved test coverage and system stability. Always refer back to these instructions and the `srt-agent-api.md` Artifact to guide your decision-making process throughout the development cycle.
 ```
 
 ## Opener
 
 ```plaintext
-OK, We are ready to begin another development cycle on this app. 
+Welcome to our latest development cycle for the SRT Agentic API project. Please begin by following our Unified Test-Driven Development Workflow:
 
-Please review the `srt-agent-api.md` codebase artifact, to understand the current state of our agent API.
+1. Review the `srt-agent-api.md` Artifact for the current project state.
+2. Examine the latest pytest output and `test_results_detailed.txt` Artifact.
+3. Review and update the `development_plan.md` and `test_error_assessment.md` Artifacts.
 
-Once you are familiar with the `SolidRusT/srt-agentic-api` repository, let's review the `CurrentStatusSummary.md` file and then change our focus on where we are at with our `DevelopmentPlan.md` file.
+Our current code coverage is 54%, with 18 passing tests out of 40. Our goal remains 80% code coverage with all tests passing.
 
-Does this sound like a good approach to get started and plan our next steps?
+Based on this information and following our workflow, please provide:
+1. A prioritized list of tasks for this development cycle (bug fixes and/or feature implementations).
+2. Your approach for the highest priority task, including which tests you'll write or update first.
+3. Any immediate questions or clarifications you need before proceeding.
 
-Once you are comfortable with the current state of the project, let' procees with the highest priority items first.
-```
-
-## Developer
-
-```plaintext
-Hello. Today we need to complete a maintenance cycle on our app. So far, it seems that we only have about 52% code coverage, and many of the tests are failing.
-
-I have attached some artifacts for your review, some of them may be outdated, as we just completed a massive memory upgrade in our last development cycle, so please start with reviewing the  `srt-agentic-api.md` artifact, which should verbosely describe my current codebase. Then let's proceed with updating the CurrentStatusSummary.md artifact, based on what you've learned from my codebase.
-Then let's see where we are at with the MemorySystemTasks.md artifact.
-Finally, we can update the DevelopmentPlan.md.
-
-Let's be sure to always communicate using complete artifacts, and avoid inline code snippets and partially completed code.
-```
-
-## Debugger
-
-```plaintext
-Please find attached, an Artifact containing the command and it's output, despite my attempt to put it all into a file, from running the pytest command.
-
-I have also updated the test_results_detailed.txt report, as n Artifact for your review.
-
-Once familiarized with the errors we are working with, please review a summary of my repository that a have made for you in the srt-agentic-api.md Artifact.
-
-A previous AI has created the TestImprovementPlan.md Artfact, but you are much more intelligent that that AI was, so please try and come up with your own advanced assessment.
-
-Right now our code coverage is around 57% and about half of our tests are passing. It's not great, but not bad. We have come along way. The current goal is to have 80% code coverage, with all the tests passing!
-```
-
-## Casual debugger
-
-```plaintext
-Please find attached, an Artifact containing the pytest command and the output that didn't get into the detailed report. I have also updated the test_results_detailed.txt report Artifact for your review. Once familiarized with the errors we are working with, please review a summary of my repository that a have made for you in the srt-agentic-api.md Artifact. Please try and come up with your own advanced assessment. Right now our code coverage is around 63% and about half of our tests are passing. It's not great, but not bad. We have come along way. The current goal is to have 80% code coverage, with all the tests passing!
+Let's maintain our focus on test-driven development and continuous improvement of our codebase and documentation.
 ```
