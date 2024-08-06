@@ -5,7 +5,13 @@ from app.api.models.agent import AgentConfig, MemoryConfig
 from app.api.models.function import FunctionDefinition
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext
 from app.core.llm_provider import create_llm_provider
-from app.core.memory import MemorySystem
+from app.core.memory import (
+    MemorySystem,
+    add_to_memory,
+    retrieve_from_memory,
+    search_memory,
+    calculate_relevance_score
+)
 from app.utils.logging import agent_logger
 
 class Agent:

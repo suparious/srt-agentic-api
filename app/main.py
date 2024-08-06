@@ -18,7 +18,7 @@ from app.api.endpoints import agent, message, function, memory
 from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
-from app.core.memory.memory_system import initialize_memory_systems
+from app.core.memory import MemorySystem
 from app.core.agent_manager import AgentManager
 from app.core.function_manager import FunctionManager
 
@@ -113,7 +113,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def startup_event():
-    await initialize_memory_systems()
+    await MemorySystem.initialize_memory_systems()
     # Initialize any necessary data for AgentManager and FunctionManager
     await agent_manager.initialize()
     await function_manager.initialize()

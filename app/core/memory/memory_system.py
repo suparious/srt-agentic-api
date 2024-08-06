@@ -1,12 +1,20 @@
 import uuid
-import asyncio
-from uuid import UUID
 from typing import Dict, Any, List, Optional, Union
+from datetime import datetime, timedelta
 from app.api.models.agent import MemoryConfig
 from app.api.models.memory import MemoryType, MemoryEntry, AdvancedSearchQuery, MemoryOperation
 from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory
 from .vector_memory import VectorMemory
+from .memory_utils import (
+    DEFAULT_CONSOLIDATION_INTERVAL,
+    DEFAULT_FORGET_AGE,
+    serialize_memory_entry,
+    deserialize_memory_entry,
+    calculate_relevance_score,
+    should_consolidate_memory,
+    should_forget_memory,
+)
 
 
 class MemorySystem:
@@ -32,6 +40,7 @@ class MemorySystem:
         self.config = config
         self.short_term = short_term or RedisMemory(agent_id)
         self.long_term = long_term or VectorMemory(f"agent_{agent_id}")
+        self.consolidation_queue: List[MemoryEntry] = []
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def add(self, memory_type: Union[MemoryType, str], memory_entry: MemoryEntry) -> str:
@@ -51,6 +60,7 @@ class MemorySystem:
         try:
             if (memory_type == MemoryType.SHORT_TERM or memory_type == "SHORT_TERM") and self.config.use_redis_cache:
                 memory_id = await self.short_term.add(memory_entry)
+                self.consolidation_queue.append(memory_entry)
                 memory_logger.info(f"Short-term memory added for agent: {self.agent_id}")
                 return memory_id
             elif (
@@ -131,15 +141,16 @@ class MemorySystem:
                 memory_logger.info(f"Short-term memory deleted for agent: {self.agent_id}")
             elif (
                     memory_type == MemoryType.LONG_TERM or memory_type == "LONG_TERM") and self.config.use_long_term_memory:
-                # Implement deletion for long-term memory if needed
-                pass
+                await self.long_term.delete(memory_id)
+                memory_logger.info(f"Long-term memory deleted for agent: {self.agent_id}")
             else:
                 raise ValueError(f"Invalid memory type or configuration: {memory_type}")
         except Exception as e:
             memory_logger.error(f"Failed to delete {memory_type} memory for agent: {self.agent_id}. Error: {str(e)}")
             raise
 
-    async def perform_operation(self, operation: Union[MemoryOperation, str], memory_type: Union[MemoryType, str], data: Dict[str, Any]) -> Any:
+    async def perform_operation(self, operation: Union[MemoryOperation, str], memory_type: Union[MemoryType, str],
+                                data: Dict[str, Any]) -> Any:
         """
         Perform a memory operation based on the given operation type.
 
@@ -197,31 +208,39 @@ class MemorySystem:
             memory_logger.error(f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}")
             raise
 
-    async def advanced_search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
+    async def consolidate_memories(self):
         """
-        Perform an advanced search across both short-term and long-term memory.
-
-        Args:
-            query (AdvancedSearchQuery): The advanced search query parameters.
-
-        Returns:
-            List[Dict[str, Any]]: A list of search results, sorted by relevance.
+        Consolidate short-term memories into long-term storage.
         """
         try:
-            results = []
-            if query.memory_type in (None, MemoryType.SHORT_TERM) and self.config.use_redis_cache:
-                short_term_results = await self.short_term.search(query)
-                results.extend(short_term_results)
-            if query.memory_type in (None, MemoryType.LONG_TERM) and self.config.use_long_term_memory:
-                long_term_results = await self.long_term.search(query)
-                results.extend(long_term_results)
+            threshold = datetime.now() - timedelta(hours=1)  # Consolidate memories older than 1 hour
+            old_memories = await self.short_term.get_memories_older_than(threshold)
 
-            # Merge and rank results
-            results.sort(key=lambda x: x["relevance_score"], reverse=True)
-            return results[:query.max_results]
+            for memory in old_memories:
+                await self.long_term.add(memory)
+                await self.short_term.delete(memory.id)
+
+            memory_logger.info(f"Consolidated {len(old_memories)} memories for agent: {self.agent_id}")
         except Exception as e:
-            memory_logger.error(f"Failed to perform advanced search for agent: {self.agent_id}. Error: {str(e)}")
-            raise
+            memory_logger.error(f"Failed to consolidate memories for agent: {self.agent_id}. Error: {str(e)}")
+
+    async def forget_old_memories(self, age_limit: timedelta):
+        """
+        Forget (delete) old memories from long-term storage.
+
+        Args:
+            age_limit (timedelta): The age limit for memories to be forgotten.
+        """
+        try:
+            threshold = datetime.now() - age_limit
+            old_memories = await self.long_term.get_memories_older_than(threshold)
+
+            for memory in old_memories:
+                await self.long_term.delete(memory.id)
+
+            memory_logger.info(f"Forgot {len(old_memories)} old memories for agent: {self.agent_id}")
+        except Exception as e:
+            memory_logger.error(f"Failed to forget old memories for agent: {self.agent_id}. Error: {str(e)}")
 
     async def close(self):
         """
@@ -229,52 +248,8 @@ class MemorySystem:
         """
         try:
             await self.short_term.close()
+            await self.long_term.close()
             memory_logger.info(f"MemorySystem closed for agent: {self.agent_id}")
         except Exception as e:
             memory_logger.error(f"Error closing MemorySystem for agent {self.agent_id}: {str(e)}")
             raise
-
-# Global dictionary to store active memory systems
-memory_systems: Dict[uuid.UUID, MemorySystem] = {}
-
-async def get_memory_system(agent_id: uuid.UUID, config: MemoryConfig) -> MemorySystem:
-    if agent_id not in memory_systems:
-        memory_systems[agent_id] = MemorySystem(agent_id, config)
-    return memory_systems[agent_id]
-
-async def add_to_memory(agent_id: uuid.UUID, memory_type: MemoryType, entry: MemoryEntry, config: MemoryConfig) -> str:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.add(memory_type, entry)
-
-async def retrieve_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig) -> Optional[MemoryEntry]:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.retrieve(memory_type, memory_id)
-
-async def search_memory(agent_id: uuid.UUID, query: AdvancedSearchQuery, config: MemoryConfig) -> List[Dict[str, Any]]:
-    memory_system = await get_memory_system(agent_id, config)
-    return await memory_system.search(query)
-
-async def delete_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig):
-    memory_system = await get_memory_system(agent_id, config)
-    await memory_system.delete(memory_type, memory_id)
-
-async def perform_memory_operation(agent_id: uuid.UUID, operation: MemoryOperation, memory_type: MemoryType, data: Dict[str, Any], config: MemoryConfig) -> Any:
-    memory_system = await get_memory_system(agent_id, config)
-    if operation == MemoryOperation.ADD:
-        return await memory_system.add(memory_type, data['content'], data.get('metadata', {}))
-    elif operation == MemoryOperation.RETRIEVE:
-        return await memory_system.retrieve(memory_type, data['memory_id'])
-    elif operation == MemoryOperation.SEARCH:
-        return await memory_system.search(memory_type, data['query'], data.get('limit', 5))
-    elif operation == MemoryOperation.DELETE:
-        await memory_system.delete(memory_type, data['memory_id'])
-        return {"message": "Memory deleted successfully"}
-    else:
-        raise ValueError(f"Invalid memory operation: {operation}")
-
-async def initialize_memory_systems():
-    for agent_id, memory_system in memory_systems.items():
-        asyncio.create_task(memory_system.close())
-
-# Call this function when your application starts
-# asyncio.create_task(initialize_memory_systems())
