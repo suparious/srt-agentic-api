@@ -28,10 +28,11 @@ chroma/
 logs/
 
 # Documentation directory
-docs/
+docs/_build/
+docs/project/custom_instructions.md
 
 # Coverage data
-.coverage
+.coverage*
 
 # Markdown file
 codebase.md

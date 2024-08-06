@@ -207,3 +207,9 @@ A previous AI has created the TestImprovementPlan.md Artfact, but you are much m
 
 Right now our code coverage is around 57% and about half of our tests are passing. It's not great, but not bad. We have come along way. The current goal is to have 80% code coverage, with all the tests passing!
 ```
+
+## Casual debugger
+
+```plaintext
+Please find attached, an Artifact containing the command and it's output, despite my attempt to put it all into a file, from running the pytest command. I have also updated the test_results_detailed.txt report, as n Artifact for your review. Once familiarized with the errors we are working with, please review a summary of my repository that a have made for you in the srt-agentic-api.md Artifact. A previous AI has created some project documentation for you in the docs/project folder, but you are much more intelligent than that AI was, so please try and come up with your own advanced assessment. Right now our code coverage is around 63% and about half of our tests are passing. It's not great, but not bad. We have come along way. The current goal is to have 80% code coverage, with all the tests passing!
+```

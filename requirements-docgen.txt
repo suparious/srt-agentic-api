@@ -1,4 +1,5 @@
 sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme
+myst-parser
 m2r2
