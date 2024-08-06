@@ -49,3 +49,6 @@ To run tests with coverage report:
 
 To generate an HTML coverage report:
 `pytest --cov=app --cov-report=html`
+
+To generate an XML coverage report:
+`pytest --cov=app --cov-report=xml`
