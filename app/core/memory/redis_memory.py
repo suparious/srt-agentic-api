@@ -397,17 +397,3 @@ class RedisMemory:
         except Exception as e:
             memory_logger.error(f"Error during Redis cleanup: {str(e)}")
             raise RedisMemoryError("Failed to perform Redis cleanup") from e
-
-#    @classmethod
-#    async def cleanup(cls):
-#        """
-#        Cleanup method to be called during test teardown.
-#        """
-#        try:
-#            if cls._connection_pool:
-#                await cls.close_pool()
-#            memory_logger.info("Redis cleanup completed")
-#        except Exception as e:
-#            memory_logger.error(f"Error during Redis cleanup: {str(e)}")
-#            raise
-#

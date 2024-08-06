@@ -1,0 +1,173 @@
+from uuid import UUID, uuid4
+from typing import Dict, Any, List, Optional, Tuple
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
+from app.core.agent import Agent
+from app.utils.logging import agent_logger
+from fastapi import HTTPException
+
+class AgentManager:
+    """
+    Manages the lifecycle and operations of agents in the system.
+    """
+
+    def __init__(self):
+        """
+        Initialize the AgentManager with an empty dictionary of agents.
+        """
+        self.agents: Dict[UUID, Agent] = {}
+
+    async def create_agent(self, name: str, config: Dict[str, Any], memory_config: Dict[str, Any], initial_prompt: str) -> UUID:
+        """
+        Create a new agent with the given configuration and initial prompt.
+
+        Args:
+            name (str): The name of the agent.
+            config (Dict[str, Any]): The configuration for the agent.
+            memory_config (Dict[str, Any]): The memory configuration for the agent.
+            initial_prompt (str): The initial prompt to send to the agent.
+
+        Returns:
+            UUID: The unique identifier of the created agent.
+
+        Raises:
+            HTTPException: If there's an error during agent creation.
+        """
+        try:
+            agent_id = uuid4()
+            agent_config = AgentConfig(**config)
+            mem_config = MemoryConfig(**memory_config)
+            agent = Agent(agent_id, name, agent_config, mem_config)
+            self.agents[agent_id] = agent
+            await agent.process_message(initial_prompt)
+            agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
+            return agent_id
+        except Exception as e:
+            agent_logger.error(f"Error creating Agent {name}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
+
+    async def get_agent_info(self, agent_id: UUID) -> Optional[AgentInfoResponse]:
+        """
+        Retrieve information about a specific agent.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent.
+
+        Returns:
+            Optional[AgentInfoResponse]: The agent information if found, None otherwise.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.warning(f"No agent found with id: {agent_id}")
+            return None
+
+        return AgentInfoResponse(
+            agent_id=agent.id,
+            name=agent.name,
+            config=agent.config,
+            memory_config=agent.memory.config,
+            conversation_history_length=len(agent.conversation_history)
+        )
+
+    async def update_agent(self, agent_id: UUID, update_data: Dict[str, Any]) -> bool:
+        """
+        Update an existing agent's configuration.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent to update.
+            update_data (Dict[str, Any]): The data to update the agent with.
+
+        Returns:
+            bool: True if the agent was successfully updated, False otherwise.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.warning(f"No agent found with id: {agent_id} for update")
+            return False
+
+        try:
+            if 'config' in update_data:
+                agent.config = AgentConfig(**update_data['config'])
+            if 'memory_config' in update_data:
+                agent.memory.config = MemoryConfig(**update_data['memory_config'])
+            agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+            return True
+        except Exception as e:
+            agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+            return False
+
+    async def delete_agent(self, agent_id: UUID) -> bool:
+        """
+        Delete an agent from the system.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent to delete.
+
+        Returns:
+            bool: True if the agent was successfully deleted, False otherwise.
+        """
+        if agent_id in self.agents:
+            del self.agents[agent_id]
+            agent_logger.info(f"Agent (ID: {agent_id}) deleted successfully")
+            return True
+        agent_logger.warning(f"No agent found with id: {agent_id} for deletion")
+        return False
+
+    async def list_agents(self) -> List[AgentInfoResponse]:
+        """
+        List all agents in the system.
+
+        Returns:
+            List[AgentInfoResponse]: A list of information about all agents.
+        """
+        return [
+            AgentInfoResponse(
+                agent_id=agent.id,
+                name=agent.name,
+                config=agent.config,
+                memory_config=agent.memory.config,
+                conversation_history_length=len(agent.conversation_history)
+            )
+            for agent in self.agents.values()
+        ]
+
+    async def get_agent_memory_config(self, agent_id: UUID) -> MemoryConfig:
+        """
+        Get the memory configuration of a specific agent.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent.
+
+        Returns:
+            MemoryConfig: The memory configuration of the agent.
+
+        Raises:
+            ValueError: If the agent is not found.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.error(f"No agent found with id: {agent_id}")
+            raise ValueError(f"No agent found with id: {agent_id}")
+        return agent.config.memory_config
+
+    async def process_message(self, agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Process a message for a specific agent.
+
+        Args:
+            agent_id (UUID): The unique identifier of the agent.
+            message (str): The message to process.
+
+        Returns:
+            Tuple[str, List[Dict[str, Any]]]: The processed message and any function calls.
+
+        Raises:
+            ValueError: If the agent is not found.
+        """
+        agent = self.agents.get(agent_id)
+        if not agent:
+            agent_logger.error(f"No agent found with id: {agent_id}")
+            raise ValueError(f"No agent found with id: {agent_id}")
+        return await agent.process_message(message)
+
+# Global instance of AgentManager
+agent_manager = AgentManager()

@@ -47,6 +47,8 @@ srt-agentic-api/
 │   ├── core
 │   │   ├── __init__.py
 │   │   ├── agent.py
+│   │   ├── agent_manager.py
+│   │   ├── function_manager.py
 │   │   ├── llm_provider.py
 │   │   └── memory
 │   │       ├── __init__.py
@@ -80,6 +82,7 @@ srt-agentic-api/
 │   ├── memory.log
 │   └── test_results_detailed.txt
 ├── pytest.ini
+├── requirements-docgen.txt
 ├── requirements-testing.txt
 ├── requirements.txt
 └── tests
@@ -88,6 +91,7 @@ srt-agentic-api/
     ├── conftest.py
     ├── core
     │   └── memory
+    │       ├── test_memory_system.py
     │       ├── test_redis_memory.py
     │       └── test_vector_memory.py
     ├── test_api

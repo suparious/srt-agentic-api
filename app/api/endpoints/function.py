@@ -14,22 +14,24 @@ from app.api.models.function import (
     FunctionAssignmentRequest,
     FunctionAssignmentResponse
 )
-from app.core.agent import (
-    execute_function,
-    get_available_functions,
-    register_function,
-    update_function,
-    assign_function_to_agent,
-    remove_function_from_agent
-)
+from app.core.agent_manager import AgentManager
+from app.core.function_manager import FunctionManager
+
 from app.utils.auth import get_api_key
 from app.utils.logging import function_logger
 
 router = APIRouter()
 
+def get_agent_manager():
+    return AgentManager()
+
+def get_function_manager():
+    return FunctionManager()
+
 @router.post("/execute", response_model=FunctionExecutionResponse, summary="Execute a function")
 async def execute_function_endpoint(
     request: FunctionExecutionRequest,
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -41,7 +43,7 @@ async def execute_function_endpoint(
     """
     try:
         function_logger.info(f"Executing function {request.function_name} for agent: {request.agent_id}")
-        result = await execute_function(request.agent_id, request.function_name, request.parameters)
+        result = await function_manager.execute_function(request.agent_id, request.function_name, request.parameters)
         function_logger.info(f"Function {request.function_name} executed successfully for agent: {request.agent_id}")
         return FunctionExecutionResponse(
             agent_id=request.agent_id,
@@ -58,6 +60,7 @@ async def execute_function_endpoint(
 @router.get("/available", response_model=AvailableFunctionsResponse, summary="Get available functions")
 async def get_available_functions_endpoint(
     request: AvailableFunctionsRequest = Depends(),
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -67,7 +70,7 @@ async def get_available_functions_endpoint(
     """
     try:
         function_logger.info(f"Retrieving available functions for agent: {request.agent_id}")
-        functions = await get_available_functions(request.agent_id)
+        functions = await function_manager.get_available_functions(request.agent_id)
         function_logger.info(f"Successfully retrieved available functions for agent: {request.agent_id}")
         return AvailableFunctionsResponse(
             agent_id=request.agent_id,
@@ -83,6 +86,7 @@ async def get_available_functions_endpoint(
 @router.post("/register", response_model=FunctionRegistrationResponse, status_code=201, summary="Register a new function")
 async def register_function_endpoint(
     request: FunctionRegistrationRequest,
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -92,7 +96,7 @@ async def register_function_endpoint(
     """
     try:
         function_logger.info(f"Registering new function: {request.function.name}")
-        function_id = await register_function(request.function)
+        function_id = await function_manager.register_function(request.function)
         function_logger.info(f"Successfully registered function: {function_id}")
         return FunctionRegistrationResponse(
             function_id=function_id,
@@ -108,6 +112,7 @@ async def register_function_endpoint(
 @router.put("/update", response_model=FunctionUpdateResponse, summary="Update an existing function")
 async def update_function_endpoint(
     request: FunctionUpdateRequest,
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -118,7 +123,7 @@ async def update_function_endpoint(
     """
     try:
         function_logger.info(f"Updating function: {request.function_id}")
-        await update_function(request.function_id, request.updated_function)
+        await function_manager.update_function(request.function_id, request.updated_function)
         function_logger.info(f"Successfully updated function: {request.function_id}")
         return FunctionUpdateResponse(
             function_id=request.function_id,
@@ -134,6 +139,7 @@ async def update_function_endpoint(
 @router.post("/assign", response_model=FunctionAssignmentResponse, summary="Assign a function to an agent")
 async def assign_function_endpoint(
     request: FunctionAssignmentRequest,
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -144,7 +150,7 @@ async def assign_function_endpoint(
     """
     try:
         function_logger.info(f"Assigning function {request.function_id} to agent: {request.agent_id}")
-        await assign_function_to_agent(request.agent_id, request.function_id)
+        await function_manager.assign_function_to_agent(request.agent_id, request.function_id)
         function_logger.info(f"Successfully assigned function {request.function_id} to agent: {request.agent_id}")
         return FunctionAssignmentResponse(
             agent_id=request.agent_id,
@@ -162,6 +168,7 @@ async def assign_function_endpoint(
 async def remove_function_endpoint(
     agent_id: UUID,
     function_id: str,
+    function_manager: FunctionManager = Depends(get_function_manager),
     api_key: str = Depends(get_api_key)
 ):
     """
@@ -172,7 +179,7 @@ async def remove_function_endpoint(
     """
     try:
         function_logger.info(f"Removing function {function_id} from agent: {agent_id}")
-        await remove_function_from_agent(agent_id, function_id)
+        await function_manager.remove_function_from_agent(agent_id, function_id)
         function_logger.info(f"Successfully removed function {function_id} from agent: {agent_id}")
         return FunctionAssignmentResponse(
             agent_id=agent_id,

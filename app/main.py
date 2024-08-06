@@ -10,7 +10,7 @@ print("Current working directory:", os.getcwd())
 print("Contents of current directory:", os.listdir())
 print("Initializing FastAPI app")
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -19,6 +19,8 @@ from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
 from app.core.memory.memory_system import initialize_memory_systems
+from app.core.agent_manager import AgentManager
+from app.core.function_manager import FunctionManager
 
 app = FastAPI(
     title="SolidRusT Agentic API",
@@ -27,13 +29,17 @@ app = FastAPI(
     contact={
         "name": "SolidRusT Team",
         "url": "https://github.com/SolidRusT/srt-agentic-api",
-        "email": "support@solidrust.com",
+        "email": "suparious@solidrust.net",
     },
     license_info={
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
 )
+
+# Initialize managers
+agent_manager = AgentManager()
+function_manager = FunctionManager()
 
 def custom_openapi():
     if app.openapi_schema:
@@ -61,11 +67,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dependency to get AgentManager
+def get_agent_manager():
+    return agent_manager
+
+# Dependency to get FunctionManager
+def get_function_manager():
+    return function_manager
+
 # Include routers
-app.include_router(agent.router, prefix="/agent", tags=["Agents"])
-app.include_router(message.router, prefix="/message", tags=["Messages"])
-app.include_router(function.router, prefix="/function", tags=["Functions"])
-app.include_router(memory.router, prefix="/memory", tags=["Memory"])
+app.include_router(agent.router, prefix="/agent", tags=["Agents"], dependencies=[Depends(get_agent_manager), Depends(get_function_manager)])
+app.include_router(message.router, prefix="/message", tags=["Messages"], dependencies=[Depends(get_agent_manager)])
+app.include_router(function.router, prefix="/function", tags=["Functions"], dependencies=[Depends(get_function_manager)])
+app.include_router(memory.router, prefix="/memory", tags=["Memory"], dependencies=[Depends(get_agent_manager)])
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -100,7 +114,10 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.on_event("startup")
 async def startup_event():
     await initialize_memory_systems()
-
+    # Initialize any necessary data for AgentManager and FunctionManager
+    await agent_manager.initialize()
+    await function_manager.initialize()
+    main_logger.info("AgentManager and FunctionManager initialized")
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,17 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends
-from uuid import UUID
 from app.api.models.agent import AgentMessageRequest, AgentMessageResponse
-from app.core.agent import process_message
+from app.core.agent_manager import AgentManager
 from app.utils.auth import get_api_key
 from app.utils.logging import agent_logger
 
 router = APIRouter()
 
+def get_agent_manager():
+    return AgentManager()
+
 @router.post("/send", response_model=AgentMessageResponse)
 async def send_message_to_agent(request: AgentMessageRequest, api_key: str = Depends(get_api_key)):
+    agent_manager: AgentManager = Depends(get_agent_manager)
     try:
         agent_logger.info(f"Received message for agent: {request.agent_id}")
-        response, function_calls = await process_message(request.agent_id, request.message)
+        response, function_calls = await agent_manager.process_message(request.agent_id, request.message)
         agent_logger.info(f"Successfully processed message for agent: {request.agent_id}")
         return AgentMessageResponse(
             agent_id=request.agent_id,
