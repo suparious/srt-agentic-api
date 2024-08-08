@@ -1,4 +1,6 @@
 import pytest
+import json
+from unittest.mock import patch, MagicMock
 from uuid import UUID
 from datetime import datetime, timedelta
 from app.core.memory.redis_memory import RedisMemory
@@ -158,3 +160,48 @@ async def test_advanced_search_with_context_type(redis_memory):
 
     assert len(results) == 3
     assert all(result["memory_entry"].context.context_type == "type_0" for result in results)
+
+@pytest.mark.asyncio
+async def test_add_memory_with_retry(redis_memory):
+    memory_entry = MemoryEntry(
+        content="Test content",
+        metadata={"key": "value"},
+        context=MemoryContext(
+            context_type="test",
+            timestamp=datetime.now(),
+            metadata={}
+        )
+    )
+
+    # Mock the Redis connection to simulate failures
+    with patch('app.core.memory.redis_memory.Redis') as mock_redis:
+        mock_conn = MagicMock()
+        mock_conn.set.side_effect = [
+            RedisMemoryError("Simulated failure"),
+            RedisMemoryError("Simulated failure"),
+            None  # Success on third attempt
+        ]
+        mock_redis.return_value = mock_conn
+
+        memory_id = await redis_memory.add(memory_entry)
+
+    assert isinstance(memory_id, str)
+    assert mock_conn.set.call_count == 3  # Verify that it retried twice before succeeding
+
+    # Verify the memory was added correctly
+    with patch('app.core.memory.redis_memory.Redis') as mock_redis:
+        mock_conn = MagicMock()
+        mock_conn.get.return_value = json.dumps({
+            "content": memory_entry.content,
+            "metadata": memory_entry.metadata,
+            "context": {
+                "context_type": memory_entry.context.context_type,
+                "timestamp": memory_entry.context.timestamp.isoformat(),
+                "metadata": memory_entry.context.metadata
+            }
+        })
+        mock_redis.return_value = mock_conn
+
+        retrieved_entry = await redis_memory.get(memory_id)
+
+    assert retrieved_entry == memory_entry

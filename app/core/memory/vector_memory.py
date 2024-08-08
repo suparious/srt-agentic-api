@@ -1,7 +1,8 @@
 import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
+import uuid
 from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 from chromadb.utils import embedding_functions
@@ -50,7 +51,7 @@ class VectorMemory:
             Exception: If there's an error adding the memory entry.
         """
         try:
-            memory_id = str(uuid4())
+            memory_id = str(uuid.uuid4())
             metadata = {
                 **memory_entry.metadata,
                 "context_type": memory_entry.context.context_type,
@@ -130,7 +131,7 @@ class VectorMemory:
                 self.collection.query,
                 query_texts=[query.query],
                 n_results=query.max_results,
-                where=where_clause
+                where=where_clause if where_clause else None
             )
             memory_logger.debug(f"Searched ChromaDB: {query.query}")
 

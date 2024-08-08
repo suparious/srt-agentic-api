@@ -1,14 +1,16 @@
 import uuid
 from typing import List, Dict, Any, Optional, AsyncGenerator
 import json
+import asyncio
 from datetime import datetime
 from redis.asyncio import Redis, ConnectionPool
 from contextlib import asynccontextmanager
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import time
 
 from app.utils.logging import memory_logger
 from app.config import settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
-
 
 class RedisMemoryError(Exception):
     """Custom exception for RedisMemory errors."""
@@ -81,6 +83,11 @@ class RedisMemory:
             memory_logger.error(f"Error in Redis connection: {str(e)}")
             raise RedisMemoryError("Error in Redis connection") from e
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(RedisMemoryError)
+    )
     async def add(self, memory_entry: MemoryEntry, expire: int = settings.SHORT_TERM_MEMORY_TTL) -> str:
         """
         Add a memory entry to Redis.
@@ -96,6 +103,7 @@ class RedisMemory:
             RedisMemoryError: If there's an error adding the memory entry.
         """
         try:
+            start_time = time.time()
             memory_id = str(uuid.uuid4())
             full_key = f"agent:{self.agent_id}:{memory_id}"
 
@@ -109,9 +117,13 @@ class RedisMemory:
                 }
             })
 
-            async with self.get_connection() as conn:
-                await conn.set(full_key, serialized_entry, ex=expire)
-            memory_logger.debug(f"Added key to Redis: {full_key}")
+            await self.initialize()
+            await self.redis.set(full_key, serialized_entry, ex=expire)
+
+            end_time = time.time()
+            operation_time = end_time - start_time
+            memory_logger.debug(f"Added key to Redis: {full_key}. Operation took {operation_time:.4f} seconds.")
+
             return memory_id
         except Exception as e:
             memory_logger.error(f"Error adding memory for agent {self.agent_id}: {str(e)}")

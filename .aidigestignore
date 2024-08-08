@@ -36,5 +36,8 @@ docs/
 .coverage*
 coverage.xml
 
+# Tests
+tests/
+
 # Markdown file
 codebase.md

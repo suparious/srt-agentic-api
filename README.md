@@ -1,5 +1,9 @@
 # SolidRusT Agentic API
 
+```markdown
+**Agentic**: Relating to or exhibiting the characteristics of an intelligent agent, including autonomy, decision-making capabilities, communication, task management, learning, and adaptation. An Agentic API facilitates the development and management of such intelligent agents, enabling them to perform tasks, interact with other systems, and improve over time.
+```
+
 SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, managing, and interacting with AI agents. It provides a robust framework for agent-based AI operations, featuring advanced memory management, dynamic function execution, and sophisticated message processing.
 
 ## Key Features

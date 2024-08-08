@@ -14,88 +14,95 @@ If you succeed in this refactoring task, then the engineering team will approve 
 
 ## Custom Instructions
 
-```plaintext
+```markdown
 # Custom Instructions for SRT Agentic API Development
 
-## Project Context and Artifact Usage
+## Artifact Usage and Context Management
 
-1. **Codebase Familiarity:**
-   - Begin each session by thoroughly reviewing the `srt-agent-api.md` Artifact. This document contains the most up-to-date summary of the project's codebase and architecture.
-   - Use this Artifact as your primary reference for understanding the current state of the project, its structure, and the relationships between different components.
+1. **Artifact-Centric Workflow:**
+   - Always use Claude Artifacts for sharing and updating code, documentation, and project status.
+   - When referencing or modifying code, use the `application/vnd.ant.code` Artifact type with the appropriate `language` attribute.
 
-2. **Artifact-Driven Development:**
-   - Constantly refer back to the `srt-agent-api.md` Artifact when discussing or modifying any part of the codebase. This ensures consistency and prevents working with outdated information.
-   - When suggesting changes or improvements, always contextualize them within the existing architecture described in the Artifact.
+2. **Incremental Updates:**
+   - Focus on one file or small set of related files at a time.
+   - When updating existing files, use Artifacts to show only the changes being made, not the entire file content.
 
-3. **Memory Management:**
-   - Treat the `srt-agent-api.md` Artifact as your long-term memory for the project. Use it to maintain a consistent understanding of the project across multiple development sessions.
-   - For short-term memory, focus on the specific task or issue at hand, but always validate your approach against the long-term context provided by the Artifact.
+3. **Preserve Existing Code:**
+   - Never remove or modify existing docstrings unless explicitly instructed to do so.
+   - Maintain existing function logic; only modify what's necessary for the current task.
 
-## Testing and Code Coverage Strategy
+4. **Context Efficiency:**
+   - Prioritize discussing and modifying only the most relevant parts of the code for the current task.
+   - Avoid repeating large sections of unchanged code in responses.
 
-1. **Prioritized Testing Approach:**
-   - Focus on increasing the overall code coverage to 80%, with an emphasis on critical path components identified in the `srt-agent-api.md` Artifact.
-   - Prioritize fixing failing tests before writing new ones. Use the test results provided in the `test_results_detailed.txt` Artifact to guide your efforts.
+## Development and Testing Approach
 
-2. **Test-Driven Development (TDD):**
-   - For any new features or bug fixes, start by writing or updating the corresponding tests before modifying the implementation.
-   - Ensure that each test is meaningful and tests a specific, well-defined behavior of the system.
+1. **Focused Test-Driven Development:**
+   - Write or update tests for a single function or small feature at a time.
+   - Implement code changes incrementally, focusing on making one test pass at a time.
 
-3. **Comprehensive Test Suite:**
-   - Aim for a balance between unit tests, integration tests, and end-to-end tests as described in the project architecture.
-   - Pay special attention to edge cases and error handling scenarios, which are often overlooked but critical for system stability.
+2. **Granular Code Reviews:**
+   - Present code changes in small, digestible chunks using Artifacts.
+   - Provide clear explanations for each change, referencing specific lines or functions.
 
-4. **Performance and Scalability Testing:**
-   - Implement performance tests for critical operations, especially those involving the memory system and LLM integrations.
-   - Use benchmarking tools to establish performance baselines and monitor improvements or regressions.
+3. **Iterative Improvement:**
+   - Tackle technical debt and improve code quality gradually across multiple development cycles.
+   - Prioritize critical fixes and improvements that directly impact test passage and code coverage.
 
-## Development Plan Execution
+## Documentation and Knowledge Sharing
 
-1. **Artifact-Based Planning:**
-   - At the beginning of each development cycle, review and update the `DevelopmentPlan.md` Artifact based on the current state of the project as reflected in `srt-agent-api.md`.
-   - Prioritize tasks that align with the project's architectural goals and have the highest impact on system stability and performance.
+1. **Living Documentation:**
+   - Update the `srt-agent-api.md` Artifact with small, focused changes after each significant modification.
+   - Use separate Artifacts for updating different sections of documentation to avoid context overload.
 
-2. **Iterative Development:**
-   - Break down large tasks into smaller, manageable units that can be completed within a single development cycle.
-   - After each significant change, update the `srt-agent-api.md` Artifact to reflect the new state of the system.
+2. **Inline Code Comments:**
+   - Add or update inline comments only when necessary for clarity.
+   - Preserve existing comments unless they are outdated or incorrect.
 
-3. **Continuous Integration:**
-   - Ensure that all proposed changes pass the existing test suite before integration.
-   - Regularly update the CI/CD pipeline configuration to reflect new testing requirements or build processes.
+3. **Changelog Maintenance:**
+   - Maintain a concise changelog within the `srt-agent-api.md` Artifact, focusing on architectural and significant functional changes.
+
+## Error Handling and Debugging
+
+1. **Targeted Debugging:**
+   - Focus on one failing test or error at a time.
+   - Provide detailed analysis of the error and proposed fix using Artifacts.
+
+2. **Error Reproduction:**
+   - When addressing bugs, create minimal test cases that reproduce the issue.
+   - Use Artifacts to share these test cases and the corresponding fixes.
 
 ## Code Quality and Best Practices
 
-1. **Architectural Consistency:**
-   - All new code and modifications should adhere to the architectural patterns and design principles outlined in the `srt-agent-api.md` Artifact.
-   - Maintain a clear separation of concerns between different modules and layers of the application.
+1. **Incremental Refactoring:**
+   - Suggest small, focused refactoring tasks that can be completed within a single development cycle.
+   - Always consider the impact on existing tests and functionality when proposing refactoring.
 
-2. **Code Style and Documentation:**
-   - Follow the PEP 8 style guide for Python code, ensuring consistency across the codebase.
-   - Provide comprehensive docstrings for all public functions, classes, and modules, including type hints and usage examples where appropriate.
+2. **Style Consistency:**
+   - Adhere to the existing code style and formatting in the project.
+   - Do not make wholesale style changes unless explicitly tasked with a style update.
 
-3. **Error Handling and Logging:**
-   - Implement robust error handling mechanisms, using custom exception classes where appropriate.
-   - Ensure all errors are logged with sufficient context for debugging, using the logging utilities provided in the project.
+## Collaboration and Review Process
 
-4. **Security Considerations:**
-   - Regularly review and update security measures, especially around user authentication, data protection, and API access controls.
-   - Follow the principle of least privilege when implementing new features or modifying existing ones.
+1. **Atomic Pull Requests:**
+   - Present changes as if they were to be submitted in small, focused pull requests.
+   - Group related changes together, but keep unrelated changes separate.
 
-## Collaboration and Knowledge Sharing
+2. **Review Annotations:**
+   - Use Artifacts to provide inline comments and suggestions on code changes.
+   - Clearly separate discussion of implementation details from the actual code changes.
 
-1. **Artifact Updates:**
-   - After each significant change or milestone, update the `srt-agent-api.md` Artifact to reflect the current state of the system.
-   - Maintain a changelog within the Artifact to track major changes and architectural decisions.
+## Continuous Improvement
 
-2. **Code Review Process:**
-   - For each proposed change, provide a clear explanation of how it aligns with the overall architecture and development plan.
-   - During code reviews, reference specific sections of the `srt-agent-api.md` Artifact to justify design decisions and implementation choices.
+1. **Metrics Tracking:**
+   - Maintain a separate Artifact for tracking code coverage and test pass rates.
+   - Update this Artifact after each development cycle to show progress towards goals.
 
-3. **Knowledge Transfer:**
-   - Document any non-obvious implementation details or architectural decisions in the codebase and update the relevant sections of the `srt-agent-api.md` Artifact.
-   - Encourage the use of the Artifact as a living document that evolves with the project, serving as a central knowledge base for all developers.
+2. **Retrospective and Planning:**
+   - At the end of each development cycle, use an Artifact to summarize achievements and identify areas for improvement.
+   - Update the `DevelopmentPlan.md` Artifact with small, achievable goals for the next cycle.
 
-By following these custom instructions, you will maintain a holistic view of the SRT Agentic API project, ensure consistency in development efforts, and work towards achieving the project's goals of improved test coverage and system stability. Always refer back to these instructions and the `srt-agent-api.md` Artifact to guide your decision-making process throughout the development cycle.
+By following these refactored instructions, you will make more efficient use of the AI's capabilities, preserve existing code integrity, and maintain a focused, incremental approach to development and testing. Always use Artifacts for sharing code, documentation, and project status updates, and prioritize small, targeted changes that can be easily reviewed and integrated.
 ```
 
 ## Opener
