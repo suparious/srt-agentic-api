@@ -93,25 +93,22 @@ srt-agentic-api/
 ├── requirements.txt
 └── tests
     ├── README.md
-    ├── __init__.py
     ├── conftest.py
-    ├── core
-    │   └── memory
-    │       ├── test_memory_system.py
-    │       ├── test_redis_memory.py
-    │       └── test_vector_memory.py
-    ├── test_api
-    │   ├── __init__.py
-    │   ├── test_agent.py
-    │   ├── test_function.py
-    │   ├── test_main.py
-    │   ├── test_memory.py
-    │   └── test_message.py
-    └── test_core
-        ├── __init__.py
-        ├── test_agent.py
-        ├── test_llm_provider.py
-        └── test_memory.py
+    ├── unit
+    │   ├── core
+    │   │   ├── memory
+    │   │   │   ├── test_memory_system.py
+    │   │   │   ├── test_redis_memory.py
+    │   │   │   └── test_vector_memory.py
+    │   │   ├── test_agent.py
+    │   │   └── test_llm_provider.py
+    │   └── api
+    │       ├── test_agent.py
+    │       ├── test_function.py
+    │       ├── test_memory.py
+    │       └── test_message.py
+    └── integration
+        └── test_main.py
 ```
 
 ## Setup Instructions
