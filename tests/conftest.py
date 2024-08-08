@@ -4,12 +4,14 @@ import asyncio
 from httpx import AsyncClient
 from uuid import UUID
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from app.main import app
 from app.config import Settings
 from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
 from app.core.llm_provider import LLMProvider
 from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.vector_memory import VectorMemory
+from app.core.agent import Agent
 from dotenv import load_dotenv
 
 # Set the TESTING environment variable
@@ -54,6 +56,14 @@ async def redis_memory(event_loop):
     await redis_mem.close()
 
 @pytest.fixture
+async def mock_redis_memory():
+    return AsyncMock(spec=RedisMemory)
+
+@pytest.fixture
+async def mock_vector_memory():
+    return AsyncMock(spec=VectorMemory)
+
+@pytest.fixture
 async def async_client():
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
@@ -73,23 +83,32 @@ def mock_llm_provider():
     return mock_provider
 
 @pytest.fixture
-async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory, mock_llm_provider):
+def mock_function_manager():
+    return MagicMock()
+
+@pytest.fixture
+def mock_memory_system():
+    return AsyncMock()
+
+@pytest.fixture
+def test_agent_config():
+    return AgentConfig(
+        llm_providers=[
+            LLMProviderConfig(
+                provider_type="mock",
+                model_name="mock-model"
+            )
+        ],
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
+    )
+
+@pytest.fixture
+async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory, mock_llm_provider, test_agent_config):
     agent_data = {
         "agent_name": "Test Agent",
-        "agent_config": AgentConfig(
-            llm_providers=[
-                LLMProviderConfig(
-                    provider_type="mock",
-                    model_name="mock-model"
-                )
-            ],
-            temperature=0.7,
-            max_tokens=150,
-            memory_config=MemoryConfig(
-                use_long_term_memory=True,
-                use_redis_cache=True
-            )
-        ).model_dump(),
+        "agent_config": test_agent_config.model_dump(),
         "memory_config": MemoryConfig(
             use_long_term_memory=True,
             use_redis_cache=True
@@ -104,6 +123,11 @@ async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory
 
     assert response.status_code == 201
     return response.json()["agent_id"]
+
+@pytest.fixture
+def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_system):
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
 # Add a fixture to clean up Redis after each test
 @pytest.fixture(autouse=True)
