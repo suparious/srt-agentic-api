@@ -74,7 +74,7 @@ class Agent:
             )
 
             await self.memory.add(
-                MemoryType.SHORT_TERM,
+                "SHORT_TERM",
                 MemoryEntry(
                     content=response_text,
                     metadata={"type": "assistant_response"},

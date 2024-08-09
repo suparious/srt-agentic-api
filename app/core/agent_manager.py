@@ -15,7 +15,7 @@ class AgentManager:
         """
         Initialize the AgentManager with an empty dictionary of agents.
         """
-        self.agents: Dict[UUID, Any] = {}
+        self.agents: Dict[UUID, Agent] = {}
 
     async def create_agent(
         self,
@@ -250,3 +250,7 @@ class AgentManager:
 
 # Global instance of AgentManager
 agent_manager = AgentManager()
+
+# Import FunctionManager and set agent_manager
+from app.core.function_manager import function_manager
+function_manager.set_agent_manager(agent_manager)

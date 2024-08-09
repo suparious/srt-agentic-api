@@ -28,6 +28,16 @@ class RedisMemory:
     """
     Handles short-term memory operations using Redis.
     """
+    def __init__(self, agent_id: uuid.UUID):
+        """
+        Initialize RedisMemory for an agent.
+
+        Args:
+            agent_id (uuid.UUID): The unique identifier for the agent.
+        """
+        self.agent_id = agent_id
+        self.redis: Optional[Redis] = None
+        memory_logger.info(f"Redis memory initialized for agent: {agent_id}")
 
     _connection_pool: Optional[ConnectionPool] = None
 
@@ -48,17 +58,6 @@ class RedisMemory:
                 memory_logger.error(f"Failed to create Redis connection pool: {str(e)}")
                 raise RedisMemoryError("Failed to create Redis connection pool") from e
         return cls._connection_pool
-
-    def __init__(self, agent_id: uuid.UUID):
-        """
-        Initialize RedisMemory for an agent.
-
-        Args:
-            agent_id (uuid.UUID): The unique identifier for the agent.
-        """
-        self.agent_id = agent_id
-        self.redis: Optional[Redis] = None
-        memory_logger.info(f"Redis memory initialized for agent: {agent_id}")
 
     async def initialize(self) -> None:
         """

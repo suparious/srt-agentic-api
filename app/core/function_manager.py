@@ -3,7 +3,6 @@ from typing import Dict, Any, List, Optional
 from app.api.models.function import FunctionDefinition
 from app.utils.logging import agent_logger
 
-
 class FunctionManager:
     """
     Manages the registration, execution, and assignment of functions to agents in the system.
@@ -14,6 +13,13 @@ class FunctionManager:
         Initialize the FunctionManager with an empty dictionary of registered functions.
         """
         self.registered_functions: Dict[str, FunctionDefinition] = {}
+        self.agent_manager = None
+
+    def set_agent_manager(self, agent_manager):
+        """
+        Set the agent manager after initialization to avoid circular imports.
+        """
+        self.agent_manager = agent_manager
 
     async def register_function(self, function: FunctionDefinition) -> str:
         """
@@ -31,7 +37,7 @@ class FunctionManager:
         return function_id
 
     async def update_function(
-        self, function_id: str, updated_function: FunctionDefinition
+            self, function_id: str, updated_function: FunctionDefinition
     ) -> None:
         """
         Update an existing function in the system.
@@ -43,20 +49,19 @@ class FunctionManager:
         Raises:
             ValueError: If the function is not found.
         """
-        from app.core.agent_manager import agent_manager
         if function_id not in self.registered_functions:
-            agent_logger.error(f"No function found with id: {function_id}")
             raise ValueError(f"No function found with id: {function_id}")
 
         self.registered_functions[function_id] = updated_function
         agent_logger.info(f"Function with ID: {function_id} updated successfully")
 
-        for agent in agent_manager.agents.values():
-            if function_id in agent.available_function_ids:
-                agent.add_function(function_id)
-                agent_logger.info(
-                    f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})"
-                )
+        if self.agent_manager:
+            for agent in self.agent_manager.agents.values():
+                if function_id in agent.available_function_ids:
+                    agent.add_function(function_id)
+                    agent_logger.info(
+                        f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})"
+                    )
 
     async def assign_function_to_agent(self, agent_id: UUID, function_id: str) -> None:
         """
@@ -69,8 +74,10 @@ class FunctionManager:
         Raises:
             ValueError: If the agent or function is not found.
         """
-        from app.core.agent_manager import agent_manager
-        agent = agent_manager.agents.get(agent_id)
+        if not self.agent_manager:
+            raise RuntimeError("AgentManager not set")
+
+        agent = self.agent_manager.agents.get(agent_id)
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
@@ -97,7 +104,7 @@ class FunctionManager:
         Raises:
             ValueError: If the agent or function is not found.
         """
-        agent = agent_manager.agents.get(agent_id)
+        agent = self.agent_manager.agents.get(agent_id)
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
@@ -110,6 +117,12 @@ class FunctionManager:
         agent_logger.info(
             f"Function {self.registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})"
         )
+
+    async def get_function(self, function_id: str) -> Optional[FunctionDefinition]:
+        return self.registered_functions.get(function_id)
+
+    async def list_functions(self) -> List[FunctionDefinition]:
+        return list(self.registered_functions.values())
 
     async def execute_function(
         self, agent_id: UUID, function_name: str, parameters: Dict[str, Any]
@@ -128,7 +141,7 @@ class FunctionManager:
         Raises:
             ValueError: If the agent or function is not found.
         """
-        agent = agent_manager.agents.get(agent_id)
+        agent = self.agent_manager.agents.get(agent_id)
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
@@ -168,7 +181,7 @@ class FunctionManager:
         Raises:
             ValueError: If the agent is not found.
         """
-        agent = agent_manager.agents.get(agent_id)
+        agent = self.agent_manager.agents.get(agent_id)
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")

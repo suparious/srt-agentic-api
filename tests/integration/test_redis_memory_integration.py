@@ -5,13 +5,13 @@ from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def redis_memory():
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    redis_memory = RedisMemory(agent_id)
-    yield redis_memory
-    # Clean up after tests
-    await redis_memory.redis.flushdb()
+    redis_mem = RedisMemory(agent_id)
+    await redis_mem.initialize()
+    yield redis_mem
+    await redis_mem.cleanup()
 
 
 @pytest.mark.asyncio

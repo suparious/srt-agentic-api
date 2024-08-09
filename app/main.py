@@ -20,12 +20,8 @@ from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
 from app.core.memory import MemorySystem
-from app.core.agent_manager import AgentManager
-from app.core.function_manager import FunctionManager
-
-# Initialize managers
-agent_manager = AgentManager()
-function_manager = FunctionManager()
+from app.core.agent_manager import agent_manager
+from app.core.function_manager import function_manager
 
 
 @asynccontextmanager
