@@ -82,13 +82,15 @@ class RedisMemory:
         Yields:
             Redis: A Redis connection.
         """
-        if self.redis is None:
-            await self.initialize()
+        pool = await self.get_connection_pool()
+        redis = Redis(connection_pool=pool)
         try:
-            yield self.redis
+            yield redis
         except Exception as e:
             memory_logger.error(f"Error in Redis connection: {str(e)}")
             raise RedisMemoryError("Error in Redis connection") from e
+        finally:
+            await redis.close()
 
     @retry(
         stop=stop_after_attempt(3),
@@ -415,8 +417,13 @@ class RedisMemory:
                     for value in values:
                         if value:
                             memory_entry = MemoryEntry.model_validate_json(value)
+                            memory_logger.debug(
+                                f"Checking memory: {memory_entry.content}, timestamp: {memory_entry.context.timestamp}")
                             if memory_entry.context.timestamp < threshold:
                                 old_memories.append(memory_entry)
+                                memory_logger.debug(f"Added old memory: {memory_entry.content}")
+                            else:
+                                memory_logger.debug(f"Skipped memory: {memory_entry.content} (not old enough)")
 
                     if cursor == 0:
                         break
@@ -460,15 +467,10 @@ class RedisMemory:
         Raises:
             RedisMemoryError: If there's an error closing the connection pool.
         """
-        try:
-            if cls._connection_pool:
-                await asyncio.wait_for(cls._connection_pool.disconnect(), timeout=5.0)
-                cls._connection_pool = None
-                memory_logger.info("Redis connection pool closed")
-        except asyncio.TimeoutError:
-            memory_logger.error("Timeout while closing Redis connection pool")
-        except Exception as e:
-            memory_logger.error(f"Error closing Redis connection pool: {str(e)}")
+        if cls._connection_pool:
+            await cls._connection_pool.disconnect()
+            cls._connection_pool = None
+            memory_logger.info("Redis connection pool closed")
 
     @classmethod
     async def cleanup(cls) -> None:

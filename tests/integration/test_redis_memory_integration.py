@@ -114,5 +114,5 @@ async def test_get_memories_older_than_integration(redis_memory):
 
     old_memories = await redis_memory.get_memories_older_than(threshold)
 
-    assert len(old_memories) == 3
+    assert len(old_memories) == 3, f"Expected 3 memories, but got {len(old_memories)}"
     assert all(memory.context.timestamp < threshold for memory in old_memories)

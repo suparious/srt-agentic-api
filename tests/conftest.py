@@ -1,22 +1,21 @@
 import os
 import pytest
 import asyncio
+from typing import AsyncGenerator
 from httpx import AsyncClient
 from uuid import UUID
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
-from app.main import app
-from app.config import Settings, LLMProviderConfig
-from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
+from dotenv import load_dotenv
 
+from app.main import app
 from app.config import Settings, LLMProviderConfig as ConfigLLMProviderConfig
 from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig as AgentLLMProviderConfig
-
 from app.core.llm_provider import LLMProvider
 from app.core.memory.redis_memory import RedisMemory
 from app.core.memory.vector_memory import VectorMemory
 from app.core.agent import Agent
-from dotenv import load_dotenv
+
 
 # Set the TESTING environment variable
 os.environ["TESTING"] = "true"
@@ -112,8 +111,7 @@ def test_agent_config():
     return AgentConfig(
         llm_providers=[
             AgentLLMProviderConfig(
-                provider_type="mock",
-                model_name="mock-model"
+                provider_type="mock"
             )
         ],
         temperature=0.7,
@@ -146,14 +144,25 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
+
 @pytest.fixture(autouse=True)
-async def cleanup_redis(redis_memory):
-    yield
+async def cleanup_redis(redis_memory: RedisMemory) -> None:
     try:
-        async with redis_memory.get_connection() as conn:
-            await conn.flushdb()
-    except Exception as e:
-        pytest.fail(f"Failed to clean up Redis: {str(e)}")
+        yield
+    finally:
+        try:
+            loop = asyncio.get_running_loop()
+            async with redis_memory.get_connection() as conn:
+                await conn.flushdb()
+
+            # Ensure all Redis connections are properly closed
+            await RedisMemory.close_pool()
+
+            # Allow any pending tasks to complete
+            tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except Exception as e:
+            pytest.fail(f"Failed to clean up Redis: {str(e)}")
 
 @pytest.fixture(autouse=True, scope="session")
 async def cleanup_after_tests(event_loop):
