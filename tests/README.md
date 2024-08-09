@@ -126,6 +126,8 @@ When encountering test failures or unexpected behavior:
 3. Generate a detailed test report:
    ```bash
    pytest --verbose --capture=no --cov=app --cov-report=term-missing > test_results_detailed.txt
+   # pytest -p no:warnings --verbose --capture=no --cov=app --cov-report=term-missing > logs/test_results_detailed.txt
+   # pytest -p no:warnings --capture=no --cov=app --cov-report=term-missing > test_results_detailed.txt
    ```
 
 4. When reporting issues to the AI developer, include:
