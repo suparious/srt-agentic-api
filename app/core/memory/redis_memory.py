@@ -34,7 +34,7 @@ class RedisMemory:
         """
         if cls._connection_pool is None:
             try:
-                cls._connection_pool = await ConnectionPool.from_url(
+                cls._connection_pool = ConnectionPool.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True
@@ -413,8 +413,10 @@ class RedisMemory:
         """
         try:
             if cls._connection_pool:
-                await cls._connection_pool.disconnect()
+                await asyncio.wait_for(cls._connection_pool.disconnect(), timeout=5.0)
                 cls._connection_pool = None
-            memory_logger.info("Redis cleanup completed")
+                memory_logger.info("Redis cleanup completed")
+        except asyncio.TimeoutError:
+            memory_logger.error("Timeout while closing Redis connection pool")
         except Exception as e:
             memory_logger.error(f"Error during Redis cleanup: {str(e)}")

@@ -51,10 +51,10 @@ def test_app(test_settings):
 @pytest.fixture(scope="function")
 async def redis_memory():
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    redis_memory = RedisMemory(agent_id)
-    await redis_memory.initialize()
-    yield redis_memory
-    await redis_memory.close()
+    redis_mem = RedisMemory(agent_id)
+    await redis_mem.initialize()
+    yield redis_mem
+    await redis_mem.close()
 
 @pytest.fixture
 async def mock_redis_memory():
@@ -141,3 +141,9 @@ async def cleanup_redis(redis_memory):
 async def cleanup_after_tests(event_loop):
     yield
     await RedisMemory.cleanup()
+    tasks = asyncio.all_tasks(event_loop)
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await event_loop.shutdown_asyncgens()
