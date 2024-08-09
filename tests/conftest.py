@@ -6,8 +6,12 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock
 from app.main import app
-from app.config import Settings
+from app.config import Settings, LLMProviderConfig
 from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
+
+from app.config import Settings, LLMProviderConfig as ConfigLLMProviderConfig
+from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig as AgentLLMProviderConfig
+
 from app.core.llm_provider import LLMProvider
 from app.core.memory.redis_memory import RedisMemory
 from app.core.memory.vector_memory import VectorMemory
@@ -23,7 +27,7 @@ load_dotenv('.env.test')
 @pytest.fixture(scope="session")
 def test_settings():
     return Settings(
-        API_KEY=os.getenv('API_KEY', 'your_api_key_here'),
+        API_KEY="your_api_key_here",
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],
         REDIS_URL="redis://localhost:6379/15",
         CHROMA_PERSIST_DIRECTORY="./test_chroma_db",
@@ -32,6 +36,18 @@ def test_settings():
         LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
         TGI_API_BASE="http://test-tgi-server-endpoint",
         ANTHROPIC_API_KEY="test_anthropic_key",
+        LLM_PROVIDER_CONFIGS=[
+            ConfigLLMProviderConfig(
+                provider_type="vllm",
+                model_name="llama-7b",
+                api_base="https://artemis.hq.solidrust.net/v1"
+            ),
+            ConfigLLMProviderConfig(
+                provider_type="openai",
+                model_name="gpt-3.5-turbo",
+                api_key="test_openai_key"
+            ),
+        ],
         TESTING=True
     )
 
@@ -95,7 +111,7 @@ def mock_memory_system():
 def test_agent_config():
     return AgentConfig(
         llm_providers=[
-            LLMProviderConfig(
+            AgentLLMProviderConfig(
                 provider_type="mock",
                 model_name="mock-model"
             )

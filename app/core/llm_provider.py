@@ -3,7 +3,7 @@ import aiohttp
 from typing import Dict, Any, List, Optional, Union
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
-from app.config import settings
+from app.config import settings, LLMProviderConfig
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -11,7 +11,6 @@ from tenacity import (
     retry_if_exception_type,
 )
 from app.utils.logging import llm_logger
-
 
 class LLMProviderException(Exception):
     """Base exception class for LLM provider errors."""
@@ -202,10 +201,10 @@ class TGIServerProvider(BaseLLMProvider):
 
 
 class LLMProvider:
-    def __init__(self, provider_configs: List[ProviderConfig]):
+    def __init__(self, provider_configs: List[LLMProviderConfig]):
         self.providers = [self._get_provider(config) for config in provider_configs]
 
-    def _get_provider(self, config: ProviderConfig) -> BaseLLMProvider:
+    def _get_provider(self, config: LLMProviderConfig) -> BaseLLMProvider:
         provider_map = {
             "openai": OpenAIProvider,
             "vllm": VLLMProvider,
@@ -217,23 +216,22 @@ class LLMProvider:
             raise ValueError(f"Unsupported provider type: {config.provider_type}")
         return provider_class(config)
 
-    async def generate(
-        self, prompt: str, temperature: float, max_tokens: int
-    ) -> ProviderResponse:
-        exceptions = []
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
         for provider in self.providers:
             try:
                 return await provider.generate(prompt, temperature, max_tokens)
             except Exception as e:
-                llm_logger.warning(
-                    f"Provider {provider.__class__.__name__} failed: {str(e)}"
-                )
-                exceptions.append(e)
-
-        llm_logger.error("All providers failed. Raising the last exception.")
-        raise exceptions[-1]
+                llm_logger.warning(f"Provider {provider.__class__.__name__} failed: {str(e)}")
+        raise Exception("All providers failed")
 
 
-def create_llm_provider(provider_configs: List[Dict[str, Any]]) -> LLMProvider:
-    configs = [ProviderConfig(**config) for config in provider_configs]
-    return LLMProvider(configs)
+def create_llm_provider() -> LLMProvider:
+    provider_configs = [
+        LLMProviderConfig(
+            provider_type=config.provider_type,
+            model_name=config.model_name,
+            api_base=config.api_base,
+            api_key=config.api_key
+        ) for config in settings.LLM_PROVIDER_CONFIGS
+    ]
+    return LLMProvider(provider_configs)

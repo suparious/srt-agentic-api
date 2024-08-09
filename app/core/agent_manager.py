@@ -15,7 +15,7 @@ class AgentManager:
         """
         Initialize the AgentManager with an empty dictionary of agents.
         """
-        self.agents: Dict[UUID, Agent] = {}
+        self.agents: Dict[UUID, Any] = {}
 
     async def create_agent(
         self,

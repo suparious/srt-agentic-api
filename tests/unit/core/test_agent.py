@@ -1,15 +1,34 @@
+import json
 import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig
+from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext, MemoryOperation
+from app.core.llm_provider import LLMProvider
 from app.core.function_manager import FunctionManager
 from app.core.memory import MemorySystem
-import json
+from app.config import LLMProviderConfig
 
 pytestmark = pytest.mark.asyncio
+
+
+@pytest.fixture
+def mock_llm_provider():
+    return AsyncMock(spec=LLMProvider)
+
+@pytest.fixture
+def test_agent_config():
+    return AgentConfig(
+        llm_providers=[LLMProviderConfig(
+            provider_type="mock",
+            model_name="mock-model"
+        )],
+        temperature=0.7,
+        max_tokens=100,
+        memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
+    )
 
 @pytest.fixture
 def mock_function_manager():
@@ -20,19 +39,12 @@ def mock_memory_system():
     return AsyncMock(spec=MemorySystem)
 
 @pytest.fixture
-def test_agent(mock_function_manager, mock_memory_system):
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    memory_config = MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-    config = AgentConfig(
-        llm_providers=[{"provider_type": "mock", "model_name": "mock-model"}],
-        temperature=0.7,
-        max_tokens=100,
-        memory_config=memory_config  # Add this line
-    )
-    agent = Agent(agent_id, "Test Agent", config, mock_function_manager)
-    agent.memory = mock_memory_system
-    agent.llm_provider = AsyncMock()
-    return agent
+def test_agent(test_agent_config, mock_function_manager, mock_memory_system, mock_llm_provider):
+    with pytest.MonkeyPatch().context() as m:
+        m.setattr("app.core.agent.create_llm_provider", lambda: mock_llm_provider)
+        agent = Agent(UUID('12345678-1234-5678-1234-567812345678'), "Test Agent", test_agent_config, mock_function_manager)
+        agent.memory = mock_memory_system
+        return agent
 
 async def test_advanced_search(test_agent, mock_memory_system):
     # Mock memory system's advanced search method
@@ -138,16 +150,17 @@ async def test_memory_operation(test_agent, mock_memory_system):
     assert result == "Operation result"
     mock_memory_system.perform_operation.assert_called_once_with(MemoryOperation.ADD, MemoryType.SHORT_TERM, operation_data)
 
-async def test_process_message(test_agent, mock_memory_system):
-    test_agent.llm_provider.generate.return_value = "Test response"
-    mock_memory_system.retrieve_relevant.return_value = []
+@pytest.mark.asyncio
+async def test_process_message(test_agent, mock_llm_provider):
+    mock_llm_provider.generate.return_value = "Test response"
+    test_agent.memory.retrieve_relevant.return_value = []
 
     response, function_calls = await test_agent.process_message("Test message")
 
     assert response == "Test response"
     assert isinstance(function_calls, list)
-    test_agent.llm_provider.generate.assert_called_once()
-    mock_memory_system.add.assert_called_once()
+    mock_llm_provider.generate.assert_called_once()
+    test_agent.memory.add.assert_called_once()
 
 async def test_execute_function(test_agent, mock_function_manager):
     mock_function = AsyncMock()

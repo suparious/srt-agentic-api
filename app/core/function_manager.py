@@ -2,7 +2,6 @@ from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
 from app.api.models.function import FunctionDefinition
 from app.utils.logging import agent_logger
-from app.core.agent_manager import agent_manager
 
 
 class FunctionManager:
@@ -44,6 +43,7 @@ class FunctionManager:
         Raises:
             ValueError: If the function is not found.
         """
+        from app.core.agent_manager import agent_manager
         if function_id not in self.registered_functions:
             agent_logger.error(f"No function found with id: {function_id}")
             raise ValueError(f"No function found with id: {function_id}")
@@ -69,6 +69,7 @@ class FunctionManager:
         Raises:
             ValueError: If the agent or function is not found.
         """
+        from app.core.agent_manager import agent_manager
         agent = agent_manager.agents.get(agent_id)
         if not agent:
             agent_logger.error(f"No agent found with id: {agent_id}")

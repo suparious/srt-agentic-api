@@ -6,6 +6,7 @@ from app.api.models.function import FunctionDefinition
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
+from app.core.function_manager import FunctionManager
 from app.utils.logging import agent_logger
 
 
@@ -19,7 +20,7 @@ class Agent:
         agent_id: UUID,
         name: str,
         config: AgentConfig,
-        memory_config: MemoryConfig,
+        function_manager
     ):
         """
         Initialize a new Agent instance.
@@ -34,9 +35,9 @@ class Agent:
         self.name = name
         self.config = config
         self.llm_provider = create_llm_provider(config.llm_providers)
-        self.memory = MemorySystem(agent_id, memory_config)
+        self.memory = MemorySystem(agent_id, config.memory_config)
         self.conversation_history = []
-        self.available_functions: Dict[str, FunctionDefinition] = {}
+        self.function_manager = function_manager
         agent_logger.info(
             f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers"
         )
