@@ -107,6 +107,14 @@ class RedisMemory:
             memory_id = str(uuid.uuid4())
             full_key = f"agent:{self.agent_id}:{memory_id}"
 
+            if isinstance(memory_entry, str):
+                # For backwards compatibility
+                memory_entry = MemoryEntry(
+                    content=memory_entry,
+                    metadata={},
+                    context=MemoryContext(context_type="legacy", timestamp=datetime.now(), metadata={})
+                )
+
             serialized_entry = json.dumps({
                 "content": memory_entry.content,
                 "metadata": memory_entry.metadata,
@@ -370,12 +378,11 @@ class RedisMemory:
         """
         try:
             if self.redis:
-                await self.redis.close()
+                await self.redis.aclose()
                 self.redis = None
                 memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
         except Exception as e:
             memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to close Redis connection for agent {self.agent_id}") from e
 
     @classmethod
     async def close_pool(cls) -> None:
@@ -387,12 +394,13 @@ class RedisMemory:
         """
         try:
             if cls._connection_pool:
-                await cls._connection_pool.disconnect()
+                await asyncio.wait_for(cls._connection_pool.disconnect(), timeout=5.0)
                 cls._connection_pool = None
                 memory_logger.info("Redis connection pool closed")
+        except asyncio.TimeoutError:
+            memory_logger.error("Timeout while closing Redis connection pool")
         except Exception as e:
             memory_logger.error(f"Error closing Redis connection pool: {str(e)}")
-            raise RedisMemoryError("Failed to close Redis connection pool") from e
 
     @classmethod
     async def cleanup(cls) -> None:
@@ -408,4 +416,3 @@ class RedisMemory:
             memory_logger.info("Redis cleanup completed")
         except Exception as e:
             memory_logger.error(f"Error during Redis cleanup: {str(e)}")
-            raise RedisMemoryError("Failed to perform Redis cleanup") from e

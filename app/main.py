@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import asynccontextmanager
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -22,10 +23,27 @@ from app.core.memory import MemorySystem
 from app.core.agent_manager import AgentManager
 from app.core.function_manager import FunctionManager
 
+# Initialize managers
+agent_manager = AgentManager()
+function_manager = FunctionManager()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await MemorySystem.initialize_memory_systems()
+    # Initialize any necessary data for AgentManager and FunctionManager
+    await agent_manager.initialize()
+    await function_manager.initialize()
+    main_logger.info("AgentManager and FunctionManager initialized")
+    yield
+    # Shutdown
+    # Add any cleanup code here if needed
+
 app = FastAPI(
     title="SolidRusT Agentic API",
     description="A powerful and flexible API for creating, managing, and interacting with AI agents.",
     version="1.0.0",
+    lifespan=lifespan,
     contact={
         "name": "SolidRusT Team",
         "url": "https://github.com/SolidRusT/srt-agentic-api",
@@ -36,10 +54,6 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     }
 )
-
-# Initialize managers
-agent_manager = AgentManager()
-function_manager = FunctionManager()
 
 def custom_openapi():
     if app.openapi_schema:
@@ -110,14 +124,6 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "An unexpected error occurred. Please try again later."},
     )
-
-@app.on_event("startup")
-async def startup_event():
-    await MemorySystem.initialize_memory_systems()
-    # Initialize any necessary data for AgentManager and FunctionManager
-    await agent_manager.initialize()
-    await function_manager.initialize()
-    main_logger.info("AgentManager and FunctionManager initialized")
 
 if __name__ == "__main__":
     import uvicorn

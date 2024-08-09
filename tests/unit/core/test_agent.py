@@ -22,13 +22,14 @@ def mock_memory_system():
 @pytest.fixture
 def test_agent(mock_function_manager, mock_memory_system):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    memory_config = MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
     config = AgentConfig(
         llm_providers=[{"provider_type": "mock", "model_name": "mock-model"}],
         temperature=0.7,
-        max_tokens=100
+        max_tokens=100,
+        memory_config=memory_config  # Add this line
     )
-    memory_config = MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-    agent = Agent(agent_id, "Test Agent", config, memory_config, mock_function_manager)
+    agent = Agent(agent_id, "Test Agent", config, mock_function_manager)
     agent.memory = mock_memory_system
     agent.llm_provider = AsyncMock()
     return agent

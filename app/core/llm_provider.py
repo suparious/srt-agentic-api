@@ -1,20 +1,36 @@
 import asyncio
 import aiohttp
-import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Union
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, Field
 from app.config import settings
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.utils.logging import llm_logger
 
+
 class LLMProviderException(Exception):
     """Base exception class for LLM provider errors."""
+
 
 class APICallException(LLMProviderException):
     """Exception raised when an API call fails."""
 
+
 class ResponseParsingException(LLMProviderException):
     """Exception raised when parsing the API response fails."""
+
+
+class ProviderConfig(BaseModel):
+    provider_type: str
+    model_name: str
+    api_base: str
+    api_key: Optional[str] = None
+
+
+class ProviderResponse(BaseModel):
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
 
 @retry(
     stop=stop_after_attempt(3),
@@ -22,7 +38,8 @@ class ResponseParsingException(LLMProviderException):
     retry=retry_if_exception_type(APICallException),
     reraise=True
 )
-async def make_api_call(session, url, headers, data):
+async def make_api_call(session: aiohttp.ClientSession, url: str, headers: Dict[str, str], data: Dict[str, Any]) -> \
+Dict[str, Any]:
     try:
         async with session.post(url, headers=headers, json=data) as response:
             if response.status != 200:
@@ -32,24 +49,24 @@ async def make_api_call(session, url, headers, data):
     except aiohttp.ClientError as e:
         raise APICallException(f"API call failed due to client error: {str(e)}")
 
+
 class BaseLLMProvider(ABC):
+    def __init__(self, config: ProviderConfig):
+        self.config = config
+
     @abstractmethod
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
         pass
 
-class OpenAIProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
-        self.api_key = config.get('api_key') or settings.OPENAI_API_KEY
 
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
+class OpenAIProvider(BaseLLMProvider):
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json"
         }
         data = {
-            "model": self.model_name,
+            "model": self.config.model_name,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens
@@ -57,8 +74,11 @@ class OpenAIProvider(BaseLLMProvider):
 
         try:
             async with aiohttp.ClientSession() as session:
-                result = await make_api_call(session, f"{self.api_base}/chat/completions", headers, data)
-                return result['choices'][0]['message']['content']
+                result = await make_api_call(session, f"{self.config.api_base}/chat/completions", headers, data)
+                return ProviderResponse(
+                    content=result['choices'][0]['message']['content'],
+                    metadata={"provider": "openai", "model": self.config.model_name}
+                )
         except APICallException as e:
             llm_logger.error(f"OpenAI API call failed: {str(e)}")
             raise
@@ -66,17 +86,12 @@ class OpenAIProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing OpenAI API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse OpenAI API response: {str(e)}")
 
-class VLLMProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
 
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        headers = {
-            "Content-Type": "application/json"
-        }
+class VLLMProvider(BaseLLMProvider):
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
+        headers = {"Content-Type": "application/json"}
         data = {
-            "model": self.model_name,
+            "model": self.config.model_name,
             "prompt": prompt,
             "temperature": temperature,
             "max_tokens": max_tokens
@@ -84,8 +99,11 @@ class VLLMProvider(BaseLLMProvider):
 
         try:
             async with aiohttp.ClientSession() as session:
-                result = await make_api_call(session, f"{self.api_base}/generate", headers, data)
-                return result['text']
+                result = await make_api_call(session, f"{self.config.api_base}/generate", headers, data)
+                return ProviderResponse(
+                    content=result['text'],
+                    metadata={"provider": "vllm", "model": self.config.model_name}
+                )
         except APICallException as e:
             llm_logger.error(f"vLLM API call failed: {str(e)}")
             raise
@@ -93,15 +111,10 @@ class VLLMProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing vLLM API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse vLLM API response: {str(e)}")
 
-class LlamaCppServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
 
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        headers = {
-            "Content-Type": "application/json"
-        }
+class LlamaCppServerProvider(BaseLLMProvider):
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
+        headers = {"Content-Type": "application/json"}
         data = {
             "prompt": prompt,
             "temperature": temperature,
@@ -111,8 +124,11 @@ class LlamaCppServerProvider(BaseLLMProvider):
 
         try:
             async with aiohttp.ClientSession() as session:
-                result = await make_api_call(session, f"{self.api_base}/completion", headers, data)
-                return result['choices'][0]['text']
+                result = await make_api_call(session, f"{self.config.api_base}/completion", headers, data)
+                return ProviderResponse(
+                    content=result['choices'][0]['text'],
+                    metadata={"provider": "llamacpp", "model": self.config.model_name}
+                )
         except APICallException as e:
             llm_logger.error(f"Llama.cpp server API call failed: {str(e)}")
             raise
@@ -120,15 +136,10 @@ class LlamaCppServerProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing Llama.cpp server API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse Llama.cpp server API response: {str(e)}")
 
-class TGIServerProvider(BaseLLMProvider):
-    def __init__(self, config: Dict[str, Any]):
-        self.model_name = config['model_name']
-        self.api_base = config['api_base']
 
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        headers = {
-            "Content-Type": "application/json"
-        }
+class TGIServerProvider(BaseLLMProvider):
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
+        headers = {"Content-Type": "application/json"}
         data = {
             "inputs": prompt,
             "parameters": {
@@ -140,8 +151,11 @@ class TGIServerProvider(BaseLLMProvider):
 
         try:
             async with aiohttp.ClientSession() as session:
-                result = await make_api_call(session, f"{self.api_base}/generate", headers, data)
-                return result['generated_text']
+                result = await make_api_call(session, f"{self.config.api_base}/generate", headers, data)
+                return ProviderResponse(
+                    content=result['generated_text'],
+                    metadata={"provider": "tgi", "model": self.config.model_name}
+                )
         except APICallException as e:
             llm_logger.error(f"TGI server API call failed: {str(e)}")
             raise
@@ -149,46 +163,36 @@ class TGIServerProvider(BaseLLMProvider):
             llm_logger.error(f"Error parsing TGI server API response: {str(e)}")
             raise ResponseParsingException(f"Failed to parse TGI server API response: {str(e)}")
 
-# TODO: add Anthropic provider
-# TODO: add Groq provider
-# TODO: add MistralAI provider
-# TODO: add Cohere provider
 
 class LLMProvider:
-    def __init__(self, provider_configs: List[Dict[str, Any]]):
-        self.providers = []
-        for config in provider_configs:
-            provider_type = config['provider_type']
-            config['api_base'] = config.get('api_base') or settings.LLM_PROVIDER_CONFIGS.get(provider_type, {}).get(
-                'api_base')
-            self.providers.append(self._get_provider(config))
+    def __init__(self, provider_configs: List[ProviderConfig]):
+        self.providers = [self._get_provider(config) for config in provider_configs]
 
-    def _get_provider(self, config: Dict[str, Any]) -> BaseLLMProvider:
-        provider_type = config['provider_type']
-        if provider_type == "openai":
-            return OpenAIProvider(config)
-        elif provider_type == "vllm":
-            return VLLMProvider(config)
-        elif provider_type == "llamacpp":
-            return LlamaCppServerProvider(config)
-        elif provider_type == "tgi":
-            return TGIServerProvider(config)
-        else:
-            raise ValueError(f"Unsupported provider type: {provider_type}")
+    def _get_provider(self, config: ProviderConfig) -> BaseLLMProvider:
+        provider_map = {
+            "openai": OpenAIProvider,
+            "vllm": VLLMProvider,
+            "llamacpp": LlamaCppServerProvider,
+            "tgi": TGIServerProvider,
+        }
+        provider_class = provider_map.get(config.provider_type)
+        if not provider_class:
+            raise ValueError(f"Unsupported provider type: {config.provider_type}")
+        return provider_class(config)
 
-    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> str:
-        for i, provider in enumerate(self.providers):
+    async def generate(self, prompt: str, temperature: float, max_tokens: int) -> ProviderResponse:
+        exceptions = []
+        for provider in self.providers:
             try:
                 return await provider.generate(prompt, temperature, max_tokens)
             except Exception as e:
-                llm_logger.warning(f"Provider {i} ({provider.__class__.__name__}) failed: {str(e)}")
-                if i == len(self.providers) - 1:
-                    llm_logger.error("All providers failed. Raising the last exception.")
-                    raise
-                llm_logger.info(f"Trying next provider ({self.providers[i + 1].__class__.__name__})")
+                llm_logger.warning(f"Provider {provider.__class__.__name__} failed: {str(e)}")
+                exceptions.append(e)
 
-        raise Exception("No providers available")
+        llm_logger.error("All providers failed. Raising the last exception.")
+        raise exceptions[-1]
 
-# Factory function to create LLMProvider instances
+
 def create_llm_provider(provider_configs: List[Dict[str, Any]]) -> LLMProvider:
-    return LLMProvider(provider_configs)
+    configs = [ProviderConfig(**config) for config in provider_configs]
+    return LLMProvider(configs)
