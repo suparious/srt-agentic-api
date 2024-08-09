@@ -5,7 +5,8 @@ from app.config import settings
 from app.utils.logging import setup_logger
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-auth_logger = setup_logger('auth', settings.LOG_DIR + '/auth.log')
+auth_logger = setup_logger("auth", settings.LOG_DIR + "/auth.log")
+
 
 async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
     auth_logger.debug(f"Received API key: {api_key_header}")
@@ -22,10 +23,13 @@ async def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
         auth_logger.info("API key validation successful")
         return api_key_header
     else:
-        auth_logger.warning(f"API key validation failed. Received: {api_key_header}, Expected: {settings.API_KEY}")
+        auth_logger.warning(
+            f"API key validation failed. Received: {api_key_header}, Expected: {settings.API_KEY}"
+        )
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail="Could not validate API key"
         )
+
 
 def validate_api_key(api_key: str) -> bool:
     is_valid = api_key == settings.API_KEY

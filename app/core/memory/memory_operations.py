@@ -2,12 +2,18 @@ import uuid
 from typing import Dict, Any, List, Optional
 from datetime import timedelta
 from app.api.models.agent import MemoryConfig
-from app.api.models.memory import MemoryType, MemoryEntry, AdvancedSearchQuery, MemoryOperation
+from app.api.models.memory import (
+    MemoryType,
+    MemoryEntry,
+    AdvancedSearchQuery,
+    MemoryOperation,
+)
 from .memory_system import MemorySystem
 from .memory_utils import DEFAULT_FORGET_AGE
 
 # Global dictionary to store active memory systems
 memory_systems: Dict[uuid.UUID, MemorySystem] = {}
+
 
 async def get_memory_system(agent_id: uuid.UUID, config: MemoryConfig) -> MemorySystem:
     """
@@ -24,7 +30,13 @@ async def get_memory_system(agent_id: uuid.UUID, config: MemoryConfig) -> Memory
         memory_systems[agent_id] = MemorySystem(agent_id, config)
     return memory_systems[agent_id]
 
-async def add_to_memory(agent_id: uuid.UUID, memory_type: MemoryType, entry: MemoryEntry, config: MemoryConfig) -> str:
+
+async def add_to_memory(
+    agent_id: uuid.UUID,
+    memory_type: MemoryType,
+    entry: MemoryEntry,
+    config: MemoryConfig,
+) -> str:
     """
     Add a memory entry to the specified memory type for an agent.
 
@@ -40,7 +52,10 @@ async def add_to_memory(agent_id: uuid.UUID, memory_type: MemoryType, entry: Mem
     memory_system = await get_memory_system(agent_id, config)
     return await memory_system.add(memory_type, entry)
 
-async def retrieve_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig) -> Optional[MemoryEntry]:
+
+async def retrieve_from_memory(
+    agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig
+) -> Optional[MemoryEntry]:
     """
     Retrieve a memory entry from the specified memory type for an agent.
 
@@ -56,7 +71,10 @@ async def retrieve_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, mem
     memory_system = await get_memory_system(agent_id, config)
     return await memory_system.retrieve(memory_type, memory_id)
 
-async def search_memory(agent_id: uuid.UUID, query: AdvancedSearchQuery, config: MemoryConfig) -> List[Dict[str, Any]]:
+
+async def search_memory(
+    agent_id: uuid.UUID, query: AdvancedSearchQuery, config: MemoryConfig
+) -> List[Dict[str, Any]]:
     """
     Search for memories across both short-term and long-term storage for an agent.
 
@@ -71,7 +89,10 @@ async def search_memory(agent_id: uuid.UUID, query: AdvancedSearchQuery, config:
     memory_system = await get_memory_system(agent_id, config)
     return await memory_system.search(query)
 
-async def delete_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig):
+
+async def delete_from_memory(
+    agent_id: uuid.UUID, memory_type: MemoryType, memory_id: str, config: MemoryConfig
+):
     """
     Delete a memory entry from the specified memory type for an agent.
 
@@ -84,7 +105,14 @@ async def delete_from_memory(agent_id: uuid.UUID, memory_type: MemoryType, memor
     memory_system = await get_memory_system(agent_id, config)
     await memory_system.delete(memory_type, memory_id)
 
-async def perform_memory_operation(agent_id: uuid.UUID, operation: MemoryOperation, memory_type: MemoryType, data: Dict[str, Any], config: MemoryConfig) -> Any:
+
+async def perform_memory_operation(
+    agent_id: uuid.UUID,
+    operation: MemoryOperation,
+    memory_type: MemoryType,
+    data: Dict[str, Any],
+    config: MemoryConfig,
+) -> Any:
     """
     Perform a memory operation for an agent.
 
@@ -103,16 +131,21 @@ async def perform_memory_operation(agent_id: uuid.UUID, operation: MemoryOperati
     """
     memory_system = await get_memory_system(agent_id, config)
     if operation == MemoryOperation.ADD:
-        return await memory_system.add(memory_type, data['content'], data.get('metadata', {}))
+        return await memory_system.add(
+            memory_type, data["content"], data.get("metadata", {})
+        )
     elif operation == MemoryOperation.RETRIEVE:
-        return await memory_system.retrieve(memory_type, data['memory_id'])
+        return await memory_system.retrieve(memory_type, data["memory_id"])
     elif operation == MemoryOperation.SEARCH:
-        return await memory_system.search(memory_type, data['query'], data.get('limit', 5))
+        return await memory_system.search(
+            memory_type, data["query"], data.get("limit", 5)
+        )
     elif operation == MemoryOperation.DELETE:
-        await memory_system.delete(memory_type, data['memory_id'])
+        await memory_system.delete(memory_type, data["memory_id"])
         return {"message": "Memory deleted successfully"}
     else:
         raise ValueError(f"Invalid memory operation: {operation}")
+
 
 async def consolidate_agent_memories(agent_id: uuid.UUID, config: MemoryConfig):
     """
@@ -125,7 +158,10 @@ async def consolidate_agent_memories(agent_id: uuid.UUID, config: MemoryConfig):
     memory_system = await get_memory_system(agent_id, config)
     await memory_system.consolidate_memories()
 
-async def forget_agent_old_memories(agent_id: uuid.UUID, config: MemoryConfig, age_limit: timedelta = DEFAULT_FORGET_AGE):
+
+async def forget_agent_old_memories(
+    agent_id: uuid.UUID, config: MemoryConfig, age_limit: timedelta = DEFAULT_FORGET_AGE
+):
     """
     Forget (delete) old memories from long-term storage for an agent.
 
@@ -137,9 +173,11 @@ async def forget_agent_old_memories(agent_id: uuid.UUID, config: MemoryConfig, a
     memory_system = await get_memory_system(agent_id, config)
     await memory_system.forget_old_memories(age_limit)
 
+
 async def initialize_memory_systems():
     for agent_id, memory_system in memory_systems.items():
         asyncio.create_task(memory_system.close())
+
 
 async def close_memory_systems():
     """

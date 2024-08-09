@@ -8,12 +8,19 @@ from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.utils.logging import agent_logger
 
+
 class Agent:
     """
     Represents an AI agent capable of processing messages, managing memory, and executing functions.
     """
 
-    def __init__(self, agent_id: UUID, name: str, config: AgentConfig, memory_config: MemoryConfig):
+    def __init__(
+        self,
+        agent_id: UUID,
+        name: str,
+        config: AgentConfig,
+        memory_config: MemoryConfig,
+    ):
         """
         Initialize a new Agent instance.
 
@@ -30,7 +37,9 @@ class Agent:
         self.memory = MemorySystem(agent_id, memory_config)
         self.conversation_history = []
         self.available_functions: Dict[str, FunctionDefinition] = {}
-        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers")
+        agent_logger.info(
+            f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers"
+        )
 
     async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
         """
@@ -46,34 +55,47 @@ class Agent:
             Exception: If there's an error processing the message.
         """
         try:
-            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Processing message for Agent {self.name} (ID: {self.id})"
+            )
             self.conversation_history.append({"role": "user", "content": message})
 
             relevant_context = await self.memory.retrieve_relevant(message)
             prompt = self._prepare_prompt(relevant_context)
 
-            response = await self.llm_provider.generate(prompt, self.config.temperature, self.config.max_tokens)
+            response = await self.llm_provider.generate(
+                prompt, self.config.temperature, self.config.max_tokens
+            )
             response_text, function_calls = self._parse_response(response)
 
-            self.conversation_history.append({"role": "assistant", "content": response_text})
+            self.conversation_history.append(
+                {"role": "assistant", "content": response_text}
+            )
 
-            await self.memory.add(MemoryType.SHORT_TERM, MemoryEntry(
-                content=response_text,
-                metadata={"type": "assistant_response"},
-                context=MemoryContext(
-                    context_type="message",
-                    timestamp=datetime.now(),
-                    metadata={}
-                )
-            ))
+            await self.memory.add(
+                MemoryType.SHORT_TERM,
+                MemoryEntry(
+                    content=response_text,
+                    metadata={"type": "assistant_response"},
+                    context=MemoryContext(
+                        context_type="message", timestamp=datetime.now(), metadata={}
+                    ),
+                ),
+            )
 
-            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Message processed successfully for Agent {self.name} (ID: {self.id})"
+            )
             return response_text, function_calls
         except Exception as e:
-            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
+            agent_logger.error(
+                f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}"
+            )
             raise
 
-    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
+    async def execute_function(
+        self, function_name: str, parameters: Dict[str, Any]
+    ) -> Any:
         """
         Execute a function with the given name and parameters.
 
@@ -89,17 +111,23 @@ class Agent:
             Exception: If there's an error executing the function.
         """
         try:
-            agent_logger.info(f"Executing function {function_name} for Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Executing function {function_name} for Agent {self.name} (ID: {self.id})"
+            )
             function = self.get_function_by_name(function_name)
             if not function:
                 raise ValueError(f"Unknown function: {function_name}")
 
             result = await function.implementation(**parameters)
 
-            agent_logger.info(f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})"
+            )
             return result
         except Exception as e:
-            agent_logger.error(f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}")
+            agent_logger.error(
+                f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}"
+            )
             raise
 
     def get_available_functions(self) -> List[FunctionDefinition]:
@@ -120,9 +148,13 @@ class Agent:
         """
         if function.name not in self.available_functions:
             self.available_functions[function.name] = function
-            agent_logger.info(f"Function {function.name} added for Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Function {function.name} added for Agent {self.name} (ID: {self.id})"
+            )
         else:
-            agent_logger.warning(f"Function {function.name} already available for Agent {self.name} (ID: {self.id})")
+            agent_logger.warning(
+                f"Function {function.name} already available for Agent {self.name} (ID: {self.id})"
+            )
 
     def remove_function(self, function_name: str):
         """
@@ -133,9 +165,13 @@ class Agent:
         """
         if function_name in self.available_functions:
             del self.available_functions[function_name]
-            agent_logger.info(f"Function {function_name} removed from Agent {self.name} (ID: {self.id})")
+            agent_logger.info(
+                f"Function {function_name} removed from Agent {self.name} (ID: {self.id})"
+            )
         else:
-            agent_logger.warning(f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})")
+            agent_logger.warning(
+                f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})"
+            )
 
     def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
         """
@@ -160,7 +196,12 @@ class Agent:
             str: The prepared prompt.
         """
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
-        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
+        history = "\n".join(
+            [
+                f"{msg['role']}: {msg['content']}"
+                for msg in self.conversation_history[-5:]
+            ]
+        )
         return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
 
     def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -181,10 +222,14 @@ class Agent:
                 try:
                     function_name, args = call.split("(", 1)
                     args = args.rsplit(")", 1)[0]
-                    function_calls.append({
-                        "name": function_name.strip(),
-                        "arguments": eval(f"dict({args})")
-                    })
+                    function_calls.append(
+                        {
+                            "name": function_name.strip(),
+                            "arguments": eval(f"dict({args})"),
+                        }
+                    )
                 except Exception as e:
-                    agent_logger.warning(f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}")
+                    agent_logger.warning(
+                        f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}"
+                    )
         return response, function_calls

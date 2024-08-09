@@ -6,8 +6,13 @@ from .utils import get_memory_system
 
 router = APIRouter()
 
-@router.delete("/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry")
-async def delete_memory_endpoint(request: MemoryDeleteRequest, api_key: str = Depends(get_api_key)):
+
+@router.delete(
+    "/delete", response_model=MemoryDeleteResponse, summary="Delete a memory entry"
+)
+async def delete_memory_endpoint(
+    request: MemoryDeleteRequest, api_key: str = Depends(get_api_key)
+):
     """
     Delete a specific memory entry for an agent.
 
@@ -31,9 +36,10 @@ async def delete_memory_endpoint(request: MemoryDeleteRequest, api_key: str = De
         await memory_system.delete(request.memory_type, request.memory_id)
         memory_logger.info(f"Memory deleted successfully for agent: {request.agent_id}")
         return MemoryDeleteResponse(
-            agent_id=request.agent_id,
-            message="Memory deleted successfully"
+            agent_id=request.agent_id, message="Memory deleted successfully"
         )
     except Exception as e:
-        memory_logger.error(f"Error deleting memory for agent {request.agent_id}: {str(e)}")
+        memory_logger.error(
+            f"Error deleting memory for agent {request.agent_id}: {str(e)}"
+        )
         raise HTTPException(status_code=500, detail=str(e))

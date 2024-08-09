@@ -4,6 +4,7 @@ from app.api.models.function import FunctionDefinition
 from app.utils.logging import agent_logger
 from app.core.agent_manager import agent_manager
 
+
 class FunctionManager:
     """
     Manages the registration, execution, and assignment of functions to agents in the system.
@@ -30,7 +31,9 @@ class FunctionManager:
         agent_logger.info(f"Function {function.name} registered with ID: {function_id}")
         return function_id
 
-    async def update_function(self, function_id: str, updated_function: FunctionDefinition) -> None:
+    async def update_function(
+        self, function_id: str, updated_function: FunctionDefinition
+    ) -> None:
         """
         Update an existing function in the system.
 
@@ -51,7 +54,9 @@ class FunctionManager:
         for agent in agent_manager.agents.values():
             if function_id in agent.available_function_ids:
                 agent.add_function(function_id)
-                agent_logger.info(f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})")
+                agent_logger.info(
+                    f"Updated function {updated_function.name} for Agent {agent.name} (ID: {agent.id})"
+                )
 
     async def assign_function_to_agent(self, agent_id: UUID, function_id: str) -> None:
         """
@@ -74,9 +79,13 @@ class FunctionManager:
             raise ValueError(f"No function found with id: {function_id}")
 
         agent.add_function(function_id)
-        agent_logger.info(f"Function {self.registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})")
+        agent_logger.info(
+            f"Function {self.registered_functions[function_id].name} assigned to Agent {agent.name} (ID: {agent_id})"
+        )
 
-    async def remove_function_from_agent(self, agent_id: UUID, function_id: str) -> None:
+    async def remove_function_from_agent(
+        self, agent_id: UUID, function_id: str
+    ) -> None:
         """
         Remove a function from a specific agent.
 
@@ -97,9 +106,13 @@ class FunctionManager:
             raise ValueError(f"No function found with id: {function_id}")
 
         agent.remove_function(function_id)
-        agent_logger.info(f"Function {self.registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})")
+        agent_logger.info(
+            f"Function {self.registered_functions[function_id].name} removed from Agent {agent.name} (ID: {agent_id})"
+        )
 
-    async def execute_function(self, agent_id: UUID, function_name: str, parameters: Dict[str, Any]) -> Any:
+    async def execute_function(
+        self, agent_id: UUID, function_name: str, parameters: Dict[str, Any]
+    ) -> Any:
         """
         Execute a function for a specific agent.
 
@@ -120,7 +133,9 @@ class FunctionManager:
             raise ValueError(f"No agent found with id: {agent_id}")
 
         try:
-            agent_logger.info(f"Executing function {function_name} for Agent {agent.name} (ID: {agent.id})")
+            agent_logger.info(
+                f"Executing function {function_name} for Agent {agent.name} (ID: {agent.id})"
+            )
             get_function = agent.get_function_by_name(function_name)
             if not get_function:
                 raise ValueError(f"Unknown function: {function_name}")
@@ -129,10 +144,14 @@ class FunctionManager:
 
             result = await func_impl(**parameters)
 
-            agent_logger.info(f"Function {function_name} executed successfully for Agent {agent.name} (ID: {agent.id})")
+            agent_logger.info(
+                f"Function {function_name} executed successfully for Agent {agent.name} (ID: {agent.id})"
+            )
             return result
         except Exception as e:
-            agent_logger.error(f"Error executing function {function_name} for Agent {agent.name} (ID: {agent.id}): {str(e)}")
+            agent_logger.error(
+                f"Error executing function {function_name} for Agent {agent.name} (ID: {agent.id}): {str(e)}"
+            )
             raise
 
     async def get_available_functions(self, agent_id: UUID) -> List[FunctionDefinition]:
@@ -153,7 +172,12 @@ class FunctionManager:
             agent_logger.error(f"No agent found with id: {agent_id}")
             raise ValueError(f"No agent found with id: {agent_id}")
 
-        return [self.registered_functions[func_id] for func_id in agent.available_function_ids if func_id in self.registered_functions]
+        return [
+            self.registered_functions[func_id]
+            for func_id in agent.available_function_ids
+            if func_id in self.registered_functions
+        ]
+
 
 # Global instance of FunctionManager
 function_manager = FunctionManager()

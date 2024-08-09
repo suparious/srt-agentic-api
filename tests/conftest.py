@@ -130,12 +130,14 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
-# Add a fixture to clean up Redis after each test
-@pytest.fixture(autouse=True, scope="function")
+@pytest.fixture(autouse=True)
 async def cleanup_redis(redis_memory):
     yield
-    async with redis_memory.get_connection() as conn:
-        await conn.flushdb()
+    try:
+        async with redis_memory.get_connection() as conn:
+            await conn.flushdb()
+    except Exception as e:
+        pytest.fail(f"Failed to clean up Redis: {str(e)}")
 
 @pytest.fixture(autouse=True, scope="session")
 async def cleanup_after_tests(event_loop):

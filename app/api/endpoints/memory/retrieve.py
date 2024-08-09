@@ -6,8 +6,15 @@ from .utils import get_memory_system
 
 router = APIRouter()
 
-@router.get("/retrieve", response_model=MemoryRetrieveResponse, summary="Retrieve a memory entry")
-async def retrieve_memory_endpoint(request: MemoryRetrieveRequest = Depends(), api_key: str = Depends(get_api_key)):
+
+@router.get(
+    "/retrieve",
+    response_model=MemoryRetrieveResponse,
+    summary="Retrieve a memory entry",
+)
+async def retrieve_memory_endpoint(
+    request: MemoryRetrieveRequest = Depends(), api_key: str = Depends(get_api_key)
+):
     """
     Retrieve a specific memory entry for an agent.
 
@@ -32,13 +39,14 @@ async def retrieve_memory_endpoint(request: MemoryRetrieveRequest = Depends(), a
         memory = await memory_system.retrieve(request.memory_type, request.memory_id)
         if memory is None:
             raise HTTPException(status_code=404, detail="Memory not found")
-        memory_logger.info(f"Memory retrieved successfully for agent: {request.agent_id}")
-        return MemoryRetrieveResponse(
-            agent_id=request.agent_id,
-            memory=memory
+        memory_logger.info(
+            f"Memory retrieved successfully for agent: {request.agent_id}"
         )
+        return MemoryRetrieveResponse(agent_id=request.agent_id, memory=memory)
     except HTTPException:
         raise
     except Exception as e:
-        memory_logger.error(f"Error retrieving memory for agent {request.agent_id}: {str(e)}")
+        memory_logger.error(
+            f"Error retrieving memory for agent {request.agent_id}: {str(e)}"
+        )
         raise HTTPException(status_code=500, detail=str(e))

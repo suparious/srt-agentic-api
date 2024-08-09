@@ -27,11 +27,14 @@ async def test_add_and_retrieve_memory_integration(redis_memory):
         assert isinstance(memory_id, str)
 
         retrieved_entry = await redis_memory.get(memory_id)
+        assert retrieved_entry is not None
         assert retrieved_entry.content == memory_entry.content
         assert retrieved_entry.metadata == memory_entry.metadata
         assert retrieved_entry.context.context_type == memory_entry.context.context_type
     except RedisMemoryError as e:
         pytest.fail(f"Redis memory operation failed: {str(e)}")
+    except Exception as e:
+        pytest.fail(f"Unexpected error occurred: {str(e)}")
 
 
 @pytest.mark.asyncio
@@ -113,5 +116,3 @@ async def test_get_memories_older_than_integration(redis_memory):
 
     assert len(old_memories) == 3
     assert all(memory.context.timestamp < threshold for memory in old_memories)
-
-# More integration tests can be added here as needed

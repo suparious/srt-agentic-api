@@ -4,9 +4,12 @@ from app.api.models.memory import MemoryEntry, MemoryContext
 
 # Constants
 DEFAULT_MEMORY_TTL = 3600  # Default time-to-live for short-term memories (in seconds)
-DEFAULT_CONSOLIDATION_INTERVAL = 3600  # Default interval for memory consolidation (in seconds)
+DEFAULT_CONSOLIDATION_INTERVAL = (
+    3600  # Default interval for memory consolidation (in seconds)
+)
 DEFAULT_FORGET_AGE = timedelta(days=30)  # Default age for forgetting long-term memories
 MAX_MEMORY_SIZE = 1024 * 1024  # Maximum size of a single memory entry (in bytes)
+
 
 def serialize_memory_entry(memory_entry: MemoryEntry) -> Dict[str, Any]:
     """
@@ -24,9 +27,10 @@ def serialize_memory_entry(memory_entry: MemoryEntry) -> Dict[str, Any]:
         "context": {
             "context_type": memory_entry.context.context_type,
             "timestamp": memory_entry.context.timestamp.isoformat(),
-            "metadata": memory_entry.context.metadata
-        }
+            "metadata": memory_entry.context.metadata,
+        },
     }
+
 
 def deserialize_memory_entry(data: Dict[str, Any]) -> MemoryEntry:
     """
@@ -41,13 +45,12 @@ def deserialize_memory_entry(data: Dict[str, Any]) -> MemoryEntry:
     context = MemoryContext(
         context_type=data["context"]["context_type"],
         timestamp=datetime.fromisoformat(data["context"]["timestamp"]),
-        metadata=data["context"]["metadata"]
+        metadata=data["context"]["metadata"],
     )
     return MemoryEntry(
-        content=data["content"],
-        metadata=data["metadata"],
-        context=context
+        content=data["content"], metadata=data["metadata"], context=context
     )
+
 
 def calculate_memory_size(memory_entry: MemoryEntry) -> int:
     """
@@ -60,7 +63,8 @@ def calculate_memory_size(memory_entry: MemoryEntry) -> int:
         int: The size of the memory entry in bytes.
     """
     serialized = serialize_memory_entry(memory_entry)
-    return len(str(serialized).encode('utf-8'))
+    return len(str(serialized).encode("utf-8"))
+
 
 def truncate_memory_content(content: str, max_size: int = MAX_MEMORY_SIZE) -> str:
     """
@@ -73,10 +77,11 @@ def truncate_memory_content(content: str, max_size: int = MAX_MEMORY_SIZE) -> st
     Returns:
         str: The truncated memory content.
     """
-    encoded = content.encode('utf-8')
+    encoded = content.encode("utf-8")
     if len(encoded) <= max_size:
         return content
-    return encoded[:max_size].decode('utf-8', errors='ignore')
+    return encoded[:max_size].decode("utf-8", errors="ignore")
+
 
 def merge_memory_entries(entries: List[MemoryEntry]) -> MemoryEntry:
     """
@@ -98,14 +103,15 @@ def merge_memory_entries(entries: List[MemoryEntry]) -> MemoryEntry:
     merged_context = MemoryContext(
         context_type="merged",
         timestamp=latest_timestamp,
-        metadata={"merged_from": [entry.context.context_type for entry in entries]}
+        metadata={"merged_from": [entry.context.context_type for entry in entries]},
     )
 
     return MemoryEntry(
         content=truncate_memory_content(merged_content),
         metadata=merged_metadata,
-        context=merged_context
+        context=merged_context,
     )
+
 
 def calculate_relevance_score(query: str, memory_entry: MemoryEntry) -> float:
     """
@@ -125,7 +131,10 @@ def calculate_relevance_score(query: str, memory_entry: MemoryEntry) -> float:
     common_words = query_words.intersection(content_words)
     return len(common_words) / len(query_words) if query_words else 0
 
-def should_consolidate_memory(memory_entry: MemoryEntry, current_time: datetime) -> bool:
+
+def should_consolidate_memory(
+    memory_entry: MemoryEntry, current_time: datetime
+) -> bool:
     """
     Determine if a memory entry should be consolidated based on its age.
 
@@ -138,6 +147,7 @@ def should_consolidate_memory(memory_entry: MemoryEntry, current_time: datetime)
     """
     age = current_time - memory_entry.context.timestamp
     return age > timedelta(seconds=DEFAULT_CONSOLIDATION_INTERVAL)
+
 
 def should_forget_memory(memory_entry: MemoryEntry, current_time: datetime) -> bool:
     """

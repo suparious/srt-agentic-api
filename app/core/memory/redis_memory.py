@@ -5,15 +5,22 @@ import asyncio
 from datetime import datetime
 from redis.asyncio import Redis, ConnectionPool
 from contextlib import asynccontextmanager
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 import time
 
 from app.utils.logging import memory_logger
 from app.config import settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 
+
 class RedisMemoryError(Exception):
     """Custom exception for RedisMemory errors."""
+
     pass
 
 
@@ -35,9 +42,7 @@ class RedisMemory:
         if cls._connection_pool is None:
             try:
                 cls._connection_pool = ConnectionPool.from_url(
-                    settings.REDIS_URL,
-                    encoding="utf-8",
-                    decode_responses=True
+                    settings.REDIS_URL, encoding="utf-8", decode_responses=True
                 )
             except Exception as e:
                 memory_logger.error(f"Failed to create Redis connection pool: {str(e)}")
@@ -63,7 +68,9 @@ class RedisMemory:
             try:
                 pool = await self.get_connection_pool()
                 self.redis = Redis(connection_pool=pool)
-                memory_logger.info(f"Redis connection established for agent: {self.agent_id}")
+                memory_logger.info(
+                    f"Redis connection established for agent: {self.agent_id}"
+                )
             except Exception as e:
                 memory_logger.error(f"Failed to initialize Redis connection: {str(e)}")
                 raise RedisMemoryError("Failed to initialize Redis connection") from e
@@ -87,9 +94,11 @@ class RedisMemory:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(RedisMemoryError)
+        retry=retry_if_exception_type(RedisMemoryError),
     )
-    async def add(self, memory_entry: MemoryEntry, expire: int = settings.SHORT_TERM_MEMORY_TTL) -> str:
+    async def add(
+        self, memory_entry: MemoryEntry, expire: int = settings.SHORT_TERM_MEMORY_TTL
+    ) -> str:
         """
         Add a memory entry to Redis.
 
@@ -113,30 +122,40 @@ class RedisMemory:
                 memory_entry = MemoryEntry(
                     content=memory_entry,
                     metadata={},
-                    context=MemoryContext(context_type="legacy", timestamp=datetime.now(), metadata={})
+                    context=MemoryContext(
+                        context_type="legacy", timestamp=datetime.now(), metadata={}
+                    ),
                 )
 
-            serialized_entry = json.dumps({
-                "content": memory_entry.content,
-                "metadata": memory_entry.metadata,
-                "context": {
-                    "context_type": memory_entry.context.context_type,
-                    "timestamp": memory_entry.context.timestamp.isoformat(),
-                    "metadata": memory_entry.context.metadata
+            serialized_entry = json.dumps(
+                {
+                    "content": memory_entry.content,
+                    "metadata": memory_entry.metadata,
+                    "context": {
+                        "context_type": memory_entry.context.context_type,
+                        "timestamp": memory_entry.context.timestamp.isoformat(),
+                        "metadata": memory_entry.context.metadata,
+                    },
                 }
-            })
+            )
 
             await self.initialize()
             await self.redis.set(full_key, serialized_entry, ex=expire)
 
             end_time = time.time()
             operation_time = end_time - start_time
-            memory_logger.debug(f"Added key to Redis: {full_key}. Operation took {operation_time:.4f} seconds.")
+            memory_logger.debug(
+                f"Added key to Redis: {full_key}. Operation took {operation_time:.4f} seconds."
+            )
 
             return memory_id
         except Exception as e:
-            memory_logger.error(f"Error adding memory for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to add memory for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error adding memory for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to add memory for agent {self.agent_id}"
+            ) from e
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
         """
@@ -159,18 +178,24 @@ class RedisMemory:
                 deserialized_entry = json.loads(value)
                 context = MemoryContext(
                     context_type=deserialized_entry["context"]["context_type"],
-                    timestamp=datetime.fromisoformat(deserialized_entry["context"]["timestamp"]),
-                    metadata=deserialized_entry["context"]["metadata"]
+                    timestamp=datetime.fromisoformat(
+                        deserialized_entry["context"]["timestamp"]
+                    ),
+                    metadata=deserialized_entry["context"]["metadata"],
                 )
                 return MemoryEntry(
                     content=deserialized_entry["content"],
                     metadata=deserialized_entry["metadata"],
-                    context=context
+                    context=context,
                 )
             return None
         except Exception as e:
-            memory_logger.error(f"Error retrieving memory for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to retrieve memory for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error retrieving memory for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to retrieve memory for agent {self.agent_id}"
+            ) from e
 
     async def delete(self, memory_id: str) -> None:
         """
@@ -188,8 +213,12 @@ class RedisMemory:
                 await conn.delete(full_key)
             memory_logger.debug(f"Deleted key from Redis: {full_key}")
         except Exception as e:
-            memory_logger.error(f"Error deleting memory for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to delete memory for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error deleting memory for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to delete memory for agent {self.agent_id}"
+            ) from e
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
         """
@@ -221,12 +250,16 @@ class RedisMemory:
                         if value:
                             memory_entry = MemoryEntry.model_validate_json(value)
                             if self._matches_query(memory_entry, query):
-                                relevance_score = self._calculate_relevance(memory_entry, query)
-                                results.append({
-                                    "id": key.split(":")[-1],
-                                    "memory_entry": memory_entry,
-                                    "relevance_score": relevance_score
-                                })
+                                relevance_score = self._calculate_relevance(
+                                    memory_entry, query
+                                )
+                                results.append(
+                                    {
+                                        "id": key.split(":")[-1],
+                                        "memory_entry": memory_entry,
+                                        "relevance_score": relevance_score,
+                                    }
+                                )
 
                     if cursor == 0:
                         break
@@ -234,15 +267,25 @@ class RedisMemory:
             results.sort(key=lambda x: x["relevance_score"], reverse=True)
 
             if query.relevance_threshold is not None:
-                results = [r for r in results if r["relevance_score"] >= query.relevance_threshold]
-            results = results[:query.max_results]
+                results = [
+                    r
+                    for r in results
+                    if r["relevance_score"] >= query.relevance_threshold
+                ]
+            results = results[: query.max_results]
 
             return results
         except Exception as e:
-            memory_logger.error(f"Error searching memories for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to search memories for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error searching memories for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to search memories for agent {self.agent_id}"
+            ) from e
 
-    def _matches_query(self, memory_entry: MemoryEntry, query: AdvancedSearchQuery) -> bool:
+    def _matches_query(
+        self, memory_entry: MemoryEntry, query: AdvancedSearchQuery
+    ) -> bool:
         """
         Check if a memory entry matches the given query.
 
@@ -253,19 +296,29 @@ class RedisMemory:
         Returns:
             bool: True if the memory entry matches the query, False otherwise.
         """
-        if query.context_type and memory_entry.context.context_type != query.context_type:
+        if (
+            query.context_type
+            and memory_entry.context.context_type != query.context_type
+        ):
             return False
         if query.time_range:
-            if (memory_entry.context.timestamp < query.time_range["start"] or
-                    memory_entry.context.timestamp > query.time_range["end"]):
+            if (
+                memory_entry.context.timestamp < query.time_range["start"]
+                or memory_entry.context.timestamp > query.time_range["end"]
+            ):
                 return False
         if query.metadata_filters:
             for key, value in query.metadata_filters.items():
-                if key not in memory_entry.metadata or memory_entry.metadata[key] != value:
+                if (
+                    key not in memory_entry.metadata
+                    or memory_entry.metadata[key] != value
+                ):
                     return False
         return True
 
-    def _calculate_relevance(self, memory_entry: MemoryEntry, query: AdvancedSearchQuery) -> float:
+    def _calculate_relevance(
+        self, memory_entry: MemoryEntry, query: AdvancedSearchQuery
+    ) -> float:
         """
         Calculate the relevance score of a memory entry for the given query.
 
@@ -313,11 +366,13 @@ class RedisMemory:
                     for key, value in zip(keys, values):
                         if value:
                             memory_entry = MemoryEntry.model_validate_json(value)
-                            results.append({
-                                "id": key.split(":")[-1],
-                                "memory_entry": memory_entry,
-                                "timestamp": memory_entry.context.timestamp
-                            })
+                            results.append(
+                                {
+                                    "id": key.split(":")[-1],
+                                    "memory_entry": memory_entry,
+                                    "timestamp": memory_entry.context.timestamp,
+                                }
+                            )
 
                     if cursor == 0:
                         break
@@ -325,8 +380,12 @@ class RedisMemory:
             results.sort(key=lambda x: x["timestamp"], reverse=True)
             return results[:limit]
         except Exception as e:
-            memory_logger.error(f"Error retrieving recent memories for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to retrieve recent memories for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error retrieving recent memories for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to retrieve recent memories for agent {self.agent_id}"
+            ) from e
 
     async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
         """
@@ -364,11 +423,16 @@ class RedisMemory:
                         break
 
             memory_logger.info(
-                f"Retrieved {len(old_memories)} memories older than {threshold} for agent: {self.agent_id}")
+                f"Retrieved {len(old_memories)} memories older than {threshold} for agent: {self.agent_id}"
+            )
             return old_memories
         except Exception as e:
-            memory_logger.error(f"Error getting old memories for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError(f"Failed to retrieve old memories for agent {self.agent_id}") from e
+            memory_logger.error(
+                f"Error getting old memories for agent {self.agent_id}: {str(e)}"
+            )
+            raise RedisMemoryError(
+                f"Failed to retrieve old memories for agent {self.agent_id}"
+            ) from e
 
     async def close(self) -> None:
         """
@@ -381,9 +445,13 @@ class RedisMemory:
             if self.redis:
                 await self.redis.close()
                 self.redis = None
-                memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
+                memory_logger.info(
+                    f"Redis connection closed for agent: {self.agent_id}"
+                )
         except Exception as e:
-            memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
+            memory_logger.error(
+                f"Error closing Redis connection for agent {self.agent_id}: {str(e)}"
+            )
 
     @classmethod
     async def close_pool(cls) -> None:
@@ -415,7 +483,7 @@ class RedisMemory:
             if cls._connection_pool:
                 await asyncio.wait_for(cls._connection_pool.disconnect(), timeout=5.0)
                 cls._connection_pool = None
-                memory_logger.info("Redis cleanup completed")
+            memory_logger.info("Redis cleanup completed")
         except asyncio.TimeoutError:
             memory_logger.error("Timeout while closing Redis connection pool")
         except Exception as e:

@@ -6,8 +6,16 @@ from .utils import get_memory_system
 
 router = APIRouter()
 
-@router.post("/add", response_model=MemoryAddResponse, status_code=201, summary="Add a memory entry")
-async def add_memory_endpoint(request: MemoryAddRequest, api_key: str = Depends(get_api_key)):
+
+@router.post(
+    "/add",
+    response_model=MemoryAddResponse,
+    status_code=201,
+    summary="Add a memory entry",
+)
+async def add_memory_endpoint(
+    request: MemoryAddRequest, api_key: str = Depends(get_api_key)
+):
     """
     Add a new memory entry for an agent.
 
@@ -35,10 +43,12 @@ async def add_memory_endpoint(request: MemoryAddRequest, api_key: str = Depends(
         return MemoryAddResponse(
             agent_id=request.agent_id,
             memory_id=memory_id,
-            message="Memory added successfully"
+            message="Memory added successfully",
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        memory_logger.error(f"Error adding memory for agent {request.agent_id}: {str(e)}")
+        memory_logger.error(
+            f"Error adding memory for agent {request.agent_id}: {str(e)}"
+        )
         raise HTTPException(status_code=500, detail=str(e))

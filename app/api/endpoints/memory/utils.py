@@ -2,6 +2,7 @@ from uuid import UUID
 from app.core.memory import MemorySystem
 from app.core.agent import Agent
 
+
 async def get_memory_system(agent_id: UUID) -> MemorySystem:
     """
     Retrieve or create a MemorySystem for the given agent_id.

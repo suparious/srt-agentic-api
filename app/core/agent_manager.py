@@ -17,8 +17,13 @@ class AgentManager:
         """
         self.agents: Dict[UUID, Agent] = {}
 
-    async def create_agent(self, name: str, config: Dict[str, Any], memory_config: Dict[str, Any],
-                           initial_prompt: str) -> UUID:
+    async def create_agent(
+        self,
+        name: str,
+        config: Dict[str, Any],
+        memory_config: Dict[str, Any],
+        initial_prompt: str,
+    ) -> UUID:
         """
         Create a new agent with the given configuration and initial prompt.
 
@@ -45,7 +50,9 @@ class AgentManager:
             return agent_id
         except Exception as e:
             agent_logger.error(f"Error creating Agent {name}: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to create agent: {str(e)}"
+            )
 
     async def get_agent_info(self, agent_id: UUID) -> Optional[AgentInfoResponse]:
         """
@@ -67,7 +74,7 @@ class AgentManager:
             name=agent.name,
             config=agent.config,
             memory_config=agent.memory.config,
-            conversation_history_length=len(agent.conversation_history)
+            conversation_history_length=len(agent.conversation_history),
         )
 
     async def update_agent(self, agent_id: UUID, update_data: Dict[str, Any]) -> bool:
@@ -87,14 +94,18 @@ class AgentManager:
             return False
 
         try:
-            if 'config' in update_data:
-                agent.config = AgentConfig(**update_data['config'])
-            if 'memory_config' in update_data:
-                agent.memory.config = MemoryConfig(**update_data['memory_config'])
-            agent_logger.info(f"Agent {agent.name} (ID: {agent_id}) updated successfully")
+            if "config" in update_data:
+                agent.config = AgentConfig(**update_data["config"])
+            if "memory_config" in update_data:
+                agent.memory.config = MemoryConfig(**update_data["memory_config"])
+            agent_logger.info(
+                f"Agent {agent.name} (ID: {agent_id}) updated successfully"
+            )
             return True
         except Exception as e:
-            agent_logger.error(f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}")
+            agent_logger.error(
+                f"Error updating Agent {agent.name} (ID: {agent_id}): {str(e)}"
+            )
             return False
 
     async def delete_agent(self, agent_id: UUID) -> bool:
@@ -127,7 +138,7 @@ class AgentManager:
                 name=agent.name,
                 config=agent.config,
                 memory_config=agent.memory.config,
-                conversation_history_length=len(agent.conversation_history)
+                conversation_history_length=len(agent.conversation_history),
             )
             for agent in self.agents.values()
         ]
@@ -151,7 +162,9 @@ class AgentManager:
             raise ValueError(f"No agent found with id: {agent_id}")
         return agent.memory.config
 
-    async def process_message(self, agent_id: UUID, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_message(
+        self, agent_id: UUID, message: str
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Process a message for a specific agent.
 
@@ -171,7 +184,9 @@ class AgentManager:
             raise ValueError(f"No agent found with id: {agent_id}")
         return await agent.process_message(message)
 
-    async def add_function_to_agent(self, agent_id: UUID, function: Dict[str, Any]) -> bool:
+    async def add_function_to_agent(
+        self, agent_id: UUID, function: Dict[str, Any]
+    ) -> bool:
         """
         Add a function to a specific agent.
 
@@ -192,15 +207,22 @@ class AgentManager:
 
         try:
             from app.api.models.function import FunctionDefinition
+
             function_def = FunctionDefinition(**function)
             agent.add_function(function_def)
-            agent_logger.info(f"Function {function_def.name} added to Agent {agent.name} (ID: {agent_id})")
+            agent_logger.info(
+                f"Function {function_def.name} added to Agent {agent.name} (ID: {agent_id})"
+            )
             return True
         except Exception as e:
-            agent_logger.error(f"Error adding function to Agent {agent.name} (ID: {agent_id}): {str(e)}")
+            agent_logger.error(
+                f"Error adding function to Agent {agent.name} (ID: {agent_id}): {str(e)}"
+            )
             return False
 
-    async def remove_function_from_agent(self, agent_id: UUID, function_name: str) -> bool:
+    async def remove_function_from_agent(
+        self, agent_id: UUID, function_name: str
+    ) -> bool:
         """
         Remove a function from a specific agent.
 
@@ -220,7 +242,9 @@ class AgentManager:
             raise ValueError(f"No agent found with id: {agent_id}")
 
         agent.remove_function(function_name)
-        agent_logger.info(f"Function {function_name} removed from Agent {agent.name} (ID: {agent_id})")
+        agent_logger.info(
+            f"Function {function_name} removed from Agent {agent.name} (ID: {agent_id})"
+        )
         return True
 
 

@@ -27,6 +27,7 @@ from app.core.function_manager import FunctionManager
 agent_manager = AgentManager()
 function_manager = FunctionManager()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     # Add any cleanup code here if needed
+
 
 app = FastAPI(
     title="SolidRusT Agentic API",
@@ -52,8 +54,9 @@ app = FastAPI(
     license_info={
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    }
+    },
 )
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -70,6 +73,7 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+
 app.openapi = custom_openapi
 
 # CORS middleware setup
@@ -81,19 +85,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Dependency to get AgentManager
 def get_agent_manager():
     return agent_manager
+
 
 # Dependency to get FunctionManager
 def get_function_manager():
     return function_manager
 
+
 # Include routers
-app.include_router(agent.router, prefix="/agent", tags=["Agents"], dependencies=[Depends(get_agent_manager), Depends(get_function_manager)])
-app.include_router(message.router, prefix="/message", tags=["Messages"], dependencies=[Depends(get_agent_manager)])
-app.include_router(function.router, prefix="/function", tags=["Functions"], dependencies=[Depends(get_function_manager)])
-app.include_router(memory.router, prefix="/memory", tags=["Memory"], dependencies=[Depends(get_agent_manager)])
+app.include_router(
+    agent.router,
+    prefix="/agent",
+    tags=["Agents"],
+    dependencies=[Depends(get_agent_manager), Depends(get_function_manager)],
+)
+app.include_router(
+    message.router,
+    prefix="/message",
+    tags=["Messages"],
+    dependencies=[Depends(get_agent_manager)],
+)
+app.include_router(
+    function.router,
+    prefix="/function",
+    tags=["Functions"],
+    dependencies=[Depends(get_function_manager)],
+)
+app.include_router(
+    memory.router,
+    prefix="/memory",
+    tags=["Memory"],
+    dependencies=[Depends(get_agent_manager)],
+)
+
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -102,12 +130,14 @@ async def root():
     """
     return {"message": "Welcome to SolidRusT Agentic API"}
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     main_logger.info(f"Incoming request: {request.method} {request.url}")
     response = await call_next(request)
     main_logger.info(f"Response status code: {response.status_code}")
     return response
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -117,6 +147,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"message": exc.detail},
     )
 
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     main_logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
@@ -125,7 +156,9 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"message": "An unexpected error occurred. Please try again later."},
     )
 
+
 if __name__ == "__main__":
     import uvicorn
+
     main_logger.info("Starting SolidRusT Agentic API")
     uvicorn.run(app, host=settings.HOST, port=settings.PORT)
