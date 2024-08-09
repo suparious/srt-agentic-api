@@ -48,12 +48,13 @@ def test_app(test_settings):
     yield app
     app.dependency_overrides.clear()
 
-@pytest.fixture(scope="session")
-async def redis_memory(event_loop):
-    redis_mem = RedisMemory(UUID('00000000-0000-0000-0000-000000000000'))
-    await redis_mem.initialize()
-    yield redis_mem
-    await redis_mem.close()
+@pytest.fixture(scope="function")
+async def redis_memory():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_memory = RedisMemory(agent_id)
+    await redis_memory.initialize()
+    yield redis_memory
+    await redis_memory.close()
 
 @pytest.fixture
 async def mock_redis_memory():
@@ -130,7 +131,7 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
 # Add a fixture to clean up Redis after each test
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 async def cleanup_redis(redis_memory):
     yield
     async with redis_memory.get_connection() as conn:
@@ -140,9 +141,3 @@ async def cleanup_redis(redis_memory):
 async def cleanup_after_tests(event_loop):
     yield
     await RedisMemory.cleanup()
-    tasks = asyncio.all_tasks(event_loop)
-    for task in tasks:
-        if not task.done():
-            task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
-    await event_loop.shutdown_asyncgens()

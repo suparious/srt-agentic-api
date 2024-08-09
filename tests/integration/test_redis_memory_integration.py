@@ -1,7 +1,7 @@
 import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
-from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
 
 
@@ -22,13 +22,16 @@ async def test_add_and_retrieve_memory_integration(redis_memory):
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
 
-    memory_id = await redis_memory.add(memory_entry)
-    assert isinstance(memory_id, str)
+    try:
+        memory_id = await redis_memory.add(memory_entry)
+        assert isinstance(memory_id, str)
 
-    retrieved_entry = await redis_memory.get(memory_id)
-    assert retrieved_entry.content == memory_entry.content
-    assert retrieved_entry.metadata == memory_entry.metadata
-    assert retrieved_entry.context.context_type == memory_entry.context.context_type
+        retrieved_entry = await redis_memory.get(memory_id)
+        assert retrieved_entry.content == memory_entry.content
+        assert retrieved_entry.metadata == memory_entry.metadata
+        assert retrieved_entry.context.context_type == memory_entry.context.context_type
+    except RedisMemoryError as e:
+        pytest.fail(f"Redis memory operation failed: {str(e)}")
 
 
 @pytest.mark.asyncio

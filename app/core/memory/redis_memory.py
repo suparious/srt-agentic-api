@@ -34,7 +34,7 @@ class RedisMemory:
         """
         if cls._connection_pool is None:
             try:
-                cls._connection_pool = ConnectionPool.from_url(
+                cls._connection_pool = await ConnectionPool.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True
@@ -76,7 +76,8 @@ class RedisMemory:
         Yields:
             Redis: A Redis connection.
         """
-        await self.initialize()
+        if self.redis is None:
+            await self.initialize()
         try:
             yield self.redis
         except Exception as e:
@@ -378,7 +379,7 @@ class RedisMemory:
         """
         try:
             if self.redis:
-                await self.redis.aclose()
+                await self.redis.close()
                 self.redis = None
                 memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
         except Exception as e:
@@ -412,7 +413,8 @@ class RedisMemory:
         """
         try:
             if cls._connection_pool:
-                await cls.close_pool()
+                await cls._connection_pool.disconnect()
+                cls._connection_pool = None
             memory_logger.info("Redis cleanup completed")
         except Exception as e:
             memory_logger.error(f"Error during Redis cleanup: {str(e)}")
