@@ -16,12 +16,18 @@ from app.core.memory.redis_memory import RedisMemory
 from app.core.memory.vector_memory import VectorMemory
 from app.core.agent import Agent
 
-
 # Set the TESTING environment variable
 os.environ["TESTING"] = "true"
 
 # Load the test environment variables
 load_dotenv('.env.test')
+
+@pytest.fixture(scope="session")
+def event_loop():
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 @pytest.fixture(scope="session")
 def test_settings():
@@ -50,19 +56,6 @@ def test_settings():
         TESTING=True
     )
 
-@pytest.fixture(scope="session")
-def event_loop():
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest.fixture(scope="module")
-def test_app(test_settings):
-    app.dependency_overrides[Settings] = lambda: test_settings
-    yield app
-    app.dependency_overrides.clear()
-
 @pytest.fixture(scope="function")
 async def redis_memory():
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
@@ -83,6 +76,12 @@ async def mock_vector_memory():
 async def async_client():
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+
+@pytest.fixture(scope="module")
+def test_app(test_settings):
+    app.dependency_overrides[Settings] = lambda: test_settings
+    yield app
+    app.dependency_overrides.clear()
 
 @pytest.fixture(scope="module")
 def sync_client(test_app):
@@ -111,7 +110,8 @@ def test_agent_config():
     return AgentConfig(
         llm_providers=[
             AgentLLMProviderConfig(
-                provider_type="mock"
+                provider_type="mock",
+                model_name="mock-model"
             )
         ],
         temperature=0.7,
@@ -144,25 +144,15 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
-
 @pytest.fixture(autouse=True)
-async def cleanup_redis(redis_memory: RedisMemory) -> None:
+async def redis_cleanup(redis_memory):
+    yield
     try:
-        yield
-    finally:
-        try:
-            loop = asyncio.get_running_loop()
-            async with redis_memory.get_connection() as conn:
-                await conn.flushdb()
-
-            # Ensure all Redis connections are properly closed
-            await RedisMemory.close_pool()
-
-            # Allow any pending tasks to complete
-            tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
-            await asyncio.gather(*tasks, return_exceptions=True)
-        except Exception as e:
-            pytest.fail(f"Failed to clean up Redis: {str(e)}")
+        async with redis_memory.get_connection() as conn:
+            await conn.flushdb()
+        await redis_memory.close()
+    except Exception as e:
+        pytest.fail(f"Failed to clean up Redis: {str(e)}")
 
 @pytest.fixture(autouse=True, scope="session")
 async def cleanup_after_tests(event_loop):

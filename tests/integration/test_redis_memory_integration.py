@@ -1,9 +1,10 @@
 import pytest
 from uuid import UUID
+from typing import List
 from datetime import datetime, timedelta
 from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
-
+from app.utils.logging import memory_logger
 
 @pytest.fixture(scope="module")
 async def redis_memory():
@@ -15,27 +16,39 @@ async def redis_memory():
 
 
 @pytest.mark.asyncio
-async def test_add_and_retrieve_memory_integration(redis_memory):
+async def test_add_and_retrieve_memory_integration(redis_memory: RedisMemory):
     memory_entry = MemoryEntry(
         content="Test memory content",
         metadata={"key": "value"},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
 
-    try:
-        memory_id = await redis_memory.add(memory_entry)
-        assert isinstance(memory_id, str)
+    memory_id = await redis_memory.add(memory_entry)
+    assert isinstance(memory_id, str)
 
-        retrieved_entry = await redis_memory.get(memory_id)
-        assert retrieved_entry is not None
-        assert retrieved_entry.content == memory_entry.content
-        assert retrieved_entry.metadata == memory_entry.metadata
-        assert retrieved_entry.context.context_type == memory_entry.context.context_type
-    except RedisMemoryError as e:
-        pytest.fail(f"Redis memory operation failed: {str(e)}")
-    except Exception as e:
-        pytest.fail(f"Unexpected error occurred: {str(e)}")
+    retrieved_entry = await redis_memory.get(memory_id)
+    assert retrieved_entry is not None
+    assert retrieved_entry.content == memory_entry.content
+    assert retrieved_entry.metadata == memory_entry.metadata
+    assert retrieved_entry.context.context_type == memory_entry.context.context_type
 
+@pytest.mark.asyncio
+async def test_redis_connection_lifecycle(redis_memory: RedisMemory):
+    # Test initialization
+    assert redis_memory.redis is None
+    await redis_memory.initialize()
+    assert redis_memory.redis is not None
+
+    # Test connection is working
+    async with redis_memory.get_connection() as conn:
+        await conn.set("test_key", "test_value")
+        value = await conn.get("test_key")
+        assert value == "test_value"
+
+    # Test closing
+    await redis_memory.close()
+    assert redis_memory.redis is None
+    assert redis_memory._connection_pool is None
 
 @pytest.mark.asyncio
 async def test_advanced_search_integration(redis_memory):
@@ -62,7 +75,6 @@ async def test_advanced_search_integration(redis_memory):
     assert all(
         datetime.now() - timedelta(days=4) <= result["memory_entry"].context.timestamp <= datetime.now() for result in
         results)
-
 
 @pytest.mark.asyncio
 async def test_delete_memory_integration(redis_memory):
@@ -97,6 +109,33 @@ async def test_get_recent_memories_integration(redis_memory):
     timestamps = [memory["timestamp"] for memory in recent_memories]
     assert timestamps == sorted(timestamps, reverse=True)
 
+@pytest.mark.asyncio
+async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
+    pattern = f"agent:{self.agent_id}:*"
+    old_memories = []
+
+    async with self.get_connection() as conn:
+        cursor = 0
+        while True:
+            cursor, keys = await conn.scan(cursor, match=pattern, count=100)
+            pipeline = conn.pipeline()
+            for key in keys:
+                pipeline.get(key)
+            values = await pipeline.execute()
+
+            for value in values:
+                if value:
+                    memory_entry = MemoryEntry.model_validate_json(value)
+                    if memory_entry.context.timestamp < threshold:
+                        old_memories.append(memory_entry)
+
+            if cursor == 0:
+                break
+
+    memory_logger.info(
+        f"Retrieved {len(old_memories)} memories older than {threshold} for agent: {self.agent_id}"
+    )
+    return old_memories
 
 @pytest.mark.asyncio
 async def test_get_memories_older_than_integration(redis_memory):
