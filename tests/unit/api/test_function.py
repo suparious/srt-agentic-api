@@ -1,10 +1,18 @@
 import pytest
 from httpx import AsyncClient
 from uuid import UUID
+from unittest.mock import patch
+from app.core.function_manager import FunctionManager
 
 pytestmark = pytest.mark.asyncio
 
-async def test_register_function(async_client: AsyncClient, auth_headers):
+@pytest.fixture
+def mock_function_manager():
+    with patch('app.api.endpoints.function.function_manager') as mock:
+        yield mock
+
+
+async def test_register_function(async_client: AsyncClient, auth_headers, mock_function_manager):
     function_data = {
         "function": {
             "name": "test_function",
@@ -19,11 +27,15 @@ async def test_register_function(async_client: AsyncClient, auth_headers):
             "return_type": "string"
         }
     }
+    mock_function_manager.register_function.return_value = "mock_function_id"
+
     response = await async_client.post("/function/register", json=function_data, headers=auth_headers)
     assert response.status_code == 201
     registered_function = response.json()
     assert "function_id" in registered_function
     assert registered_function["message"] == "Function registered successfully"
+
+    mock_function_manager.register_function.assert_called_once()
     return registered_function["function_id"]
 
 @pytest.mark.asyncio
@@ -88,8 +100,9 @@ async def test_list_functions(async_client: AsyncClient, auth_headers, test_agen
     assert isinstance(functions["functions"], list)
     assert len(functions["functions"]) >= 2  # We should have at least the two functions we just registered
 
-async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent):
-    function_id = await test_register_function(async_client, auth_headers)
+
+async def test_execute_function(async_client: AsyncClient, auth_headers, test_agent, mock_function_manager):
+    function_id = await test_register_function(async_client, auth_headers, mock_function_manager)
     execution_data = {
         "agent_id": test_agent,
         "function_name": "test_function",
@@ -98,10 +111,15 @@ async def test_execute_function(async_client: AsyncClient, auth_headers, test_ag
             "param2": 123
         }
     }
+    mock_function_manager.execute_function.return_value = "Function executed successfully"
+
     response = await async_client.post("/function/execute", json=execution_data, headers=auth_headers)
     assert response.status_code == 200
     result = response.json()
     assert "result" in result
+    assert result["result"] == "Function executed successfully"
+
+    mock_function_manager.execute_function.assert_called_once()
 
 async def test_execute_nonexistent_function(async_client: AsyncClient, auth_headers, test_agent):
     execution_data = {
