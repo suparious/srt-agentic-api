@@ -155,3 +155,8 @@ async def test_get_memories_older_than_integration(redis_memory):
 
     assert len(old_memories) == 3, f"Expected 3 memories, but got {len(old_memories)}"
     assert all(memory.context.timestamp < threshold for memory in old_memories)
+
+    # Log details for debugging
+    memory_logger.info(f"Threshold: {threshold}")
+    for memory in old_memories:
+        memory_logger.info(f"Memory timestamp: {memory.context.timestamp}, Content: {memory.content}")
