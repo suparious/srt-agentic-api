@@ -12,7 +12,7 @@ from app.main import app
 from app.config import Settings, LLMProviderConfig as ConfigLLMProviderConfig
 from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig as AgentLLMProviderConfig
 from app.core.llm_provider import LLMProvider
-from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis_memory import RedisMemory, RedisConnectionManager
 from app.core.memory.vector_memory import VectorMemory
 from app.core.agent import Agent
 
@@ -21,6 +21,11 @@ os.environ["TESTING"] = "true"
 
 # Load the test environment variables
 load_dotenv('.env.test')
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "redis: mark test as requiring Redis"
+    )
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -56,8 +61,14 @@ def test_settings():
         TESTING=True
     )
 
-@pytest.fixture(scope="function")
-async def redis_memory():
+@pytest.fixture(scope="session")
+async def redis_connection_manager(test_settings):
+    manager = RedisConnectionManager.get_instance()
+    yield manager
+    await manager.close_all()
+
+@pytest.fixture
+async def redis_memory(redis_connection_manager):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     redis_mem = RedisMemory(agent_id)
     await redis_mem.initialize()
@@ -131,7 +142,6 @@ async def test_agent(async_client: AsyncClient, auth_headers: dict, redis_memory
         "initial_prompt": "You are a helpful assistant."
     }
 
-    # Mock the LLM provider creation
     with pytest.MonkeyPatch().context() as m:
         m.setattr("app.core.agent.create_llm_provider", lambda _: mock_llm_provider)
         response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
@@ -145,19 +155,20 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
 @pytest.fixture(autouse=True)
-async def redis_cleanup(redis_memory):
-    yield
-    try:
-        async with redis_memory.get_connection() as conn:
+async def redis_isolation(request, redis_connection_manager):
+    if "redis" in request.keywords:
+        pool = await redis_connection_manager.get_pool("redis://localhost:6379/15")
+        async with RedisMemory.Redis(connection_pool=pool) as conn:
             await conn.flushdb()
-        await redis_memory.close()
-    except Exception as e:
-        pytest.fail(f"Failed to clean up Redis: {str(e)}")
+        yield
+        async with RedisMemory.Redis(connection_pool=pool) as conn:
+            await conn.flushdb()
+    else:
+        yield
 
 @pytest.fixture(autouse=True, scope="session")
 async def cleanup_after_tests(event_loop):
     yield
-    await RedisMemory.cleanup()
     tasks = asyncio.all_tasks(event_loop)
     for task in tasks:
         if not task.done():
