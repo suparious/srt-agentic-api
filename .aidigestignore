@@ -6,6 +6,7 @@
 
 # Git metadata directory
 .git/
+.github/
 
 # Python virtual environment
 .venv/

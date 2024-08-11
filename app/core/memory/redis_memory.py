@@ -17,16 +17,40 @@ from app.utils.logging import memory_logger
 from app.config import settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 
+
 class RedisMemoryError(Exception):
     """Custom exception for RedisMemory errors."""
     pass
+
+
+class RedisConnectionManager:
+    """Manages Redis connection pools."""
+    _instance = None
+    _pools: Dict[str, ConnectionPool] = {}
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    async def get_pool(self, url: str) -> ConnectionPool:
+        if url not in self._pools:
+            self._pools[url] = ConnectionPool.from_url(
+                url, encoding="utf-8", decode_responses=True
+            )
+        return self._pools[url]
+
+    async def close_all(self):
+        for pool in self._pools.values():
+            await pool.disconnect()
+        self._pools.clear()
 
 
 class RedisMemory:
     """
     Handles short-term memory operations using Redis.
     """
-    _connection_pool: Optional[ConnectionPool] = None
     def __init__(self, agent_id: uuid.UUID):
         """
         Initialize RedisMemory for an agent.
@@ -36,6 +60,7 @@ class RedisMemory:
         """
         self.agent_id = agent_id
         self.redis: Optional[Redis] = None
+        self._connection_manager = RedisConnectionManager.get_instance()
         memory_logger.info(f"Redis memory initialized for agent: {agent_id}")
 
     async def initialize(self) -> None:
@@ -44,7 +69,7 @@ class RedisMemory:
         """
         if self.redis is None:
             try:
-                pool = await self.get_connection_pool()
+                pool = await self._connection_manager.get_pool(settings.REDIS_URL)
                 self.redis = Redis(connection_pool=pool)
                 memory_logger.info(
                     f"Redis connection established for agent: {self.agent_id}"
@@ -55,7 +80,7 @@ class RedisMemory:
 
     async def close(self) -> None:
         """
-        Close the Redis connection.
+        Close the Redis connection for this instance.
 
         Raises:
             RedisMemoryError: If there's an error closing the connection.
@@ -64,9 +89,9 @@ class RedisMemory:
             if self.redis:
                 await self.redis.close()
                 self.redis = None
-                memory_logger.info(
-                    f"Redis connection closed for agent: {self.agent_id}"
-                )
+            memory_logger.info(
+                f"Redis connection closed for agent: {self.agent_id}"
+            )
         except Exception as e:
             memory_logger.error(
                 f"Error closing Redis connection for agent {self.agent_id}: {str(e)}"
@@ -80,33 +105,13 @@ class RedisMemory:
         Yields:
             Redis: A Redis connection.
         """
-        pool = await self.get_connection_pool()
-        redis = Redis(connection_pool=pool)
+        if self.redis is None:
+            await self.initialize()
         try:
-            yield redis
+            yield self.redis
         except Exception as e:
             memory_logger.error(f"Error in Redis connection: {str(e)}")
             raise RedisMemoryError("Error in Redis connection") from e
-        finally:
-            await redis.close()
-
-    @classmethod
-    async def get_connection_pool(cls) -> ConnectionPool:
-        """
-        Get or create a Redis connection pool.
-
-        Returns:
-            ConnectionPool: A Redis connection pool.
-        """
-        if cls._connection_pool is None:
-            try:
-                cls._connection_pool = ConnectionPool.from_url(
-                    settings.REDIS_URL, encoding="utf-8", decode_responses=True
-                )
-            except Exception as e:
-                memory_logger.error(f"Failed to create Redis connection pool: {str(e)}")
-                raise RedisMemoryError("Failed to create Redis connection pool") from e
-        return cls._connection_pool
 
     @retry(
         stop=stop_after_attempt(3),
@@ -134,16 +139,6 @@ class RedisMemory:
             memory_id = str(uuid.uuid4())
             full_key = f"agent:{self.agent_id}:{memory_id}"
 
-            if isinstance(memory_entry, str):
-                # For backwards compatibility
-                memory_entry = MemoryEntry(
-                    content=memory_entry,
-                    metadata={},
-                    context=MemoryContext(
-                        context_type="legacy", timestamp=datetime.now(), metadata={}
-                    ),
-                )
-
             serialized_entry = json.dumps(
                 {
                     "content": memory_entry.content,
@@ -156,8 +151,8 @@ class RedisMemory:
                 }
             )
 
-            await self.initialize()
-            await self.redis.set(full_key, serialized_entry, ex=expire)
+            async with self.get_connection() as conn:
+                await conn.set(full_key, serialized_entry, ex=expire)
 
             end_time = time.time()
             operation_time = end_time - start_time
@@ -457,32 +452,27 @@ class RedisMemory:
             ) from e
 
     @classmethod
-    async def close_pool(cls) -> None:
+    async def close_pool(self) -> None:
         """
         Close the Redis connection pool.
 
         Raises:
             RedisMemoryError: If there's an error closing the connection pool.
         """
-        if cls._connection_pool:
-            await cls._connection_pool.disconnect()
-            cls._connection_pool = None
+        if self._connection_pool:
+            await self._connection_pool.disconnect()
+            self._connection_pool = None
             memory_logger.info("Redis connection pool closed")
 
     @classmethod
     async def cleanup(cls) -> None:
         """
-        Cleanup method to be called during test teardown.
+        Cleanup method to be called during test teardown or application shutdown.
 
-        Raises:
-            RedisMemoryError: If there's an error during cleanup.
+        Closes all connection pools managed by RedisConnectionManager.
         """
         try:
-            if cls._connection_pool:
-                await asyncio.wait_for(cls._connection_pool.disconnect(), timeout=5.0)
-                cls._connection_pool = None
+            await RedisConnectionManager.get_instance().close_all()
             memory_logger.info("Redis cleanup completed")
-        except asyncio.TimeoutError:
-            memory_logger.error("Timeout while closing Redis connection pool")
         except Exception as e:
             memory_logger.error(f"Error during Redis cleanup: {str(e)}")
