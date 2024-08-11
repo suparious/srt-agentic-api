@@ -6,9 +6,9 @@ from app.core.memory.vector_memory import VectorMemory
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
 
 @pytest.fixture
-def mock_chroma_client():
-    mock_client = MagicMock()
-    mock_collection = AsyncMock()
+def mock_chroma_client(mock_factory):
+    mock_client = mock_factory.create_async_mock(object)  # Replace 'object' with the actual Chroma client class if available
+    mock_collection = mock_factory.create_async_mock(object)  # Replace 'object' with the actual Chroma collection class if available
     mock_client.get_or_create_collection.return_value = mock_collection
     return mock_client
 

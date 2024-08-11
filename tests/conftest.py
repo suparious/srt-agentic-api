@@ -22,6 +22,23 @@ os.environ["TESTING"] = "true"
 # Load the test environment variables
 load_dotenv('.env.test')
 
+class MockFactory:
+    @staticmethod
+    def create_async_mock(spec):
+        mock = AsyncMock(spec=spec)
+        for attr_name in dir(spec):
+            if not attr_name.startswith('_'):
+                attr = getattr(spec, attr_name)
+                if asyncio.iscoroutinefunction(attr):
+                    setattr(mock, attr_name, AsyncMock())
+                elif callable(attr):
+                    setattr(mock, attr_name, MagicMock())
+        return mock
+
+@pytest.fixture
+def mock_factory():
+    return MockFactory
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "redis: mark test as requiring Redis"
@@ -31,6 +48,7 @@ def pytest_configure(config):
 def event_loop():
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -77,11 +95,16 @@ async def redis_memory(redis_connection_manager):
 
 @pytest.fixture
 async def mock_redis_memory():
-    return AsyncMock(spec=RedisMemory)
+    mock = AsyncMock(spec=RedisMemory)
+    mock.initialize = AsyncMock()
+    mock.close = AsyncMock()
+    return mock
 
 @pytest.fixture
 async def mock_vector_memory():
-    return AsyncMock(spec=VectorMemory)
+    mock = AsyncMock(spec=VectorMemory)
+    mock.collection = MagicMock()
+    return mock
 
 @pytest.fixture
 async def async_client():
@@ -165,6 +188,11 @@ async def redis_isolation(request, redis_connection_manager):
             await conn.flushdb()
     else:
         yield
+
+@pytest.fixture(autouse=True, scope="function")
+async def reset_mocks(mock_redis_memory, mock_vector_memory):
+    mock_redis_memory.reset_mock()
+    mock_vector_memory.reset_mock()
 
 @pytest.fixture(autouse=True, scope="session")
 async def cleanup_after_tests(event_loop):

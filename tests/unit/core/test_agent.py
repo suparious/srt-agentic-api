@@ -1,4 +1,3 @@
-import json
 import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -13,10 +12,9 @@ from app.config import LLMProviderConfig
 
 pytestmark = pytest.mark.asyncio
 
-
 @pytest.fixture
-def mock_llm_provider():
-    return AsyncMock(spec=LLMProvider)
+def mock_llm_provider(mock_factory):
+    return mock_factory.create_async_mock(LLMProvider)
 
 @pytest.fixture
 def test_agent_config():
@@ -31,12 +29,12 @@ def test_agent_config():
     )
 
 @pytest.fixture
-def mock_function_manager():
-    return MagicMock(spec=FunctionManager)
+def mock_function_manager(mock_factory):
+    return mock_factory.create_async_mock(FunctionManager)
 
 @pytest.fixture
-def mock_memory_system():
-    return AsyncMock(spec=MemorySystem)
+def mock_memory_system(mock_factory):
+    return mock_factory.create_async_mock(MemorySystem)
 
 @pytest.fixture
 def test_agent(test_agent_config, mock_function_manager, mock_memory_system, mock_llm_provider):
@@ -150,7 +148,6 @@ async def test_memory_operation(test_agent, mock_memory_system):
     assert result == "Operation result"
     mock_memory_system.perform_operation.assert_called_once_with(MemoryOperation.ADD, MemoryType.SHORT_TERM, operation_data)
 
-@pytest.mark.asyncio
 async def test_process_message(test_agent, mock_llm_provider):
     mock_llm_provider.generate.return_value = "Test response"
     test_agent.memory.retrieve_relevant.return_value = []

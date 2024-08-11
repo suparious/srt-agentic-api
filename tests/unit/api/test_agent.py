@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from uuid import UUID
-from app.api.models.agent import AgentConfig, MemoryConfig
+from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
 
 pytestmark = pytest.mark.asyncio
 
@@ -10,12 +10,15 @@ async def test_create_agent(async_client: AsyncClient, auth_headers):
     agent_data = {
         "agent_name": "Test Agent",
         "agent_config": AgentConfig(
-            llm_providers=[{"provider_type": "mock", "model_name": "mock-model"}],
+            llm_providers=[LLMProviderConfig(
+                provider_type="mock",
+                model_name="mock-model"
+            )],
             temperature=0.7,
             max_tokens=150,
             memory_config=MemoryConfig(use_long_term_memory=True, use_redis_cache=True)
-        ).dict(),
-        "memory_config": MemoryConfig(use_long_term_memory=True, use_redis_cache=True).dict(),
+        ).model_dump(),
+        "memory_config": MemoryConfig(use_long_term_memory=True, use_redis_cache=True).model_dump(),
         "initial_prompt": "You are a helpful assistant."
     }
     response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
@@ -36,11 +39,11 @@ async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent)
         "agent_config": {
             "temperature": 0.8,
             "llm_providers": [
-                {
-                    "provider_type": "openai",
-                    "model_name": "gpt-4",
-                    "api_key": "new-test-key"
-                }
+                LLMProviderConfig(
+                    provider_type="openai",
+                    model_name="gpt-4",
+                    api_key="new-test-key"
+                ).model_dump()
             ]
         }
     }
