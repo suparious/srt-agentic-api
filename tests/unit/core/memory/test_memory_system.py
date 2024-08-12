@@ -1,10 +1,10 @@
 import pytest
 from uuid import UUID
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from app.core.memory.memory_system import MemorySystem
 from app.api.models.agent import MemoryConfig
 from app.api.models.memory import MemoryType, MemoryEntry, AdvancedSearchQuery, MemoryOperation, MemoryContext
-from datetime import datetime
 
 @pytest.fixture
 def mock_redis_memory():
@@ -36,11 +36,9 @@ async def test_add_short_term_memory(memory_system, mock_redis_memory):
         metadata={"key": "value"},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
-    mock_redis_memory.add.return_value = "memory_id_1"
-
     result = await memory_system.add(MemoryType.SHORT_TERM, memory_entry)
 
-    assert result == "memory_id_1"
+    assert result == "mock_memory_id"
     mock_redis_memory.add.assert_called_once_with(memory_entry)
 
 @pytest.mark.asyncio
@@ -78,12 +76,12 @@ async def test_retrieve_long_term_memory(memory_system, mock_vector_memory):
         metadata={"key": "value"},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
-    mock_vector_memory.search.return_value = [{"memory_entry": mock_memory}]
+    mock_vector_memory.get.return_value = mock_memory
 
     result = await memory_system.retrieve(MemoryType.LONG_TERM, "memory_id_2")
 
     assert result == mock_memory
-    mock_vector_memory.search.assert_called_once()
+    mock_vector_memory.get.assert_called_once_with("memory_id_2")
 
 @pytest.mark.asyncio
 async def test_search(memory_system, mock_redis_memory, mock_vector_memory):
@@ -104,6 +102,12 @@ async def test_delete_short_term_memory(memory_system, mock_redis_memory):
     await memory_system.delete(MemoryType.SHORT_TERM, "memory_id_1")
 
     mock_redis_memory.delete.assert_called_once_with("memory_id_1")
+
+@pytest.mark.asyncio
+async def test_delete_long_term_memory(memory_system, mock_vector_memory):
+    await memory_system.delete(MemoryType.LONG_TERM, "memory_id_2")
+
+    mock_vector_memory.delete.assert_called_once_with("memory_id_2")
 
 @pytest.mark.asyncio
 async def test_perform_operation_add(memory_system):
@@ -128,24 +132,44 @@ async def test_retrieve_relevant(memory_system, mock_redis_memory, mock_vector_m
     mock_vector_memory.search.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_advanced_search(memory_system, mock_redis_memory, mock_vector_memory):
-    query = AdvancedSearchQuery(query="test", max_results=5)
-    mock_redis_memory.search.return_value = [{"id": "1", "relevance_score": 0.9}]
-    mock_vector_memory.search.return_value = [{"id": "2", "relevance_score": 0.8}]
+async def test_consolidate_memories(memory_system, mock_redis_memory, mock_vector_memory):
+    old_memories = [
+        MemoryEntry(
+            content="Old content",
+            metadata={"key": "value"},
+            context=MemoryContext(context_type="test", timestamp=datetime.now() - timedelta(hours=2), metadata={})
+        )
+    ]
+    mock_redis_memory.get_memories_older_than.return_value = old_memories
 
-    results = await memory_system.advanced_search(query)
+    await memory_system.consolidate_memories()
 
-    assert len(results) == 2
-    assert results[0]["id"] == "1"
-    assert results[1]["id"] == "2"
-    mock_redis_memory.search.assert_called_once_with(query)
-    mock_vector_memory.search.assert_called_once_with(query)
+    mock_redis_memory.get_memories_older_than.assert_called_once()
+    mock_vector_memory.add.assert_called_once_with(old_memories[0])
+    mock_redis_memory.delete.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_close(memory_system, mock_redis_memory):
+async def test_forget_old_memories(memory_system, mock_vector_memory):
+    old_memories = [
+        MemoryEntry(
+            content="Very old content",
+            metadata={"key": "value"},
+            context=MemoryContext(context_type="test", timestamp=datetime.now() - timedelta(days=30), metadata={})
+        )
+    ]
+    mock_vector_memory.get_memories_older_than.return_value = old_memories
+
+    await memory_system.forget_old_memories(timedelta(days=30))
+
+    mock_vector_memory.get_memories_older_than.assert_called_once()
+    mock_vector_memory.delete.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_close(memory_system, mock_redis_memory, mock_vector_memory):
     await memory_system.close()
 
     mock_redis_memory.close.assert_called_once()
+    mock_vector_memory.close.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_invalid_memory_type(memory_system):

@@ -11,7 +11,6 @@ from app.utils.logging import memory_logger
 from app.config import settings as app_settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 
-
 class VectorMemory:
     """
     Handles long-term memory operations using ChromaDB for vector storage.
@@ -29,14 +28,8 @@ class VectorMemory:
             persist_directory=app_settings.CHROMA_PERSIST_DIRECTORY,
         )
         self.client = PersistentClient(path=chroma_db_settings.persist_directory)
-        self.embedding_function = (
-            embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name="all-MiniLM-L6-v2"
-            )
-        )
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name, embedding_function=self.embedding_function
-        )
+        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+        self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=self.embedding_function)
         memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
 
     async def add(self, memory_entry: MemoryEntry) -> str:
@@ -92,18 +85,12 @@ class VectorMemory:
                 context = MemoryContext(
                     context_type=metadata.pop("context_type"),
                     timestamp=datetime.fromisoformat(metadata.pop("context_timestamp")),
-                    metadata={
-                        k: v
-                        for k, v in metadata.items()
-                        if k not in result["metadatas"][0]
-                    },
+                    metadata={k: v for k, v in metadata.items() if k not in result["metadatas"][0]}
                 )
                 return MemoryEntry(
                     content=result["documents"][0],
-                    metadata={
-                        k: v for k, v in metadata.items() if k in result["metadatas"][0]
-                    },
-                    context=context,
+                    metadata={k: v for k, v in metadata.items() if k in result["metadatas"][0]},
+                    context=context
                 )
             return None
         except Exception as e:
@@ -160,9 +147,7 @@ class VectorMemory:
                     metadata={k: v for k, v in meta.items() if k in meta},
                     context=context,
                 )
-                relevance_score = 1 - (
-                    distance / max(results["distances"][0])
-                )  # Normalize distance to a 0-1 score
+                relevance_score = 1 - (distance / max(results["distances"][0]))  # Normalize distance to a 0-1 score
                 processed_results.append(
                     {
                         "id": id,
@@ -172,11 +157,7 @@ class VectorMemory:
                 )
 
             if query.relevance_threshold is not None:
-                processed_results = [
-                    r
-                    for r in processed_results
-                    if r["relevance_score"] >= query.relevance_threshold
-                ]
+                processed_results = [r for r in processed_results if r["relevance_score"] >= query.relevance_threshold]
 
             return processed_results
         except Exception as e:
@@ -231,9 +212,7 @@ class VectorMemory:
                 )
                 old_memories.append(memory_entry)
 
-            memory_logger.info(
-                f"Retrieved {len(old_memories)} memories older than {threshold}"
-            )
+            memory_logger.info(f"Retrieved {len(old_memories)} memories older than {threshold}")
             return old_memories
         except Exception as e:
             memory_logger.error(f"Error getting old memories from ChromaDB: {str(e)}")

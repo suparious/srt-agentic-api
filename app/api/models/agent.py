@@ -5,68 +5,35 @@ from enum import Enum
 
 
 class LLMProviderConfig(BaseModel):
-    provider_type: str = Field(
-        ...,
-        description="The LLM provider type (e.g., 'openai', 'vllm', 'llamacpp', 'tgi')",
-    )
-    model_name: str = Field(
-        ..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')"
-    )
-    api_key: Optional[str] = Field(
-        None, description="API key for the provider (if required)"
-    )
-    api_base: Optional[str] = Field(
-        None, description="Base URL for the provider's API (if custom)"
-    )
+    provider_type: str = Field(..., description="The LLM provider type (e.g., 'openai', 'vllm', 'llamacpp', 'tgi')")
+    model_name: str = Field(..., description="The specific model name to use (e.g., 'gpt-4', 'claude-v1')")
+    api_key: Optional[str] = Field(None, description="API key for the provider (if required)")
+    api_base: Optional[str] = Field(None, description="Base URL for the provider's API (if custom)")
 
-    model_config = ConfigDict(extra="forbid", protected_namespaces=())
+    model_config = ConfigDict(extra="forbid")
 
 
 class MemoryConfig(BaseModel):
-    use_long_term_memory: bool = Field(
-        ..., description="Whether to use long-term memory storage for the agent"
-    )
-    use_redis_cache: bool = Field(
-        ..., description="Whether to use Redis for short-term memory caching"
-    )
+    use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")
+    use_redis_cache: bool = Field(..., description="Whether to use Redis for short-term memory caching")
 
     model_config = ConfigDict(extra="forbid")
 
 
 class AgentConfig(BaseModel):
-    llm_providers: List[LLMProviderConfig] = Field(
-        ..., min_length=1, description="List of LLM provider configurations"
-    )
-    temperature: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="The temperature setting for the LLM, controlling randomness in outputs",
-    )
-    max_tokens: int = Field(
-        ...,
-        gt=0,
-        description="The maximum number of tokens the LLM should generate in a single response",
-    )
-    memory_config: MemoryConfig = Field(
-        ..., description="Configuration settings for the agent's memory systems"
-    )
+    llm_providers: List[LLMProviderConfig] = Field(..., min_items=1, description="List of LLM provider configurations")
+    temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
+    max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
+    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
 
     model_config = ConfigDict(extra="forbid")
 
 
 class AgentCreationRequest(BaseModel):
     agent_name: str = Field(..., description="The name of the agent to be created")
-    agent_config: AgentConfig = Field(
-        ..., description="Configuration settings for the agent's language model"
-    )
-    memory_config: MemoryConfig = Field(
-        ..., description="Configuration settings for the agent's memory systems"
-    )
-    initial_prompt: str = Field(
-        ...,
-        description="The initial prompt or instructions to provide to the agent upon creation",
-    )
+    agent_config: AgentConfig = Field(..., description="Configuration settings for the agent's language model")
+    memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")
+    initial_prompt: str = Field(..., description="The initial prompt or instructions to provide to the agent upon creation")
 
     model_config = ConfigDict(extra="forbid")
 

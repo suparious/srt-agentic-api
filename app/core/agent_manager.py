@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional, Tuple
-from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse, AgentCreationRequest
 from app.core.agent import Agent
 from app.utils.logging import agent_logger
 from fastapi import HTTPException
@@ -19,13 +19,7 @@ class AgentManager:
         """
         self.agents: Dict[UUID, Agent] = {}
 
-    async def create_agent(
-        self,
-        name: str,
-        config: Dict[str, Any],
-        memory_config: Dict[str, Any],
-        initial_prompt: str,
-    ) -> UUID:
+    async def create_agent(self, request: AgentCreationRequest) -> UUID:
         """
         Create a new agent with the given configuration and initial prompt.
 
@@ -43,16 +37,14 @@ class AgentManager:
         """
         try:
             agent_id = uuid4()
-            agent_config = AgentConfig(**config)
-            mem_config = MemoryConfig(**memory_config)
 
-            memory_system = MemorySystem(agent_id, mem_config)
+            memory_system = MemorySystem(agent_id, request.memory_config)
             llm_provider = create_llm_provider()
 
             agent = Agent(
                 agent_id,
-                name,
-                agent_config,
+                request.agent_name,
+                request.agent_config,
                 memory_system,
                 llm_provider
             )
@@ -60,12 +52,12 @@ class AgentManager:
             self.agents[agent_id] = agent
 
             # Process initial prompt
-            await agent.process_message(initial_prompt)
+            await agent.process_message(request.initial_prompt)
 
-            agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
+            agent_logger.info(f"Agent {request.agent_name} (ID: {agent_id}) created successfully")
             return agent_id
         except Exception as e:
-            agent_logger.error(f"Error creating Agent {name}: {str(e)}")
+            agent_logger.error(f"Error creating Agent {request.agent_name}: {str(e)}")
             raise ValueError(f"Failed to create agent: {str(e)}")
 
     async def get_agent_info(self, agent_id: UUID) -> Optional[AgentInfoResponse]:

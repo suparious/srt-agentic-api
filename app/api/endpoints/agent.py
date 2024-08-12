@@ -35,12 +35,7 @@ async def create_agent_endpoint(
     - **initial_prompt**: The initial prompt to send to the agent upon creation
     """
     try:
-        agent_id = await agent_manager.create_agent(
-            name=request.agent_name,
-            config=request.agent_config.dict(),
-            memory_config=request.memory_config.dict(),
-            initial_prompt=request.initial_prompt,
-        )
+        agent_id = await agent_manager.create_agent(request)
         return AgentCreationResponse(
             agent_id=agent_id, message="Agent created successfully"
         )

@@ -22,43 +22,38 @@ def mock_llm_provider():
     return AsyncMock(spec=LLMProvider)
 
 @pytest.mark.asyncio
-async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_manager, mock_memory_system, mock_llm_provider):
-    agent_data = {
-        "agent_name": "Test Agent",
-        "agent_config": {
-            "llm_providers": [
-                {
-                    "provider_type": "mock",
-                    "model_name": "mock-model"
-                }
+async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_manager):
+    agent_data = AgentCreationRequest(
+        agent_name="Test Agent",
+        agent_config=AgentConfig(
+            llm_providers=[
+                LLMProviderConfig(
+                    provider_type="mock",
+                    model_name="mock-model"
+                )
             ],
-            "temperature": 0.7,
-            "max_tokens": 150,
-            "memory_config": {
-                "use_long_term_memory": True,
-                "use_redis_cache": True
-            }
-        },
-        "memory_config": {
-            "use_long_term_memory": True,
-            "use_redis_cache": True
-        },
-        "initial_prompt": "You are a helpful assistant."
-    }
+            temperature=0.7,
+            max_tokens=150,
+            memory_config=MemoryConfig(
+                use_long_term_memory=True,
+                use_redis_cache=True
+            )
+        ),
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        ),
+        initial_prompt="You are a helpful assistant."
+    )
 
     mock_agent_manager.create_agent.return_value = UUID('12345678-1234-5678-1234-567812345678')
 
-    response = await async_client.post("/agent/create", json=agent_data, headers=auth_headers)
+    response = await async_client.post("/agent/create", json=agent_data.model_dump(), headers=auth_headers)
     assert response.status_code == 201
     assert "agent_id" in response.json()
     assert response.json()["message"] == "Agent created successfully"
 
-    mock_agent_manager.create_agent.assert_called_once_with(
-        name="Test Agent",
-        config=agent_data["agent_config"],
-        memory_config=agent_data["memory_config"],
-        initial_prompt="You are a helpful assistant."
-    )
+    mock_agent_manager.create_agent.assert_called_once_with(agent_data)
 
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)

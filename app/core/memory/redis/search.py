@@ -92,6 +92,46 @@ class RedisSearch:
         memory_logger.info(f"Retrieved {len(old_memories)} memories older than {threshold} for agent: {self.connection.agent_id}")
         return old_memories
 
+    async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
+        """
+        Retrieve the most recent memory entries.
+
+        Args:
+            limit (int): The maximum number of entries to retrieve.
+
+        Returns:
+            List[Dict[str, Any]]: A list of recent memory entries.
+
+        Raises:
+            RedisConnectionError: If there's an error with the Redis connection.
+        """
+        pattern = f"agent:{self.connection.agent_id}:*"
+        results = []
+
+        async with self.connection.get_connection() as conn:
+            cursor = 0
+            while True:
+                cursor, keys = await conn.scan(cursor, match=pattern, count=100)
+                pipeline = conn.pipeline()
+                for key in keys:
+                    pipeline.get(key)
+                values = await pipeline.execute()
+
+                for key, value in zip(keys, values):
+                    if value:
+                        memory_entry = MemoryEntry.model_validate_json(value)
+                        results.append({
+                            "id": key.split(":")[-1],
+                            "memory_entry": memory_entry,
+                            "timestamp": memory_entry.context.timestamp,
+                        })
+
+                if cursor == 0:
+                    break
+
+        results.sort(key=lambda x: x["timestamp"], reverse=True)
+        return results[:limit]
+
     def _matches_query(
             self, memory_entry: MemoryEntry, query: AdvancedSearchQuery
     ) -> bool:

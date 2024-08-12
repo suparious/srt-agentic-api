@@ -117,10 +117,7 @@ class MemorySystem:
             elif (
                 memory_type == MemoryType.LONG_TERM or memory_type == "LONG_TERM"
             ) and self.config.use_long_term_memory:
-                results = await self.long_term.search(
-                    AdvancedSearchQuery(query=memory_id, max_results=1)
-                )
-                return results[0]["memory_entry"] if results else None
+                return await self.long_term.get(memory_id)
             else:
                 raise ValueError(f"Invalid memory type or configuration: {memory_type}")
         except Exception as e:
@@ -272,9 +269,7 @@ class MemorySystem:
         Consolidate short-term memories into long-term storage.
         """
         try:
-            threshold = datetime.now() - timedelta(
-                hours=1
-            )  # Consolidate memories older than 1 hour
+            threshold = datetime.now() - timedelta(hours=1)  # Consolidate memories older than 1 hour
             old_memories = await self.short_term.get_memories_older_than(threshold)
 
             for memory in old_memories:

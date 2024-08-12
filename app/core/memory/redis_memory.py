@@ -1,5 +1,6 @@
 from uuid import UUID
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 from app.core.memory.redis.connection import RedisConnection, RedisConnectionError
 from app.core.memory.redis.memory_operations import RedisMemoryOperations
 from app.core.memory.redis.search import RedisSearch
@@ -25,7 +26,7 @@ class RedisMemory:
             memory_logger.info(f"Redis connection initialized for agent: {self.agent_id}")
         except RedisConnectionError as e:
             memory_logger.error(f"Failed to initialize Redis connection for agent {self.agent_id}: {str(e)}")
-            raise
+            raise RedisMemoryError("Failed to initialize Redis memory") from e
 
     async def close(self) -> None:
         try:
@@ -33,70 +34,60 @@ class RedisMemory:
             memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
         except Exception as e:
             memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
-            raise RedisConnectionError("Error closing Redis connection") from e
+            raise RedisMemoryError("Error closing Redis memory") from e
 
-    async def get_connection(self):
-        return self.connection.get_connection()
+    async def add(self, memory_entry: MemoryEntry, expire: Optional[int] = None) -> str:
+        try:
+            await self.connection.ensure_connection()
+            return await self.operations.add(memory_entry, expire)
+        except Exception as e:
+            memory_logger.error(f"Error adding memory for agent {self.agent_id}: {str(e)}")
+            raise RedisMemoryError("Failed to add memory") from e
 
-    # Delegate methods to appropriate components
-    async def add(self, memory_entry, expire=None):
-        return await self.operations.add(memory_entry, expire)
+    async def get(self, memory_id: str) -> Optional[MemoryEntry]:
+        try:
+            await self.connection.ensure_connection()
+            return await self.operations.get(memory_id)
+        except Exception as e:
+            memory_logger.error(f"Error retrieving memory for agent {self.agent_id}: {str(e)}")
+            raise RedisMemoryError("Failed to retrieve memory") from e
 
-    async def get(self, memory_id):
-        return await self.operations.get(memory_id)
+    async def delete(self, memory_id: str) -> None:
+        try:
+            await self.connection.ensure_connection()
+            await self.operations.delete(memory_id)
+        except Exception as e:
+            memory_logger.error(f"Error deleting memory for agent {self.agent_id}: {str(e)}")
+            raise RedisMemoryError("Failed to delete memory") from e
+
+    async def search(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
+        try:
+            await self.connection.ensure_connection()
+            return await self.search.search(query)
+        except Exception as e:
+            memory_logger.error(f"Error searching memories for agent {self.agent_id}: {str(e)}")
+            raise RedisMemoryError("Failed to search memories") from e
 
     async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
-        """
-        Retrieve the most recent memory entries.
-
-        Args:
-            limit (int): The maximum number of entries to retrieve.
-
-        Returns:
-            List[Dict[str, Any]]: A list of recent memory entries.
-
-        Raises:
-            RedisConnectionError: If there's an error retrieving recent memories.
-        """
         try:
-            pattern = f"agent:{self.agent_id}:*"
-            results = []
-
-            async with self.connection.get_connection() as conn:
-                cursor = 0
-                while True:
-                    cursor, keys = await conn.scan(cursor, match=pattern, count=100)
-                    pipeline = conn.pipeline()
-                    for key in keys:
-                        pipeline.get(key)
-                    values = await pipeline.execute()
-
-                    for key, value in zip(keys, values):
-                        if value:
-                            memory_entry = MemoryEntry.model_validate_json(value)
-                            results.append({
-                                "id": key.split(":")[-1],
-                                "memory_entry": memory_entry,
-                                "timestamp": memory_entry.context.timestamp,
-                            })
-
-                    if cursor == 0:
-                        break
-
-            results.sort(key=lambda x: x["timestamp"], reverse=True)
-            return results[:limit]
+            await self.connection.ensure_connection()
+            return await self.search.get_recent(limit)
         except Exception as e:
             memory_logger.error(f"Error retrieving recent memories for agent {self.agent_id}: {str(e)}")
-            raise RedisConnectionError(f"Failed to retrieve recent memories for agent {self.agent_id}") from e
+            raise RedisMemoryError("Failed to retrieve recent memories") from e
 
-    async def delete(self, memory_id):
-        await self.operations.delete(memory_id)
+    async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
+        try:
+            await self.connection.ensure_connection()
+            return await self.search.get_memories_older_than(threshold)
+        except Exception as e:
+            memory_logger.error(f"Error retrieving old memories for agent {self.agent_id}: {str(e)}")
+            raise RedisMemoryError("Failed to retrieve old memories") from e
 
-    async def search(self, query):
-        return await self.search.search(query)
-
-    async def get_memories_older_than(self, threshold):
-        return await self.search.get_memories_older_than(threshold)
-
-    async def cleanup(self):
-        await self.cleanup.cleanup(self.connection)
+    @classmethod
+    async def cleanup(cls) -> None:
+        try:
+            await cls.cleanup.cleanup()
+        except Exception as e:
+            memory_logger.error(f"Error during Redis cleanup: {str(e)}")
+            raise RedisMemoryError("Failed to perform Redis cleanup") from e

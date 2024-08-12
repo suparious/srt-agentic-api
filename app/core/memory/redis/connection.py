@@ -30,6 +30,7 @@ class RedisConnection:
                     decode_responses=True
                 )
                 self.redis = Redis(connection_pool=self._connection_pool)
+                await self.redis.ping()  # Test the connection
                 memory_logger.info(f"Redis connection established for agent: {self.agent_id}")
             except Exception as e:
                 memory_logger.error(f"Failed to initialize Redis connection: {str(e)}")
@@ -63,3 +64,19 @@ class RedisConnection:
         except Exception as e:
             memory_logger.error(f"Error in Redis connection: {str(e)}")
             raise RedisConnectionError("Error in Redis connection") from e
+
+    async def ensure_connection(self) -> None:
+        """
+        Ensure that the Redis connection is active and working.
+
+        Raises:
+            RedisConnectionError: If the connection cannot be established or is not working.
+        """
+        try:
+            if self.redis is None:
+                await self.initialize()
+            else:
+                await self.redis.ping()
+        except Exception as e:
+            memory_logger.error(f"Error ensuring Redis connection: {str(e)}")
+            raise RedisConnectionError("Failed to ensure Redis connection") from e
