@@ -2,9 +2,11 @@ import pytest
 from uuid import UUID
 from typing import List
 from datetime import datetime, timedelta
-from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
+from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis.connection import RedisConnectionError
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
 from app.utils.logging import memory_logger
+
 
 @pytest.fixture(scope="module")
 async def redis_memory():
@@ -32,23 +34,28 @@ async def test_add_and_retrieve_memory_integration(redis_memory: RedisMemory):
     assert retrieved_entry.metadata == memory_entry.metadata
     assert retrieved_entry.context.context_type == memory_entry.context.context_type
 
+
 @pytest.mark.asyncio
 async def test_redis_connection_lifecycle(redis_memory: RedisMemory):
     # Test initialization
-    assert redis_memory.redis is None
-    await redis_memory.initialize()
     assert redis_memory.redis is not None
 
-    # Test connection is working
+    # Test connection usage
     async with redis_memory.get_connection() as conn:
         await conn.set("test_key", "test_value")
         value = await conn.get("test_key")
         assert value == "test_value"
 
-    # Test closing
+    # Test connection closure
     await redis_memory.close()
     assert redis_memory.redis is None
-    assert redis_memory._connection_pool is None
+
+    # Test reinitialization after closure
+    await redis_memory.initialize()
+    assert redis_memory.redis is not None
+
+    # Clean up
+    await redis_memory.cleanup()
 
 @pytest.mark.asyncio
 async def test_advanced_search_integration(redis_memory):

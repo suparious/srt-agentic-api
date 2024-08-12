@@ -12,7 +12,8 @@ from app.main import app
 from app.config import Settings, LLMProviderConfig as ConfigLLMProviderConfig
 from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig as AgentLLMProviderConfig
 from app.core.llm_provider import LLMProvider
-from app.core.memory.redis_memory import RedisMemory, RedisConnectionManager
+from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis.connection import RedisConnection
 from app.core.memory.vector_memory import VectorMemory
 from app.core.agent import Agent
 
@@ -80,13 +81,14 @@ def test_settings():
     )
 
 @pytest.fixture(scope="session")
-async def redis_connection_manager(test_settings):
-    manager = RedisConnectionManager.get_instance()
-    yield manager
-    await manager.close_all()
+async def redis_connection(test_settings):
+    connection = RedisConnection(UUID('00000000-0000-0000-0000-000000000000'))  # Use a dummy UUID for the connection
+    await connection.initialize()
+    yield connection
+    await connection.close()
 
 @pytest.fixture
-async def redis_memory(redis_connection_manager):
+async def redis_memory(redis_connection):
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     redis_mem = RedisMemory(agent_id)
     await redis_mem.initialize()
@@ -98,6 +100,9 @@ async def mock_redis_memory():
     mock = AsyncMock(spec=RedisMemory)
     mock.initialize = AsyncMock()
     mock.close = AsyncMock()
+    mock.connection = AsyncMock(spec=RedisConnection)
+    mock.operations = AsyncMock()
+    mock.search = AsyncMock()
     return mock
 
 @pytest.fixture
@@ -178,13 +183,12 @@ def test_agent_instance(test_agent_config, mock_function_manager, mock_memory_sy
     return Agent(agent_id, "Test Agent", test_agent_config, mock_memory_system)
 
 @pytest.fixture(autouse=True)
-async def redis_isolation(request, redis_connection_manager):
+async def redis_isolation(request, redis_connection):
     if "redis" in request.keywords:
-        pool = await redis_connection_manager.get_pool("redis://localhost:6379/15")
-        async with RedisMemory.Redis(connection_pool=pool) as conn:
+        async with redis_connection.get_connection() as conn:
             await conn.flushdb()
         yield
-        async with RedisMemory.Redis(connection_pool=pool) as conn:
+        async with redis_connection.get_connection() as conn:
             await conn.flushdb()
     else:
         yield

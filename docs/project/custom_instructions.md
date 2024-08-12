@@ -133,3 +133,12 @@ I have updated the `srt-agentic-api-tests.md` artifact with the latest test suit
 I ran the test suite again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
 let's continue solving the most common and fundamental errors, through our Unified Test-Driven Development Workflow, maintaining an updated `test_error_assessment.md` Artifact to keep us grounded.
 ```
+
+## End cycle
+
+```plaintext
+Thank-you for those changes. 
+After running the tests, I have updated the `test_results_detailed.txt` Artifact, for your review.
+Looks like we need to wrap up our development cycle. Please refactor the `test_error_assessment.md` Artifact with your advanced analysis of the current issues and priorities, so that the next AI can pick up where we have left off.
+Thank-you for another great cycle.
+```

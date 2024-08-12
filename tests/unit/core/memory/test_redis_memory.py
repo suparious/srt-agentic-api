@@ -1,38 +1,50 @@
 import pytest
+import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 from datetime import datetime, timedelta
-from app.core.memory.redis_memory import RedisMemory, RedisMemoryError, RedisConnectionManager
+from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis.connection import RedisConnectionError
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
+from app.utils.logging import memory_logger
 
 
 @pytest.fixture
 async def redis_memory():
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     redis_mem = RedisMemory(agent_id)
+    await redis_mem.initialize()
     yield redis_mem
     await redis_mem.close()
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_lifecycle(redis_memory):
+async def test_redis_connection_lifecycle():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_mem = RedisMemory(agent_id)
+
     # Test initialization
-    assert redis_memory.redis is None
+    assert redis_mem.redis is None
 
     # Test connection establishment
-    await redis_memory.initialize()
-    assert redis_memory.redis is not None
+    await redis_mem.initialize()
+    assert redis_mem.redis is not None
 
     # Test connection usage
-    async with redis_memory.get_connection() as conn:
+    async with redis_mem.get_connection() as conn:
         await conn.set("test_key", "test_value")
         value = await conn.get("test_key")
         assert value == "test_value"
 
     # Test connection closure
-    await redis_memory.close()
-    assert redis_memory.redis is None
+    await redis_mem.close()
+    assert redis_mem.redis is None
+
+    # Test error handling when trying to use a closed connection
+    with pytest.raises(RedisMemoryError):
+        async with redis_mem.get_connection():
+            pass
 
 
 @pytest.mark.asyncio

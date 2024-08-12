@@ -59,6 +59,12 @@ srt-agentic-api/
 │   │       ├── memory_operations.py
 │   │       ├── memory_system.py
 │   │       ├── memory_utils.py
+│   │       ├── redis
+│   │       │   ├── __init__.py
+│   │       │   ├── cleanup.py
+│   │       │   ├── connection.py
+│   │       │   ├── memory_operations.py
+│   │       │   └── search.py
 │   │       ├── redis_memory.py
 │   │       └── vector_memory.py
 │   ├── main.py
@@ -66,15 +72,7 @@ srt-agentic-api/
 │       ├── __init__.py
 │       ├── auth.py
 │       └── logging.py
-├── codebase.md
 ├── docker-compose.yml
-├── docs
-│   ├── CurrentStatusSummary.md
-│   ├── DevelopmentPlan.md
-│   ├── MemorySystemTasks.md
-│   ├── NOTES.md
-│   ├── TestImprovementPlan.md
-│   └── custom-instructions.md
 ├── examples
 │   ├── README.md
 │   ├── javascript_example.js
@@ -88,27 +86,7 @@ srt-agentic-api/
 │   ├── memory.log
 │   └── test_results_detailed.txt
 ├── pytest.ini
-├── requirements-docgen.txt
-├── requirements-testing.txt
-├── requirements.txt
-└── tests
-    ├── README.md
-    ├── conftest.py
-    ├── unit
-    │   ├── core
-    │   │   ├── memory
-    │   │   │   ├── test_memory_system.py
-    │   │   │   ├── test_redis_memory.py
-    │   │   │   └── test_vector_memory.py
-    │   │   ├── test_agent.py
-    │   │   └── test_llm_provider.py
-    │   └── api
-    │       ├── test_agent.py
-    │       ├── test_function.py
-    │       ├── test_memory.py
-    │       └── test_message.py
-    └── integration
-        └── test_main.py
+└── requirements.txt
 ```
 
 ## Setup Instructions
