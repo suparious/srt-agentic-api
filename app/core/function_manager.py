@@ -192,6 +192,5 @@ class FunctionManager:
             if func_id in self.registered_functions
         ]
 
-
 # Global instance of FunctionManager
 function_manager = FunctionManager()

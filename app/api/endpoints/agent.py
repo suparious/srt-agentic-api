@@ -11,6 +11,7 @@ from app.api.models.agent import (
 from app.api.models.function import FunctionDefinition
 from app.core.agent_manager import AgentManager
 from app.utils.auth import get_api_key
+from app.utils.logging import agent_logger
 
 router = APIRouter()
 
@@ -43,7 +44,10 @@ async def create_agent_endpoint(
         return AgentCreationResponse(
             agent_id=agent_id, message="Agent created successfully"
         )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        agent_logger.error(f"Failed to create agent: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
 
 

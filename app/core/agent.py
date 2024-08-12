@@ -7,7 +7,9 @@ from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext
 from app.core.llm_provider import create_llm_provider
 from app.core.memory import MemorySystem
 from app.core.function_manager import FunctionManager
+from app.core.llm_provider import LLMProvider
 from app.utils.logging import agent_logger
+from app.core.function_manager import function_manager
 
 
 class Agent:
@@ -20,7 +22,8 @@ class Agent:
         agent_id: UUID,
         name: str,
         config: AgentConfig,
-        function_manager
+        memory_system: MemorySystem,
+        llm_provider: LLMProvider
     ):
         """
         Initialize a new Agent instance.
@@ -34,15 +37,13 @@ class Agent:
         self.id = agent_id
         self.name = name
         self.config = config
-        self.llm_provider = create_llm_provider(config.llm_providers)
-        self.memory = MemorySystem(agent_id, config.memory_config)
+        self.memory = memory_system
+        self.llm_provider = llm_provider
         self.conversation_history = []
-        self.function_manager = function_manager
-        agent_logger.info(
-            f"Agent {self.name} (ID: {self.id}) initialized with multiple LLM providers"
-        )
+        self.available_function_ids: List[str] = []
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized")
 
-    async def process_message(self, message: str) -> Tuple[str, List[Dict[str, Any]]]:
+    async def process_message(self, message: str) -> str:
         """
         Process a message and generate a response.
 
@@ -56,9 +57,7 @@ class Agent:
             Exception: If there's an error processing the message.
         """
         try:
-            agent_logger.info(
-                f"Processing message for Agent {self.name} (ID: {self.id})"
-            )
+            agent_logger.info(f"Processing message for Agent {self.name} (ID: {self.id})")
             self.conversation_history.append({"role": "user", "content": message})
 
             relevant_context = await self.memory.retrieve_relevant(message)
@@ -67,36 +66,25 @@ class Agent:
             response = await self.llm_provider.generate(
                 prompt, self.config.temperature, self.config.max_tokens
             )
-            response_text, function_calls = self._parse_response(response)
 
-            self.conversation_history.append(
-                {"role": "assistant", "content": response_text}
-            )
+            self.conversation_history.append({"role": "assistant", "content": response})
 
             await self.memory.add(
                 "SHORT_TERM",
-                MemoryEntry(
-                    content=response_text,
-                    metadata={"type": "assistant_response"},
-                    context=MemoryContext(
-                        context_type="message", timestamp=datetime.now(), metadata={}
-                    ),
-                ),
+                {
+                    "content": response,
+                    "metadata": {"type": "assistant_response"},
+                    "context": {"context_type": "message", "timestamp": datetime.now().isoformat()}
+                }
             )
 
-            agent_logger.info(
-                f"Message processed successfully for Agent {self.name} (ID: {self.id})"
-            )
-            return response_text, function_calls
+            agent_logger.info(f"Message processed successfully for Agent {self.name} (ID: {self.id})")
+            return response
         except Exception as e:
-            agent_logger.error(
-                f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}"
-            )
+            agent_logger.error(f"Error processing message for Agent {self.name} (ID: {self.id}): {str(e)}")
             raise
 
-    async def execute_function(
-        self, function_name: str, parameters: Dict[str, Any]
-    ) -> Any:
+    async def execute_function(self, function_name: str, parameters: Dict[str, Any]) -> Any:
         """
         Execute a function with the given name and parameters.
 
@@ -111,70 +99,48 @@ class Agent:
             ValueError: If the function is not found.
             Exception: If there's an error executing the function.
         """
-        try:
-            agent_logger.info(
-                f"Executing function {function_name} for Agent {self.name} (ID: {self.id})"
-            )
-            function = self.get_function_by_name(function_name)
-            if not function:
-                raise ValueError(f"Unknown function: {function_name}")
+        return await function_manager.execute_function(self.id, function_name, parameters)
 
-            result = await function.implementation(**parameters)
-
-            agent_logger.info(
-                f"Function {function_name} executed successfully for Agent {self.name} (ID: {self.id})"
-            )
-            return result
-        except Exception as e:
-            agent_logger.error(
-                f"Error executing function {function_name} for Agent {self.name} (ID: {self.id}): {str(e)}"
-            )
-            raise
-
-    def get_available_functions(self) -> List[FunctionDefinition]:
+    async def get_available_functions(self) -> List[FunctionDefinition]:
         """
         Get the list of available functions for this agent.
 
         Returns:
             List[FunctionDefinition]: A list of available function definitions.
         """
-        return list(self.available_functions.values())
+        return await function_manager.get_available_functions(self.id)
 
-    def add_function(self, function: FunctionDefinition):
+    def add_function(self, function_id: str) -> None:
         """
         Add a function to the agent's available functions.
 
         Args:
             function (FunctionDefinition): The function to add.
         """
-        if function.name not in self.available_functions:
-            self.available_functions[function.name] = function
-            agent_logger.info(
-                f"Function {function.name} added for Agent {self.name} (ID: {self.id})"
-            )
+        if function_id not in self.available_function_ids:
+            self.available_function_ids.append(function_id)
+            agent_logger.info(f"Function {function_id} added to Agent {self.name} (ID: {self.id})")
         else:
             agent_logger.warning(
-                f"Function {function.name} already available for Agent {self.name} (ID: {self.id})"
+                f"Function {function_id} already available for Agent {self.name} (ID: {self.id})"
             )
 
-    def remove_function(self, function_name: str):
+    def remove_function(self, function_id: str) -> None:
         """
         Remove a function from the agent's available functions.
 
         Args:
             function_name (str): The name of the function to remove.
         """
-        if function_name in self.available_functions:
-            del self.available_functions[function_name]
-            agent_logger.info(
-                f"Function {function_name} removed from Agent {self.name} (ID: {self.id})"
-            )
+        if function_id in self.available_function_ids:
+            self.available_function_ids.remove(function_id)
+            agent_logger.info(f"Function {function_id} removed from Agent {self.name} (ID: {self.id})")
         else:
             agent_logger.warning(
-                f"Attempted to remove non-existent function {function_name} from Agent {self.name} (ID: {self.id})"
+                f"Attempted to remove non-existent function {function_id} from Agent {self.name} (ID: {self.id})"
             )
 
-    def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
+    async def get_function_by_name(self, function_name: str) -> Optional[FunctionDefinition]:
         """
         Get a function definition by its name.
 
@@ -184,7 +150,11 @@ class Agent:
         Returns:
             Optional[FunctionDefinition]: The function definition if found, None otherwise.
         """
-        return self.available_functions.get(function_name)
+        for func_id in self.available_function_ids:
+            func = await function_manager.get_function(func_id)
+            if func and func.name == function_name:
+                return func
+        return None
 
     def _prepare_prompt(self, context: List[Dict[str, Any]]) -> str:
         """
@@ -197,12 +167,7 @@ class Agent:
             str: The prepared prompt.
         """
         context_str = "\n".join([f"Context: {item['content']}" for item in context])
-        history = "\n".join(
-            [
-                f"{msg['role']}: {msg['content']}"
-                for msg in self.conversation_history[-5:]
-            ]
-        )
+        history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history[-5:]])
         return f"{context_str}\n\nConversation History:\n{history}\n\nAssistant:"
 
     def _parse_response(self, response: str) -> Tuple[str, List[Dict[str, Any]]]:

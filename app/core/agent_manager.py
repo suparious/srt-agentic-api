@@ -4,6 +4,8 @@ from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse
 from app.core.agent import Agent
 from app.utils.logging import agent_logger
 from fastapi import HTTPException
+from app.core.memory import MemorySystem
+from app.core.llm_provider import create_llm_provider
 
 
 class AgentManager:
@@ -43,16 +45,28 @@ class AgentManager:
             agent_id = uuid4()
             agent_config = AgentConfig(**config)
             mem_config = MemoryConfig(**memory_config)
-            agent = Agent(agent_id, name, agent_config, mem_config)
+
+            memory_system = MemorySystem(agent_id, mem_config)
+            llm_provider = create_llm_provider()
+
+            agent = Agent(
+                agent_id,
+                name,
+                agent_config,
+                memory_system,
+                llm_provider
+            )
+
             self.agents[agent_id] = agent
-            response, _ = await agent.process_message(initial_prompt)
+
+            # Process initial prompt
+            await agent.process_message(initial_prompt)
+
             agent_logger.info(f"Agent {name} (ID: {agent_id}) created successfully")
             return agent_id
         except Exception as e:
             agent_logger.error(f"Error creating Agent {name}: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to create agent: {str(e)}"
-            )
+            raise ValueError(f"Failed to create agent: {str(e)}")
 
     async def get_agent_info(self, agent_id: UUID) -> Optional[AgentInfoResponse]:
         """

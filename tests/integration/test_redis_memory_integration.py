@@ -36,26 +36,41 @@ async def test_add_and_retrieve_memory_integration(redis_memory: RedisMemory):
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_lifecycle(redis_memory: RedisMemory):
+async def test_redis_connection_lifecycle():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_mem = RedisMemory(agent_id)
+
     # Test initialization
-    assert redis_memory.redis is not None
+    assert redis_mem.connection.redis is None
+
+    # Test connection establishment
+    await redis_mem.initialize()
+    assert redis_mem.connection.redis is not None
+    assert redis_mem.connection._connection_pool is not None
 
     # Test connection usage
-    async with redis_memory.get_connection() as conn:
+    async with redis_mem.connection.get_connection() as conn:
         await conn.set("test_key", "test_value")
         value = await conn.get("test_key")
         assert value == "test_value"
 
     # Test connection closure
-    await redis_memory.close()
-    assert redis_memory.redis is None
+    await redis_mem.close()
+    assert redis_mem.connection.redis is None
+    assert redis_mem.connection._connection_pool is None
+
+    # Test error handling when trying to use a closed connection
+    with pytest.raises(RedisConnectionError):
+        async with redis_mem.connection.get_connection():
+            pass
 
     # Test reinitialization after closure
-    await redis_memory.initialize()
-    assert redis_memory.redis is not None
+    await redis_mem.initialize()
+    assert redis_mem.connection.redis is not None
+    assert redis_mem.connection._connection_pool is not None
 
     # Clean up
-    await redis_memory.cleanup()
+    await redis_mem.close()
 
 @pytest.mark.asyncio
 async def test_advanced_search_integration(redis_memory):
