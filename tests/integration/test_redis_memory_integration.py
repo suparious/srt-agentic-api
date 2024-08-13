@@ -1,10 +1,12 @@
 import pytest
+import asyncio
 from uuid import UUID
 from typing import List
 from datetime import datetime, timedelta
-from app.core.memory.redis_memory import RedisMemory
+from unittest.mock import patch
+from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.core.memory.redis.connection import RedisConnectionError
-from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext, MemoryType
+from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 from app.utils.logging import memory_logger
 
 
@@ -46,7 +48,7 @@ async def test_redis_connection_lifecycle():
     # Test connection establishment
     await redis_mem.initialize()
     assert redis_mem.connection.redis is not None
-    assert redis_mem.connection._connection_pool is not None
+    assert redis_mem.connection.redis.connection_pool is not None
 
     # Test connection usage
     async with redis_mem.connection.get_connection() as conn:
@@ -57,7 +59,6 @@ async def test_redis_connection_lifecycle():
     # Test connection closure
     await redis_mem.close()
     assert redis_mem.connection.redis is None
-    assert redis_mem.connection._connection_pool is None
 
     # Test error handling when trying to use a closed connection
     with pytest.raises(RedisConnectionError):
@@ -67,10 +68,11 @@ async def test_redis_connection_lifecycle():
     # Test reinitialization after closure
     await redis_mem.initialize()
     assert redis_mem.connection.redis is not None
-    assert redis_mem.connection._connection_pool is not None
+    assert redis_mem.connection.redis.connection_pool is not None
 
     # Clean up
     await redis_mem.close()
+
 
 @pytest.mark.asyncio
 async def test_advanced_search_integration(redis_memory):
@@ -97,6 +99,7 @@ async def test_advanced_search_integration(redis_memory):
     assert all(
         datetime.now() - timedelta(days=4) <= result["memory_entry"].context.timestamp <= datetime.now() for result in
         results)
+
 
 @pytest.mark.asyncio
 async def test_delete_memory_integration(redis_memory):
@@ -131,6 +134,7 @@ async def test_get_recent_memories_integration(redis_memory):
     timestamps = [memory["timestamp"] for memory in recent_memories]
     assert timestamps == sorted(timestamps, reverse=True)
 
+
 @pytest.mark.asyncio
 async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
     pattern = f"agent:{self.agent_id}:*"
@@ -159,6 +163,7 @@ async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry
     )
     return old_memories
 
+
 @pytest.mark.asyncio
 async def test_get_memories_older_than_integration(redis_memory):
     now = datetime.now()
@@ -182,3 +187,47 @@ async def test_get_memories_older_than_integration(redis_memory):
     memory_logger.info(f"Threshold: {threshold}")
     for memory in old_memories:
         memory_logger.info(f"Memory timestamp: {memory.context.timestamp}, Content: {memory.content}")
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_connection_error_handling():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_mem = RedisMemory(agent_id)
+
+    # Test initialization failure
+    with patch.object(redis_mem.connection, 'initialize', side_effect=RedisConnectionError("Connection failed")):
+        with pytest.raises(RedisMemoryError):
+            await redis_mem.initialize()
+
+    # Test operation failure due to connection error
+    await redis_mem.initialize()
+    with patch.object(redis_mem.connection, 'get_connection', side_effect=RedisConnectionError("Connection lost")):
+        with pytest.raises(RedisMemoryError):
+            async with redis_mem.get_connection() as conn:
+                await conn.set("test_key", "test_value")
+
+    # Test successful reconnection after failure
+    with patch.object(redis_mem.connection, 'initialize') as mock_initialize:
+        await redis_mem.initialize()
+        mock_initialize.assert_called_once()
+
+    await redis_mem.close()
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_concurrent_access():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_mem = RedisMemory(agent_id)
+    await redis_mem.initialize()
+
+    async def concurrent_operation(key, value):
+        async with redis_mem.get_connection() as conn:
+            await conn.set(key, value)
+            return await conn.get(key)
+
+    tasks = [concurrent_operation(f"key_{i}", f"value_{i}") for i in range(5)]
+    results = await asyncio.gather(*tasks)
+
+    assert results == ["value_0", "value_1", "value_2", "value_3", "value_4"]
+
+    await redis_mem.close()

@@ -126,6 +126,10 @@ Let's maintain our focus on test-driven development and continuous improvement o
 
 ## Let's proceed
 
+Memory system focus:
+
+run `pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration --cov=app/core/memory --cov-report=term-missing | tee logs/test_results_detailed.txt`
+
 ```plaintext
 Thank-you for these changes.
 I have updated the `srt-agentic-api.md` artifact with the latest codebase changes.

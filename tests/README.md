@@ -37,6 +37,7 @@ tests
     │   ├── memory
     │   │   ├── __init__.py
     │   │   ├── test_memory_system.py
+    │   │   ├── test_redis_connections.py
     │   │   ├── test_redis_memory.py
     │   │   └── test_vector_memory.py
     │   ├── test_agent.py

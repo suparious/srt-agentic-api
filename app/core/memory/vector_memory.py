@@ -10,41 +10,44 @@ from chromadb.utils import embedding_functions
 from app.utils.logging import memory_logger
 from app.config import settings as app_settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
+from app.core.memory.memory_interface import MemorySystemInterface
 
-class VectorMemory:
-    """
-    Handles long-term memory operations using ChromaDB for vector storage.
-    """
 
+class VectorMemoryError(Exception):
+    """Custom exception for Vector memory operations."""
+    pass
+
+
+class VectorMemory(MemorySystemInterface):
     def __init__(self, collection_name: str):
-        """
-        Initialize VectorMemory with a ChromaDB collection.
+        self.collection_name = collection_name
+        self.client = None
+        self.collection = None
+        self.embedding_function = None
 
-        Args:
-            collection_name (str): The name of the ChromaDB collection to use.
-        """
-        chroma_db_settings = ChromaDBSettings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=app_settings.CHROMA_PERSIST_DIRECTORY,
-        )
-        self.client = PersistentClient(path=chroma_db_settings.persist_directory)
-        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-        self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=self.embedding_function)
-        memory_logger.info(f"ChromaDB collection initialized: {collection_name}")
+    async def initialize(self) -> None:
+        try:
+            chroma_db_settings = ChromaDBSettings(
+                chroma_db_impl="duckdb+parquet",
+                persist_directory=app_settings.CHROMA_PERSIST_DIRECTORY,
+            )
+            self.client = PersistentClient(path=chroma_db_settings.persist_directory)
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+            self.collection = self.client.get_or_create_collection(name=self.collection_name, embedding_function=self.embedding_function)
+            memory_logger.info(f"ChromaDB collection initialized: {self.collection_name}")
+        except Exception as e:
+            memory_logger.error(f"Failed to initialize VectorMemory: {str(e)}")
+            raise VectorMemoryError("Failed to initialize VectorMemory") from e
+
+    async def close(self) -> None:
+        try:
+            await asyncio.to_thread(self.client.close)
+            memory_logger.info("ChromaDB client connection closed")
+        except Exception as e:
+            memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
+            raise VectorMemoryError("Failed to close VectorMemory") from e
 
     async def add(self, memory_entry: MemoryEntry) -> str:
-        """
-        Add a memory entry to the vector store.
-
-        Args:
-            memory_entry (MemoryEntry): The memory entry to add.
-
-        Returns:
-            str: The ID of the added memory entry.
-
-        Raises:
-            Exception: If there's an error adding the memory entry.
-        """
         try:
             memory_id = str(uuid.uuid4())
             metadata = {
@@ -63,21 +66,9 @@ class VectorMemory:
             return memory_id
         except Exception as e:
             memory_logger.error(f"Error adding memory to ChromaDB: {str(e)}")
-            raise
+            raise VectorMemoryError("Failed to add memory") from e
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
-        """
-        Retrieve a specific memory entry from the vector store.
-
-        Args:
-            memory_id (str): The ID of the memory entry to retrieve.
-
-        Returns:
-            Optional[MemoryEntry]: The retrieved memory entry, or None if not found.
-
-        Raises:
-            Exception: If there's an error retrieving the memory entry.
-        """
         try:
             result = await asyncio.to_thread(self.collection.get, ids=[memory_id])
             if result["ids"]:
@@ -95,21 +86,9 @@ class VectorMemory:
             return None
         except Exception as e:
             memory_logger.error(f"Error retrieving memory from ChromaDB: {str(e)}")
-            raise
+            raise VectorMemoryError("Failed to retrieve memory") from e
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
-        """
-        Search for memories in the vector store based on the given query.
-
-        Args:
-            query (AdvancedSearchQuery): The search query parameters.
-
-        Returns:
-            List[Dict[str, Any]]: A list of search results.
-
-        Raises:
-            Exception: If there's an error searching for memories.
-        """
         try:
             where_clause = {}
             if query.context_type:
@@ -162,44 +141,60 @@ class VectorMemory:
             return processed_results
         except Exception as e:
             memory_logger.error(f"Error searching memories in ChromaDB: {str(e)}")
-            raise
+            raise VectorMemoryError("Failed to search memories") from e
 
-    async def delete(self, memory_id: str):
-        """
-        Delete a memory entry from the vector store.
-
-        Args:
-            memory_id (str): The ID of the memory entry to delete.
-
-        Raises:
-            Exception: If there's an error deleting the memory entry.
-        """
+    async def delete(self, memory_id: str) -> None:
         try:
             await asyncio.to_thread(self.collection.delete, ids=[memory_id])
             memory_logger.debug(f"Deleted document from ChromaDB: {memory_id}")
         except Exception as e:
             memory_logger.error(f"Error deleting memory from ChromaDB: {str(e)}")
-            raise
+            raise VectorMemoryError("Failed to delete memory") from e
+
+    async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
+        try:
+            results = await asyncio.to_thread(
+                self.collection.query,
+                query_texts=[""],
+                n_results=limit,
+                where={},
+            )
+            memory_logger.debug(f"Retrieved {len(results['ids'][0])} recent memories from ChromaDB")
+
+            processed_results = []
+            for id, doc, meta in zip(results["ids"][0], results["documents"][0], results["metadatas"][0]):
+                context = MemoryContext(
+                    context_type=meta.pop("context_type"),
+                    timestamp=datetime.fromisoformat(meta.pop("context_timestamp")),
+                    metadata={k: v for k, v in meta.items() if k not in meta},
+                )
+                memory_entry = MemoryEntry(
+                    content=doc,
+                    metadata={k: v for k, v in meta.items() if k in meta},
+                    context=context,
+                )
+                processed_results.append({
+                    "id": id,
+                    "memory_entry": memory_entry,
+                })
+
+            return sorted(processed_results, key=lambda x: x["memory_entry"].context.timestamp, reverse=True)
+        except Exception as e:
+            memory_logger.error(f"Error retrieving recent memories from ChromaDB: {str(e)}")
+            raise VectorMemoryError("Failed to retrieve recent memories") from e
 
     async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
-        """
-        Retrieve memory entries older than the given threshold.
-
-        Args:
-            threshold (datetime): The threshold datetime.
-
-        Returns:
-            List[MemoryEntry]: A list of memory entries older than the threshold.
-
-        Raises:
-            Exception: If there's an error retrieving old memories.
-        """
         try:
-            where_clause = {"context_timestamp": {"$lt": threshold.isoformat()}}
-            results = await asyncio.to_thread(self.collection.get, where=where_clause)
+            results = await asyncio.to_thread(
+                self.collection.query,
+                query_texts=[""],
+                n_results=None,  # Retrieve all matching results
+                where={"context_timestamp": {"$lt": threshold.isoformat()}},
+            )
+            memory_logger.debug(f"Retrieved {len(results['ids'][0])} old memories from ChromaDB")
 
             old_memories = []
-            for doc, meta in zip(results["documents"], results["metadatas"]):
+            for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
                 context = MemoryContext(
                     context_type=meta.pop("context_type"),
                     timestamp=datetime.fromisoformat(meta.pop("context_timestamp")),
@@ -212,22 +207,8 @@ class VectorMemory:
                 )
                 old_memories.append(memory_entry)
 
-            memory_logger.info(f"Retrieved {len(old_memories)} memories older than {threshold}")
             return old_memories
         except Exception as e:
-            memory_logger.error(f"Error getting old memories from ChromaDB: {str(e)}")
-            raise
+            memory_logger.error(f"Error retrieving old memories from ChromaDB: {str(e)}")
+            raise VectorMemoryError("Failed to retrieve old memories") from e
 
-    async def close(self):
-        """
-        Close the ChromaDB client connection.
-
-        Raises:
-            Exception: If there's an error closing the connection.
-        """
-        try:
-            await asyncio.to_thread(self.client.close)
-            memory_logger.info("ChromaDB client connection closed")
-        except Exception as e:
-            memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
-            raise

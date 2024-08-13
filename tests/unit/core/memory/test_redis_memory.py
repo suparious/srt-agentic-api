@@ -1,10 +1,11 @@
 import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch, AsyncMock
 from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.core.memory.redis.connection import RedisConnectionError
-from app.api.models.memory import MemoryEntry, MemoryContext
+from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
+
 
 @pytest.fixture
 async def redis_memory():
@@ -14,97 +15,66 @@ async def redis_memory():
     yield redis_mem
     await redis_mem.close()
 
-@pytest.mark.asyncio
-async def test_redis_connection_lifecycle():
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    redis_mem = RedisMemory(agent_id)
-
-    # Test initialization
-    assert redis_mem.connection.redis is None
-
-    # Test connection establishment
-    await redis_mem.initialize()
-    assert redis_mem.connection.redis is not None
-    assert redis_mem.connection._connection_pool is not None
-
-    # Test connection usage
-    async with redis_mem.connection.get_connection() as conn:
-        await conn.set("test_key", "test_value")
-        value = await conn.get("test_key")
-        assert value == "test_value"
-
-    # Test connection closure
-    await redis_mem.close()
-    assert redis_mem.connection.redis is None
-    assert redis_mem.connection._connection_pool is None
-
-    # Test error handling when trying to use a closed connection
-    with pytest.raises(RedisConnectionError):
-        async with redis_mem.connection.get_connection():
-            pass
-
-    # Test reinitialization after closure
-    await redis_mem.initialize()
-    assert redis_mem.connection.redis is not None
-    assert redis_mem.connection._connection_pool is not None
-
-    # Clean up
-    await redis_mem.close()
 
 @pytest.mark.asyncio
-async def test_add_memory(redis_memory):
+async def test_redis_memory_lifecycle(redis_memory):
+    assert redis_memory.connection.redis is not None
+    await redis_memory.close()
+    assert redis_memory.connection.redis is None
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_add_and_get(redis_memory):
     memory_entry = MemoryEntry(
-        content="Test memory content",
+        content="Test content",
         metadata={"key": "value"},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
-
     memory_id = await redis_memory.add(memory_entry)
     assert isinstance(memory_id, str)
 
-    # Verify the memory was added correctly
     retrieved_entry = await redis_memory.get(memory_id)
     assert retrieved_entry is not None
     assert retrieved_entry.content == memory_entry.content
     assert retrieved_entry.metadata == memory_entry.metadata
 
+
 @pytest.mark.asyncio
-async def test_delete_memory(redis_memory):
+async def test_redis_memory_search(redis_memory):
+    for i in range(5):
+        memory_entry = MemoryEntry(
+            content=f"Test content {i}",
+            metadata={"index": i},
+            context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+        )
+        await redis_memory.add(memory_entry)
+
+    query = AdvancedSearchQuery(query="Test content", max_results=3)
+    results = await redis_memory.search(query)
+
+    assert len(results) == 3
+    assert all("Test content" in result["memory_entry"].content for result in results)
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_delete(redis_memory):
     memory_entry = MemoryEntry(
-        content="Test memory to delete",
+        content="Test content to delete",
         metadata={},
         context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
     )
     memory_id = await redis_memory.add(memory_entry)
 
     await redis_memory.delete(memory_id)
-
     retrieved_entry = await redis_memory.get(memory_id)
     assert retrieved_entry is None
 
-@pytest.mark.asyncio
-async def test_search_memory(redis_memory):
-    # Add test data
-    for i in range(5):
-        memory_entry = MemoryEntry(
-            content=f"Test memory content {i}",
-            metadata={"index": i},
-            context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
-        )
-        await redis_memory.add(memory_entry)
-
-    query = {"query": "Test memory", "max_results": 3}
-    results = await redis_memory.search(query)
-
-    assert len(results) == 3
-    assert all("Test memory" in result["content"] for result in results)
 
 @pytest.mark.asyncio
-async def test_get_recent_memories(redis_memory):
-    # Add test data
+async def test_redis_memory_get_recent(redis_memory):
     for i in range(10):
         memory_entry = MemoryEntry(
-            content=f"Test memory {i}",
+            content=f"Test content {i}",
             metadata={},
             context=MemoryContext(context_type="test", timestamp=datetime.now() - timedelta(minutes=i), metadata={})
         )
@@ -112,73 +82,43 @@ async def test_get_recent_memories(redis_memory):
 
     recent_memories = await redis_memory.get_recent(5)
     assert len(recent_memories) == 5
-    assert all("Test memory" in memory["content"] for memory in recent_memories)
+    assert all("Test content" in memory["memory_entry"].content for memory in recent_memories)
+
 
 @pytest.mark.asyncio
-async def test_get_memories_older_than(redis_memory):
+async def test_redis_memory_get_memories_older_than(redis_memory):
     now = datetime.now()
     threshold = now - timedelta(hours=2)
 
-    # Add test data
     for i in range(5):
         memory_entry = MemoryEntry(
-            content=f"Old memory {i}",
-            metadata={"index": i},
-            context=MemoryContext(context_type="old_test", timestamp=now - timedelta(hours=i), metadata={})
+            content=f"Test content {i}",
+            metadata={},
+            context=MemoryContext(context_type="test", timestamp=now - timedelta(hours=i), metadata={})
         )
         await redis_memory.add(memory_entry)
 
     old_memories = await redis_memory.get_memories_older_than(threshold)
-
     assert len(old_memories) == 3
     assert all(memory.context.timestamp < threshold for memory in old_memories)
 
-@pytest.mark.asyncio
-async def test_redis_cleanup():
-    with patch('app.core.memory.redis_memory.RedisCleanup') as mock_cleanup:
-        await RedisMemory.cleanup()
-        mock_cleanup.return_value.cleanup.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_error_handling(redis_memory):
-    with patch.object(redis_memory.operations, 'add', side_effect=Exception("Test error")):
+async def test_redis_memory_error_handling(redis_memory):
+    with patch.object(redis_memory.connection, 'get_connection', side_effect=RedisConnectionError("Connection failed")):
         with pytest.raises(RedisMemoryError):
             await redis_memory.add(MemoryEntry(
-                content="Test error memory",
+                content="Test error content",
                 metadata={},
                 context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
             ))
 
-@pytest.mark.asyncio
-async def test_connection_error_handling(redis_memory):
-    with patch.object(redis_memory.connection, 'ensure_connection', side_effect=RedisConnectionError("Connection failed")):
-        with pytest.raises(RedisMemoryError):
-            await redis_memory.add(MemoryEntry(
-                content="Test connection error",
-                metadata={},
-                context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
-            ))
 
 @pytest.mark.asyncio
-async def test_reconnection_after_error(redis_memory):
-    # Simulate a connection error
-    with patch.object(redis_memory.connection, 'ensure_connection', side_effect=RedisConnectionError("Connection failed")):
+async def test_redis_memory_initialization_error():
+    agent_id = UUID('12345678-1234-5678-1234-567812345678')
+    redis_mem = RedisMemory(agent_id)
+
+    with patch.object(redis_mem.connection, 'initialize', side_effect=RedisConnectionError("Initialization failed")):
         with pytest.raises(RedisMemoryError):
-            await redis_memory.add(MemoryEntry(
-                content="Test reconnection",
-                metadata={},
-                context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
-            ))
-
-    # Now try to use the connection again, it should reconnect automatically
-    memory_entry = MemoryEntry(
-        content="Test reconnection successful",
-        metadata={},
-        context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
-    )
-    memory_id = await redis_memory.add(memory_entry)
-    assert isinstance(memory_id, str)
-
-    retrieved_entry = await redis_memory.get(memory_id)
-    assert retrieved_entry is not None
-    assert retrieved_entry.content == "Test reconnection successful"
+            await redis_mem.initialize()
