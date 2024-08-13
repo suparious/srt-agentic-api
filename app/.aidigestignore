@@ -1,0 +1,12 @@
+# macOS directory metadata
+.DS_Store
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# pytest cache
+.pytest_cache/
+
+# Markdown file
+codebase.md

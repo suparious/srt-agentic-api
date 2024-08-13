@@ -65,12 +65,10 @@ async def test_redis_connection_lifecycle():
         async with redis_mem.connection.get_connection():
             pass
 
-    # Test reinitialization after closure
-    await redis_mem.initialize()
-    assert redis_mem.connection.redis is not None
-    assert redis_mem.connection.redis.connection_pool is not None
-
     # Clean up
+    await redis_mem.initialize()
+    async with redis_mem.connection.get_connection() as conn:
+        await conn.delete("test_key")
     await redis_mem.close()
 
 

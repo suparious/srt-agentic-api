@@ -22,7 +22,8 @@ echo "Documentation updated successfully!"
 cd ${repo_home}
 
 # Generate codebase summary
-npx ai-digest --input ${repo_home} --output ${HOME}/codebase/srt-agentic-api.md
+#npx ai-digest --input ${repo_home} --output ${HOME}/codebase/srt-agentic-api.md
+npx ai-digest --input ${repo_home}/app --output ${HOME}/codebase/srt-agentic-api-app.md
 npx ai-digest --input ${repo_home}/tests --output ${HOME}/codebase/srt-agentic-api-tests.md
 
 # Run the test suite
