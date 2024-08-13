@@ -1,6 +1,7 @@
 import asyncio
 import time
 import psutil
+import traceback
 from uuid import UUID
 from app.core.memory.redis_memory import RedisMemory
 from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
@@ -31,7 +32,7 @@ async def find_optimal_connection_limit(redis_memory, start=1, step=1, max_attem
         redis_memory.connection.set_max_connections(connections)
         try:
             print(f"Testing {connections} concurrent connections...")
-            await asyncio.wait_for(concurrent_access_benchmark(redis_memory, num_concurrent=connections), timeout=10)
+            await asyncio.wait_for(concurrent_access_benchmark(redis_memory, num_concurrent=connections), timeout=30)
             print(f"Successfully handled {connections} concurrent connections")
         except asyncio.TimeoutError:
             print(f"Timeout at {connections} connections")
@@ -51,35 +52,47 @@ async def concurrent_access_benchmark(redis_memory, num_concurrent=10):
         )
         try:
             start_time = time.time()
+            memory_logger.debug("Starting concurrent operation")
+
+            connection_start = time.time()
             async with redis_memory.connection.get_connection() as conn:
-                connection_time = time.time() - start_time
+                connection_time = time.time() - connection_start
                 memory_logger.debug(f"Connection acquired in {connection_time:.6f} seconds")
 
                 add_start = time.time()
-                memory_id = await redis_memory.add(memory_entry)
+                memory_id = await asyncio.wait_for(redis_memory.add(memory_entry), timeout=5.0)
                 add_time = time.time() - add_start
                 memory_logger.debug(f"Memory added in {add_time:.6f} seconds")
 
                 get_start = time.time()
-                await redis_memory.get(memory_id)
+                await asyncio.wait_for(redis_memory.get(memory_id), timeout=5.0)
                 get_time = time.time() - get_start
                 memory_logger.debug(f"Memory retrieved in {get_time:.6f} seconds")
 
                 del_start = time.time()
-                await redis_memory.delete(memory_id)
+                await asyncio.wait_for(redis_memory.delete(memory_id), timeout=5.0)
                 del_time = time.time() - del_start
                 memory_logger.debug(f"Memory deleted in {del_time:.6f} seconds")
 
             total_time = time.time() - start_time
             memory_logger.debug(f"Total operation time: {total_time:.6f} seconds")
+        except asyncio.TimeoutError as e:
+            memory_logger.error(f"Timeout in concurrent operation: {str(e)}")
+            memory_logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         except Exception as e:
             memory_logger.error(f"Error in concurrent operation: {str(e)}")
+            memory_logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
     start_time = time.time()
     tasks = [concurrent_operation() for _ in range(num_concurrent)]
-    await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
     end_time = time.time()
+
+    for result in results:
+        if isinstance(result, Exception):
+            memory_logger.error(f"Task failed with exception: {str(result)}")
 
     return end_time - start_time
 

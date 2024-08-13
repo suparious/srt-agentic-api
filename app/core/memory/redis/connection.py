@@ -1,6 +1,7 @@
 from redis.asyncio import Redis, ConnectionPool
 from contextlib import asynccontextmanager
 import asyncio
+import traceback
 from typing import Optional
 from uuid import UUID
 from app.config import settings
@@ -57,7 +58,8 @@ class RedisConnection:
                 yield self.redis
             except Exception as e:
                 memory_logger.error(f"Error during Redis operation: {str(e)}")
-                raise RedisConnectionError("Error during Redis operation") from e
+                memory_logger.error(f"Traceback: {traceback.format_exc()}")
+                raise RedisConnectionError(f"Error during Redis operation: {str(e)}") from e
 
     async def close(self) -> None:
         """Close the Redis connection and connection pool."""
