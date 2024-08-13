@@ -1,3 +1,4 @@
+# Additional documentation generation components:
 sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme

@@ -1,19 +1,24 @@
 from redis.asyncio import Redis, ConnectionPool
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncGenerator
+import asyncio
+from typing import Optional
 from uuid import UUID
 from app.config import settings
 from app.utils.logging import memory_logger
+
 
 class RedisConnectionError(Exception):
     """Custom exception for Redis connection errors."""
     pass
 
+
 class RedisConnection:
-    def __init__(self, agent_id: UUID):
+    def __init__(self, agent_id: UUID, max_connections: int = 10):
         self.agent_id = agent_id
         self.redis: Optional[Redis] = None
         self._connection_pool: Optional[ConnectionPool] = None
+        self.max_connections = max_connections
+        self._semaphore = asyncio.Semaphore(max_connections)
 
     async def initialize(self) -> None:
         """
@@ -24,17 +29,35 @@ class RedisConnection:
         """
         if self.redis is None:
             try:
+                memory_logger.debug(f"Initializing Redis connection for agent: {self.agent_id}")
                 self._connection_pool = ConnectionPool.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
-                    decode_responses=True
+                    decode_responses=True,
+                    max_connections=self.max_connections
                 )
                 self.redis = Redis(connection_pool=self._connection_pool)
                 await self.redis.ping()  # Test the connection
+                info = await self.redis.info()
                 memory_logger.info(f"Redis connection established for agent: {self.agent_id}")
+                memory_logger.debug(f"Redis version: {info['redis_version']}")
+                memory_logger.debug(f"Connected clients: {info['connected_clients']}")
+                memory_logger.debug(f"Used memory: {info['used_memory_human']}")
             except Exception as e:
                 memory_logger.error(f"Failed to initialize Redis connection: {str(e)}")
                 raise RedisConnectionError("Failed to initialize Redis connection") from e
+
+    @asynccontextmanager
+    async def get_connection(self):
+        if not self.redis:
+            raise RedisConnectionError("Redis connection not initialized")
+
+        async with self._semaphore:
+            try:
+                yield self.redis
+            except Exception as e:
+                memory_logger.error(f"Error during Redis operation: {str(e)}")
+                raise RedisConnectionError("Error during Redis operation") from e
 
     async def close(self) -> None:
         """Close the Redis connection and connection pool."""
@@ -45,25 +68,6 @@ class RedisConnection:
             await self._connection_pool.disconnect()
             self._connection_pool = None
         memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
-
-    @asynccontextmanager
-    async def get_connection(self) -> AsyncGenerator[Redis, None]:
-        """
-        Get a Redis connection.
-
-        Yields:
-            Redis: An active Redis connection.
-
-        Raises:
-            RedisConnectionError: If there's an error with the Redis connection.
-        """
-        if self.redis is None:
-            await self.initialize()
-        try:
-            yield self.redis
-        except Exception as e:
-            memory_logger.error(f"Error in Redis connection: {str(e)}")
-            raise RedisConnectionError("Error in Redis connection") from e
 
     async def ensure_connection(self) -> None:
         """
@@ -80,3 +84,10 @@ class RedisConnection:
         except Exception as e:
             memory_logger.error(f"Error ensuring Redis connection: {str(e)}")
             raise RedisConnectionError("Failed to ensure Redis connection") from e
+
+    def set_max_connections(self, max_connections: int):
+        self.max_connections = max_connections
+        if self._connection_pool:
+            self._connection_pool.max_connections = max_connections
+        self._semaphore = asyncio.Semaphore(max_connections)
+        memory_logger.info(f"Max connections set to {max_connections} for agent: {self.agent_id}")

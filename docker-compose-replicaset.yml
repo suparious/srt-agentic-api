@@ -1,0 +1,41 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - VALKEY_HOST=valkey-primary
+      - DEBUG_MODE=false
+    depends_on:
+      - valkey-primary
+    volumes:
+      - .:/app
+
+  valkey-primary:
+    image: docker.io/bitnami/valkey:latest
+    ports:
+      - '6379'
+    environment:
+      - VALKEY_REPLICATION_MODE=master
+      - VALKEY_PASSWORD=my_password
+      - VALKEY_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    volumes:
+      - 'valkey_data:/bitnami/valkey/data'
+
+  valkey-secondary:
+    image: docker.io/bitnami/valkey:latest
+    ports:
+      - '6379'
+    depends_on:
+      - valkey-primary
+    environment:
+      - VALKEY_REPLICATION_MODE=slave
+      - VALKEY_MASTER_HOST=valkey-primary
+      - VALKEY_MASTER_PORT_NUMBER=6379
+      - VALKEY_MASTER_PASSWORD=my_password
+      - VALKEY_PASSWORD=my_password
+      - VALKEY_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+
+volumes:
+  valkey_data:
+    driver: local
