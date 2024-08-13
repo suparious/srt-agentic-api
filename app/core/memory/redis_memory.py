@@ -6,9 +6,11 @@ from app.core.memory.redis.connection import RedisConnection, RedisConnectionErr
 from app.api.models.memory import MemoryEntry, AdvancedSearchQuery
 from app.utils.logging import memory_logger
 
+
 class RedisMemoryError(Exception):
     """Custom exception for Redis memory operations."""
     pass
+
 
 class RedisMemory(MemorySystemInterface):
     def __init__(self, agent_id: UUID):

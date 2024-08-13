@@ -122,3 +122,31 @@ async def test_redis_memory_initialization_error():
     with patch.object(redis_mem.connection, 'initialize', side_effect=RedisConnectionError("Initialization failed")):
         with pytest.raises(RedisMemoryError):
             await redis_mem.initialize()
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_close_error(redis_memory):
+    with patch.object(redis_memory.connection, 'close', side_effect=Exception("Close failed")):
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.close()
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_search_error(redis_memory):
+    with patch.object(redis_memory.connection, 'get_connection', side_effect=RedisConnectionError("Connection failed")):
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.search(AdvancedSearchQuery(query="test", max_results=5))
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_get_recent_error(redis_memory):
+    with patch.object(redis_memory.connection, 'get_connection', side_effect=RedisConnectionError("Connection failed")):
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.get_recent(5)
+
+
+@pytest.mark.asyncio
+async def test_redis_memory_get_memories_older_than_error(redis_memory):
+    with patch.object(redis_memory.connection, 'get_connection', side_effect=RedisConnectionError("Connection failed")):
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.get_memories_older_than(datetime.now())

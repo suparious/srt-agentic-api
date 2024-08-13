@@ -40,6 +40,7 @@ async def create_agent_endpoint(
             agent_id=agent_id, message="Agent created successfully"
         )
     except ValueError as ve:
+        agent_logger.error(f"ValueError in agent creation: {str(ve)}")
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         agent_logger.error(f"Failed to create agent: {str(e)}")

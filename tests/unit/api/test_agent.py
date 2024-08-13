@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
-from app.api.models.agent import AgentConfig, MemoryConfig
+from app.api.models.agent import AgentConfig, MemoryConfig, AgentCreationRequest
 from app.core.agent_manager import AgentManager
 from app.core.memory import MemorySystem
 from app.core.llm_provider import LLMProvider
@@ -21,16 +21,15 @@ def mock_memory_system():
 def mock_llm_provider():
     return AsyncMock(spec=LLMProvider)
 
-@pytest.mark.asyncio
 async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_manager):
     agent_data = AgentCreationRequest(
         agent_name="Test Agent",
         agent_config=AgentConfig(
             llm_providers=[
-                LLMProviderConfig(
-                    provider_type="mock",
-                    model_name="mock-model"
-                )
+                {
+                    "provider_type": "mock",
+                    "model_name": "mock-model"
+                }
             ],
             temperature=0.7,
             max_tokens=150,
@@ -48,12 +47,53 @@ async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_
 
     mock_agent_manager.create_agent.return_value = UUID('12345678-1234-5678-1234-567812345678')
 
-    response = await async_client.post("/agent/create", json=agent_data.model_dump(), headers=auth_headers)
+    response = await async_client.post("/agent/create", json=agent_data.dict(), headers=auth_headers)
     assert response.status_code == 201
     assert "agent_id" in response.json()
     assert response.json()["message"] == "Agent created successfully"
 
     mock_agent_manager.create_agent.assert_called_once_with(agent_data)
+
+async def test_create_agent_validation_error(async_client: AsyncClient, auth_headers, mock_agent_manager):
+    invalid_agent_data = {
+        "agent_name": "Test Agent",
+        "agent_config": {},  # Invalid config
+        "memory_config": {},
+        "initial_prompt": "You are a helpful assistant."
+    }
+
+    response = await async_client.post("/agent/create", json=invalid_agent_data, headers=auth_headers)
+    assert response.status_code == 422  # Unprocessable Entity
+
+async def test_create_agent_internal_error(async_client: AsyncClient, auth_headers, mock_agent_manager):
+    agent_data = AgentCreationRequest(
+        agent_name="Test Agent",
+        agent_config=AgentConfig(
+            llm_providers=[
+                {
+                    "provider_type": "mock",
+                    "model_name": "mock-model"
+                }
+            ],
+            temperature=0.7,
+            max_tokens=150,
+            memory_config=MemoryConfig(
+                use_long_term_memory=True,
+                use_redis_cache=True
+            )
+        ),
+        memory_config=MemoryConfig(
+            use_long_term_memory=True,
+            use_redis_cache=True
+        ),
+        initial_prompt="You are a helpful assistant."
+    )
+
+    mock_agent_manager.create_agent.side_effect = Exception("Internal error")
+
+    response = await async_client.post("/agent/create", json=agent_data.dict(), headers=auth_headers)
+    assert response.status_code == 500
+    assert "Failed to create agent" in response.json()["detail"]
 
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)
