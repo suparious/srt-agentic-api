@@ -108,16 +108,16 @@ By following these refactored instructions, you will make more efficient use of 
 ## Opener
 
 ```plaintext
-Welcome to our latest development cycle for the SRT Agentic API project. Please begin by following our Unified Test-Driven Development Workflow:
+Welcome to our latest development cycle for the SRT Agentic API project. Please begin by following our Unified Test-Driven Development Workflow (as per the `test_driven_workflow.md` artifact):
 
-1. Review the `srt-agent-api.md` Artifact for the current project state.
-2. Examine the latest pytest output and `test_results_detailed.txt` Artifact.
-3. Review other documents and update the `development_plan.md` and `test_error_assessment.md` Artifacts.
+1. Review the `srt-agent-api-app.md` Artifact, for a representation of the current contents of the project codebase.
+2. Review the `srt-agent-api-tests.md` Artifact, for a representation of the current test suite.
+3. Examine the latest pytest output within the `test_results_detailed.txt` Artifact.
 
-Our current code coverage is 62%, with 27 passing tests out of 93. Our goal remains 80% code coverage with all tests passing.
+Our goal remains 80% code coverage with all tests passing. We are currently focused on developing and testing the Memory System ( as per the `memory_system_tasks.md` artifact). Refer to the `development_plan.md` artifact for our long-term roadmap.
 
-Based on this information and following our workflow, please provide:
-1. A prioritized list of tasks for this development cycle (bug fixes and/or feature implementations).
+Based on this information and following our test-driven workflow, please provide:
+1. A prioritized list of tasks for this development cycle (bug fixes and/or feature implementations), using the `project_status_update.md` Artifact.
 2. Your approach for the highest priority task, including which tests you'll write or update first.
 3. Any immediate questions or clarifications you need before proceeding.
 
@@ -132,10 +132,10 @@ run `pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests
 
 ```plaintext
 Thank-you for these changes.
-I have updated the `srt-agentic-api.md` artifact with the latest codebase changes.
+I have updated the `srt-agentic-api-app.md` artifact with the latest codebase changes.
 I have updated the `srt-agentic-api-tests.md` artifact with the latest test suite changes.
-I ran the test suite again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
-let's continue solving the most common and fundamental errors, through our Unified Test-Driven Development Workflow, maintaining an updated `test_error_assessment.md` Artifact to keep us grounded.
+I ran the integration and performance tests again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
+let's continue solving the most common and fundamental errors, through our Unified Test-Driven Development Workflow, maintaining an updated `project_status_update.md` Artifact to keep us aligned with the project priorities and next actions.
 ```
 
 ## End cycle
@@ -143,6 +143,6 @@ let's continue solving the most common and fundamental errors, through our Unifi
 ```plaintext
 Thank-you for those changes. 
 After running the tests, I have updated the `test_results_detailed.txt` Artifact, for your review.
-Looks like we need to wrap up our development cycle. Please refactor the `test_error_assessment.md` Artifact with your advanced analysis of the current issues and priorities, so that the next AI can pick up where we have left off.
+Looks like we need to wrap up our development cycle. Please refactor the `project_status_update.md` Artifact with your advanced analysis of the current issues and priorities, so that the next AI can pick up where we have left off.
 Thank-you for another great cycle.
 ```

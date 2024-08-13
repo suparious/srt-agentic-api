@@ -47,6 +47,15 @@ class VectorMemory(MemorySystemInterface):
             memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
             raise VectorMemoryError("Failed to close VectorMemory") from e
 
+    async def cleanup(self) -> None:
+        try:
+            await asyncio.to_thread(self.collection.delete)
+            self.collection = self.client.get_or_create_collection(name=self.collection_name, embedding_function=self.embedding_function)
+            memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
+        except Exception as e:
+            memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")
+            raise VectorMemoryError("Failed to cleanup VectorMemory") from e
+
     async def add(self, memory_entry: MemoryEntry) -> str:
         try:
             memory_id = str(uuid.uuid4())
@@ -211,4 +220,3 @@ class VectorMemory(MemorySystemInterface):
         except Exception as e:
             memory_logger.error(f"Error retrieving old memories from ChromaDB: {str(e)}")
             raise VectorMemoryError("Failed to retrieve old memories") from e
-
