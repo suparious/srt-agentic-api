@@ -7,32 +7,41 @@ This document provides comprehensive guidance for QA Engineers on running, maint
 The test suite is organized into the following categories:
 
 ```
-tests/
-├── unit/
-│   ├── __init__.py
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── memory/
-│   │   │   ├── __init__.py
-│   │   │   ├── test_memory_system.py
-│   │   │   ├── test_redis_memory.py
-│   │   │   └── test_vector_memory.py
-│   │   ├── test_agent.py
-│   │   └── test_llm_provider.py
-│   ├── test_async_setup.py
-│   └── api/
-│       ├── __init__.py
-│       ├── test_agent.py
-│       ├── test_function.py
-│       ├── test_memory.py
-│       └── test_message.py
-├── integration/
+tests
+├── README.md
+├── __init__.py
+├── conftest.py
+├── integration
 │   ├── __init__.py
 │   ├── test_main.py
 │   └── test_redis_memory_integration.py
-├── __init__.py
-├── conftest.py
-└── README.md
+├── performance
+│   ├── __init__.py
+│   └── redis_benchmark.py
+└── unit
+    ├── __init__.py
+    ├── api
+    │   ├── __init__.py
+    │   ├── endpoints
+    │   │   ├── __init__.py
+    │   │   └── test_memory.py
+    │   ├── models
+    │   │   ├── __init__.py
+    │   │   └── test_message_models.py
+    │   ├── test_agent.py
+    │   ├── test_function.py
+    │   ├── test_memory.py
+    │   └── test_message.py
+    ├── core
+    │   ├── __init__.py
+    │   ├── memory
+    │   │   ├── __init__.py
+    │   │   ├── test_memory_system.py
+    │   │   ├── test_redis_memory.py
+    │   │   └── test_vector_memory.py
+    │   ├── test_agent.py
+    │   └── test_llm_provider.py
+    └── test_async_setup.py
 ```
 
 - `unit/`: Contains unit tests for core components and API endpoints.

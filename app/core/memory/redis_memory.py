@@ -16,9 +16,6 @@ class RedisMemory:
     def __init__(self, agent_id: UUID):
         self.agent_id = agent_id
         self.connection = RedisConnection(agent_id)
-        self.operations = RedisMemoryOperations(self.connection)
-        self.search = RedisSearch(self.connection)
-        self.cleanup = RedisCleanup()
 
     async def initialize(self) -> None:
         try:
@@ -28,19 +25,9 @@ class RedisMemory:
             memory_logger.error(f"Failed to initialize Redis memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to initialize Redis memory") from e
 
-    async def close(self) -> None:
-        try:
-            await self.connection.close()
-            memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
-        except Exception as e:
-            memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
-            raise RedisMemoryError("Error closing Redis memory") from e
-
     async def add(self, memory_entry: MemoryEntry) -> str:
         try:
-            memory_logger.debug(f"Attempting to add memory for agent {self.agent_id}")
             async with self.connection.get_connection() as conn:
-                memory_logger.debug(f"Connection acquired for add operation, agent {self.agent_id}")
                 memory_id = str(UUID(int=0))  # Generate a new UUID
                 await conn.set(f"agent:{self.agent_id}:{memory_id}", memory_entry.model_dump_json())
                 memory_logger.debug(f"Added memory {memory_id} for agent {self.agent_id}")
@@ -51,9 +38,7 @@ class RedisMemory:
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
         try:
-            memory_logger.debug(f"Attempting to retrieve memory {memory_id} for agent {self.agent_id}")
             async with self.connection.get_connection() as conn:
-                memory_logger.debug(f"Connection acquired for get operation, agent {self.agent_id}")
                 value = await conn.get(f"agent:{self.agent_id}:{memory_id}")
                 if value:
                     memory_logger.debug(f"Retrieved memory {memory_id} for agent {self.agent_id}")
@@ -66,14 +51,16 @@ class RedisMemory:
 
     async def delete(self, memory_id: str) -> None:
         try:
-            memory_logger.debug(f"Attempting to delete memory {memory_id} for agent {self.agent_id}")
             async with self.connection.get_connection() as conn:
-                memory_logger.debug(f"Connection acquired for delete operation, agent {self.agent_id}")
                 await conn.delete(f"agent:{self.agent_id}:{memory_id}")
                 memory_logger.debug(f"Deleted memory {memory_id} for agent {self.agent_id}")
         except Exception as e:
             memory_logger.error(f"Error deleting memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to delete memory") from e
+
+    async def close(self) -> None:
+        await self.connection.close()
+        memory_logger.info(f"Redis memory closed for agent: {self.agent_id}")
 
     async def search(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
         try:
