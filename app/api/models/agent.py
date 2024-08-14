@@ -21,7 +21,7 @@ class MemoryConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    llm_providers: List[LLMProviderConfig] = Field(..., min_items=1, description="List of LLM provider configurations")
+    llm_providers: List[LLMProviderConfig] = Field(..., min_length=1, description="List of LLM provider configurations")
     temperature: float = Field(..., ge=0.0, le=1.0, description="The temperature setting for the LLM, controlling randomness in outputs")
     max_tokens: int = Field(..., gt=0, description="The maximum number of tokens the LLM should generate in a single response")
     memory_config: MemoryConfig = Field(..., description="Configuration settings for the agent's memory systems")

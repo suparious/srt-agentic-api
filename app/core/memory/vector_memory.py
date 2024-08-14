@@ -55,15 +55,17 @@ class VectorMemory(MemorySystemInterface):
 
             memory_id = str(uuid4())
 
-            result = await asyncio.to_thread(
+            await asyncio.to_thread(
                 self.collection.add,
                 documents=[memory_entry.content],
                 metadatas=[metadata],
                 ids=[memory_id],
             )
 
-            if not result:
-                raise VectorMemoryError("ChromaDB add operation returned None")
+            # Verify the addition by querying the collection
+            result = await asyncio.to_thread(self.collection.get, ids=[memory_id])
+            if not result or not result['ids']:
+                raise VectorMemoryError("Failed to verify memory addition")
 
             memory_logger.debug(f"Added document to ChromaDB: {memory_id}")
             return memory_id

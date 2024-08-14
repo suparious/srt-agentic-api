@@ -47,6 +47,7 @@ async def test_vector_memory_add(vector_memory):
     result = await asyncio.to_thread(vector_memory.collection.get, ids=[memory_id])
     assert result['ids'][0] == memory_id
     assert result['documents'][0] == "Test content"
+    assert result['metadatas'][0]['key'] == "value"
 
     # Test add before initialization
     uninit_vector_memory = VectorMemory("test_uninit")

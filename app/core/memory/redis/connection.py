@@ -63,7 +63,7 @@ class RedisConnection:
     async def close(self) -> None:
         """Close the Redis connection."""
         if self.redis:
-            await self.redis.close()
+            await self.redis.aclose()
             self.redis = None
         memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
 
