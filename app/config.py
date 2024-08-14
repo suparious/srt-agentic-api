@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     # Memory settings
     SHORT_TERM_MEMORY_TTL: int = 3600  # 1 hour in seconds
     LONG_TERM_MEMORY_LIMIT: int = 10000
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
     # Memory consolidation settings
     CONSOLIDATION_INTERVAL: int = 21600  # 6 hours in seconds

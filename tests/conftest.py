@@ -65,6 +65,7 @@ def test_settings():
         LLAMACPP_API_BASE="http://test-llamacpp-server-endpoint",
         TGI_API_BASE="http://test-tgi-server-endpoint",
         ANTHROPIC_API_KEY="test_anthropic_key",
+        EMBEDDING_MODEL="all-MiniLM-L6-v2",
         LLM_PROVIDER_CONFIGS=[
             ConfigLLMProviderConfig(
                 provider_type="vllm",

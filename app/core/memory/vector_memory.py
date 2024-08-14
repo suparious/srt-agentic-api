@@ -1,20 +1,18 @@
+from uuid import UUID
 import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from uuid import UUID, uuid4
-import uuid
-from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaDBSettings
 from chromadb.utils import embedding_functions
-
+import chromadb
 from app.utils.logging import memory_logger
-from app.config import settings as app_settings
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 from app.core.memory.memory_interface import MemorySystemInterface
+from app.config import settings
 
 
 class VectorMemoryError(Exception):
-    """Custom exception for Vector memory operations."""
+    """Custom exception for ChromaDB-related errors."""
     pass
 
 
@@ -29,53 +27,40 @@ class VectorMemory(MemorySystemInterface):
         try:
             chroma_db_settings = ChromaDBSettings(
                 chroma_db_impl="duckdb+parquet",
-                persist_directory=app_settings.CHROMA_PERSIST_DIRECTORY,
+                persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
             )
-            self.client = PersistentClient(path=chroma_db_settings.persist_directory)
-            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-            self.collection = self.client.get_or_create_collection(name=self.collection_name, embedding_function=self.embedding_function)
+            self.client = chromadb.PersistentClient(path=chroma_db_settings.persist_directory)
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=settings.EMBEDDING_MODEL)
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                embedding_function=self.embedding_function
+            )
             memory_logger.info(f"ChromaDB collection initialized: {self.collection_name}")
         except Exception as e:
-            memory_logger.error(f"Failed to initialize VectorMemory: {str(e)}")
-            raise VectorMemoryError("Failed to initialize VectorMemory") from e
-
-    async def close(self) -> None:
-        try:
-            await asyncio.to_thread(self.client.close)
-            memory_logger.info("ChromaDB client connection closed")
-        except Exception as e:
-            memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
-            raise VectorMemoryError("Failed to close VectorMemory") from e
-
-    async def cleanup(self) -> None:
-        try:
-            await asyncio.to_thread(self.collection.delete)
-            self.collection = self.client.get_or_create_collection(name=self.collection_name, embedding_function=self.embedding_function)
-            memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
-        except Exception as e:
-            memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")
-            raise VectorMemoryError("Failed to cleanup VectorMemory") from e
+            memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
+            raise VectorMemoryError(f"Initialization failed: {e}")
 
     async def add(self, memory_entry: MemoryEntry) -> str:
         try:
-            memory_id = str(uuid.uuid4())
             metadata = {
                 **memory_entry.metadata,
                 "context_type": memory_entry.context.context_type,
                 "context_timestamp": memory_entry.context.timestamp.isoformat(),
                 **memory_entry.context.metadata,
             }
-            await asyncio.to_thread(
+
+            result = await asyncio.to_thread(
                 self.collection.add,
                 documents=[memory_entry.content],
                 metadatas=[metadata],
-                ids=[memory_id],
+                ids=[str(UUID(int=0))],  # Generate a new UUID
             )
-            memory_logger.debug(f"Added document to ChromaDB: {memory_id}")
-            return memory_id
+            memory_logger.debug(f"Added document to ChromaDB: {result['ids'][0]}")
+            return result["ids"][0]
         except Exception as e:
             memory_logger.error(f"Error adding memory to ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to add memory") from e
+            raise VectorMemoryError(f"Failed to add memory entry: {e}")
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
         try:
@@ -95,7 +80,7 @@ class VectorMemory(MemorySystemInterface):
             return None
         except Exception as e:
             memory_logger.error(f"Error retrieving memory from ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to retrieve memory") from e
+            raise VectorMemoryError(f"Failed to retrieve memory: {e}")
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
         try:
@@ -119,30 +104,40 @@ class VectorMemory(MemorySystemInterface):
             memory_logger.debug(f"Searched ChromaDB: {query.query}")
 
             processed_results = []
-            for id, doc, meta, distance in zip(
-                results["ids"][0],
-                results["documents"][0],
-                results["metadatas"][0],
-                results["distances"][0],
-            ):
-                context = MemoryContext(
-                    context_type=meta.pop("context_type"),
-                    timestamp=datetime.fromisoformat(meta.pop("context_timestamp")),
-                    metadata={k: v for k, v in meta.items() if k not in meta},
-                )
-                memory_entry = MemoryEntry(
-                    content=doc,
-                    metadata={k: v for k, v in meta.items() if k in meta},
-                    context=context,
-                )
-                relevance_score = 1 - (distance / max(results["distances"][0]))  # Normalize distance to a 0-1 score
-                processed_results.append(
-                    {
-                        "id": id,
-                        "memory_entry": memory_entry,
-                        "relevance_score": relevance_score,
-                    }
-                )
+            if results["distances"] and results["distances"][0]:
+                max_distance = max(results["distances"][0])
+                min_distance = min(results["distances"][0])
+                distance_range = max_distance - min_distance
+
+                for id, doc, meta, distance in zip(
+                        results["ids"][0],
+                        results["documents"][0],
+                        results["metadatas"][0],
+                        results["distances"][0],
+                ):
+                    context = MemoryContext(
+                        context_type=meta.pop("context_type"),
+                        timestamp=datetime.fromisoformat(meta.pop("context_timestamp")),
+                        metadata={k: v for k, v in meta.items() if k not in meta},
+                    )
+                    memory_entry = MemoryEntry(
+                        content=doc,
+                        metadata={k: v for k, v in meta.items() if k in meta},
+                        context=context,
+                    )
+                    if distance_range > 0:
+                        relevance_score = 1 - ((distance - min_distance) / distance_range)
+                    else:
+                        relevance_score = 1.0  # All distances are the same, so all results are equally relevant
+                    processed_results.append(
+                        {
+                            "id": id,
+                            "memory_entry": memory_entry,
+                            "relevance_score": relevance_score,
+                        }
+                    )
+            else:
+                memory_logger.warning("No results found or distances returned in ChromaDB search")
 
             if query.relevance_threshold is not None:
                 processed_results = [r for r in processed_results if r["relevance_score"] >= query.relevance_threshold]
@@ -150,7 +145,7 @@ class VectorMemory(MemorySystemInterface):
             return processed_results
         except Exception as e:
             memory_logger.error(f"Error searching memories in ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to search memories") from e
+            raise VectorMemoryError(f"Failed to search memories: {e}")
 
     async def delete(self, memory_id: str) -> None:
         try:
@@ -158,7 +153,7 @@ class VectorMemory(MemorySystemInterface):
             memory_logger.debug(f"Deleted document from ChromaDB: {memory_id}")
         except Exception as e:
             memory_logger.error(f"Error deleting memory from ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to delete memory") from e
+            raise VectorMemoryError(f"Failed to delete memory: {e}")
 
     async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
         try:
@@ -190,7 +185,7 @@ class VectorMemory(MemorySystemInterface):
             return sorted(processed_results, key=lambda x: x["memory_entry"].context.timestamp, reverse=True)
         except Exception as e:
             memory_logger.error(f"Error retrieving recent memories from ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to retrieve recent memories") from e
+            raise VectorMemoryError(f"Failed to retrieve recent memories: {e}")
 
     async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
         try:
@@ -219,4 +214,23 @@ class VectorMemory(MemorySystemInterface):
             return old_memories
         except Exception as e:
             memory_logger.error(f"Error retrieving old memories from ChromaDB: {str(e)}")
-            raise VectorMemoryError("Failed to retrieve old memories") from e
+            raise VectorMemoryError(f"Failed to retrieve old memories: {e}")
+
+    async def cleanup(self) -> None:
+        try:
+            await asyncio.to_thread(self.collection.delete)
+            self.collection = self.client.get_or_create_collection(name=self.collection_name,
+                                                                   embedding_function=self.embedding_function)
+            memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
+        except Exception as e:
+            memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")
+            raise VectorMemoryError(f"Failed to cleanup VectorMemory: {e}")
+
+    async def close(self) -> None:
+        try:
+            if self.client:
+                await asyncio.to_thread(self.client.close)
+            memory_logger.info("ChromaDB client connection closed")
+        except Exception as e:
+            memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
+            raise VectorMemoryError(f"Failed to close ChromaDB client: {e}")

@@ -138,6 +138,23 @@ I ran the integration and performance tests again, and updated the `test_results
 let's continue solving the most common and fundamental errors, through our Unified Test-Driven Development Workflow, maintaining an updated `project_status_update.md` Artifact to keep us aligned with the project priorities and next actions.
 ```
 
+## Ask for help
+
+As another AI to generate some examples for us:
+
+```plaintext
+Thank-you for these changes.
+I have updated the `srt-agentic-api-app.md` artifact with the latest codebase changes.
+I have updated the `srt-agentic-api-tests.md` artifact with the latest test suite changes.
+I ran the integration and performance tests again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
+
+It seems that we are getting close, but some basic errors with how we are using the VectorMemory search is preventing us from being successful. 
+
+Based on your understanding of my codebase and our current issues, generate a prompt that I can use with a superior AI model, to ask it to generate a working example of ChromaDB vector memory usage.
+```
+
+Grab the results and paste them into the chat **as-is**.
+
 ## End cycle
 
 ```plaintext
