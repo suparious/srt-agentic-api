@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import patch, AsyncMock
@@ -10,10 +11,15 @@ from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuer
 async def vector_memory():
     collection_name = f"test_collection_{UUID(int=0)}"
     vector_mem = VectorMemory(collection_name)
-    await vector_mem.initialize()
-    yield vector_mem
-    await vector_memory.cleanup()
-    await vector_mem.close()
+    try:
+        await vector_mem.initialize()
+        yield vector_mem
+    finally:
+        try:
+            await vector_mem.cleanup()
+        except VectorMemoryError:
+            pass
+        await vector_mem.close()
 
 
 @pytest.mark.asyncio
@@ -25,6 +31,48 @@ async def test_vector_memory_lifecycle(vector_memory):
     await vector_memory.initialize()
     assert vector_memory.collection is not None
 
+
+@pytest.mark.asyncio
+async def test_vector_memory_add(vector_memory):
+    # Test successful add
+    memory_entry = MemoryEntry(
+        content="Test content",
+        metadata={"key": "value"},
+        context=MemoryContext(context_type="test", timestamp=datetime.now(), metadata={})
+    )
+    memory_id = await vector_memory.add(memory_entry)
+    assert isinstance(memory_id, str)
+
+    # Verify the memory was added
+    result = await asyncio.to_thread(vector_memory.collection.get, ids=[memory_id])
+    assert result['ids'][0] == memory_id
+    assert result['documents'][0] == "Test content"
+
+    # Test add before initialization
+    uninit_vector_memory = VectorMemory("test_uninit")
+    with pytest.raises(VectorMemoryError, match="VectorMemory not initialized"):
+        await uninit_vector_memory.add(memory_entry)
+
+    # Test ChromaDB failure
+    with patch.object(vector_memory.collection, 'add', side_effect=Exception("ChromaDB error")):
+        with pytest.raises(VectorMemoryError, match="Failed to add memory entry: ChromaDB error"):
+            await vector_memory.add(memory_entry)
+
+    # Test adding large content
+    large_content = "x" * 1000000  # 1 million characters
+    large_memory = MemoryEntry(
+        content=large_content,
+        metadata={},
+        context=MemoryContext(context_type="large", timestamp=datetime.now(), metadata={})
+    )
+    large_id = await vector_memory.add(large_memory)
+    assert isinstance(large_id, str)
+
+    # Verify the large memory was added
+    large_result = await asyncio.to_thread(vector_memory.collection.get, ids=[large_id])
+    assert large_result['ids'][0] == large_id
+    assert len(large_result['documents'][0]) == 1000000
+    
 
 @pytest.mark.asyncio
 async def test_vector_memory_add_and_get(vector_memory):

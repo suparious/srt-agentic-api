@@ -1,10 +1,10 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import chromadb
 from chromadb.config import Settings as ChromaDBSettings
 from chromadb.utils import embedding_functions
-import chromadb
 from app.utils.logging import memory_logger
 from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
 from app.core.memory.memory_interface import MemorySystemInterface
@@ -30,8 +30,7 @@ class VectorMemory(MemorySystemInterface):
                 persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
             )
             self.client = chromadb.PersistentClient(path=chroma_db_settings.persist_directory)
-            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name=settings.EMBEDDING_MODEL)
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=settings.EMBEDDING_MODEL)
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
                 embedding_function=self.embedding_function
@@ -42,6 +41,10 @@ class VectorMemory(MemorySystemInterface):
             raise VectorMemoryError(f"Initialization failed: {e}")
 
     async def add(self, memory_entry: MemoryEntry) -> str:
+        if not self.collection:
+            memory_logger.error("Attempt to add memory before initialization")
+            raise VectorMemoryError("VectorMemory not initialized")
+
         try:
             metadata = {
                 **memory_entry.metadata,
@@ -50,14 +53,21 @@ class VectorMemory(MemorySystemInterface):
                 **memory_entry.context.metadata,
             }
 
+            memory_id = str(uuid4())
+
             result = await asyncio.to_thread(
                 self.collection.add,
                 documents=[memory_entry.content],
                 metadatas=[metadata],
-                ids=[str(UUID(int=0))],  # Generate a new UUID
+                ids=[memory_id],
             )
-            memory_logger.debug(f"Added document to ChromaDB: {result['ids'][0]}")
-            return result["ids"][0]
+
+            if not result:
+                raise VectorMemoryError("ChromaDB add operation returned None")
+
+            memory_logger.debug(f"Added document to ChromaDB: {memory_id}")
+            return memory_id
+
         except Exception as e:
             memory_logger.error(f"Error adding memory to ChromaDB: {str(e)}")
             raise VectorMemoryError(f"Failed to add memory entry: {e}")
@@ -218,10 +228,12 @@ class VectorMemory(MemorySystemInterface):
 
     async def cleanup(self) -> None:
         try:
-            await asyncio.to_thread(self.collection.delete)
-            self.collection = self.client.get_or_create_collection(name=self.collection_name,
-                                                                   embedding_function=self.embedding_function)
-            memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
+            if self.collection:
+                # Get all document IDs in the collection
+                result = await asyncio.to_thread(self.collection.get, include=['documents'])
+                if result and 'ids' in result:
+                    await asyncio.to_thread(self.collection.delete, ids=result['ids'])
+                memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
         except Exception as e:
             memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")
             raise VectorMemoryError(f"Failed to cleanup VectorMemory: {e}")
@@ -229,8 +241,12 @@ class VectorMemory(MemorySystemInterface):
     async def close(self) -> None:
         try:
             if self.client:
-                await asyncio.to_thread(self.client.close)
-            memory_logger.info("ChromaDB client connection closed")
+                # ChromaDB's PersistentClient doesn't have a close method
+                # We'll perform any necessary cleanup here
+                self.client = None
+                self.collection = None
+                self.embedding_function = None
+            memory_logger.info("ChromaDB resources released")
         except Exception as e:
-            memory_logger.error(f"Error closing ChromaDB client connection: {str(e)}")
-            raise VectorMemoryError(f"Failed to close ChromaDB client: {e}")
+            memory_logger.error(f"Error during ChromaDB resource release: {str(e)}")
+            raise VectorMemoryError(f"Failed to release ChromaDB resources: {e}")

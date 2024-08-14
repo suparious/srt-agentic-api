@@ -128,7 +128,9 @@ Let's maintain our focus on test-driven development and continuous improvement o
 
 Memory system focus:
 
-run `pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration --cov=app/core/memory --cov-report=term-missing | tee logs/test_results_detailed.txt`
+run `pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration --cov=app/core/memory --cov-report=term-missing | tee logs/test_results_detailed.txt`.
+run `pytest -vv tests/integration/test_vector_memory_integration.py::test_vector_memory_add`.
+run `pytest -vv tests/integration/test_vector_memory_integration.py`.
 
 ```plaintext
 Thank-you for these changes.
