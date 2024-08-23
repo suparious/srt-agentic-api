@@ -12,7 +12,7 @@ async def redis_connection(test_settings):
     await connection.close()
 
 @pytest.fixture
-async def redis_memory(redis_connection):
+async def redis_memory():
     agent_id = UUID('12345678-1234-5678-1234-567812345678')
     redis_mem = RedisMemory(agent_id)
     await redis_mem.initialize()

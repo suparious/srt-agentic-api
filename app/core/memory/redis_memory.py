@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -18,6 +19,7 @@ class RedisMemory:
         self.connection = RedisConnection(agent_id)
         self.operations = RedisMemoryOperations(self.connection)
         self.search = RedisSearch(self.connection)
+        self.loop = asyncio.get_event_loop()
 
     async def initialize(self) -> None:
         try:

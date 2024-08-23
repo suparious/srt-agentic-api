@@ -2,79 +2,76 @@
 
 ## Current Status
 - Code coverage: 56% (Target: 80%)
-- Passing tests: 52 out of 117 (44% pass rate)
+- Passing tests: 52 out of 111 (47% pass rate)
 - Failed tests: 22
-- Errors: 43
+- Errors: 37
 
 ## Progress Made
-1. Fixed MemoryEntry 'id' attribute issue
-2. Improved Vector Memory search and retrieval
-3. Updated LLMProviderConfig to include 'provider_type'
-4. Refactored RedisMemory initialization
+1. Refactored Redis memory implementation for better modularity
+2. Updated MemoryEntry model to include 'id' attribute
+3. Improved error handling in RedisMemory and related classes
+4. Updated test suite for Redis memory operations
 
-## Remaining Issues and Priorities
+## Critical Issues
 
-1. **Redis Memory Operations** (High Priority)
-   - Fix Redis memory lifecycle and add operations
-   - Address "Failed to add memory" errors in Redis memory tests
+1. **Asynchronous Execution Deadlock** (Highest Priority)
+   - Tests are hanging, possibly due to improper async handling
+   - Focused on `test_redis_memory_lifecycle` and other Redis memory tests
 
-2. **LLM Provider Configuration** (High Priority)
-   - Resolve 'dict' object has no attribute 'provider_type' errors
-   - Ensure LLMProviderConfig is correctly used throughout the codebase
+2. **Redis Memory Operations** (High Priority)
+   - All Redis memory tests are currently failing
+   - Issues with add, get, search, and delete operations
 
-3. **AgentConfig Validation** (High Priority)
-   - Fix validation errors for AgentConfig in core agent tests
+3. **LLM Provider Configuration** (High Priority)
+   - Persistent 'dict' object has no attribute 'provider_type' errors
+   - LLMProviderConfig usage needs review across the codebase
 
-4. **Async Setup Issues** (Medium Priority)
-   - Resolve 'RedisMemory' object has no attribute 'redis' error
-   - Fix VectorMemory async setup assertion error
+4. **AgentConfig Validation** (High Priority)
+   - Multiple validation errors for AgentConfig in core agent tests
 
-5. **Integration Test Discrepancies** (Medium Priority)
-   - Align expected and actual results in Redis and Vector memory integration tests
-
-6. **API Endpoint Tests** (Medium Priority)
-   - Fix errors in agent, function, memory, and message API tests
-
-7. **Vector Memory Edge Cases** (Low Priority)
-   - Address remaining issues with vector memory search and retrieval edge cases
-
-8. **Improve Test Coverage** (Ongoing)
-   - Incrementally increase test coverage, focusing on core components first
+5. **Vector Memory Edge Cases** (Medium Priority)
+   - Issues with search filters and result counts in vector memory operations
 
 ## Next Steps
-1. Update RedisMemory class to properly handle Redis operations:
-   - Review and fix the add, get, search, and delete methods
+
+1. **Resolve Asynchronous Execution Issues**
+   - Review and fix `RedisMemory.close()` and `initialize()` methods
+   - Ensure proper async handling in `RedisConnection` class
+   - Investigate potential infinite loops or deadlocks in async code
+
+2. **Fix Redis Memory Operations**
+   - Debug and fix issues in add, get, search, and delete methods
    - Ensure proper error handling and connection management
+   - Update tests to accurately reflect expected behavior
 
-2. Refactor LLM Provider usage:
-   - Update all occurrences of LLM provider configuration to use the correct structure
+3. **Address LLM Provider Configuration**
+   - Review and update LLMProviderConfig usage throughout the codebase
    - Ensure consistent use of provider_type attribute
+   - Update tests to use correct LLMProviderConfig structure
 
-3. Review and update AgentConfig model:
-   - Identify and fix the validation error in the AgentConfig
+4. **Resolve AgentConfig Validation Errors**
+   - Review and update AgentConfig model in app/api/models/agent.py
+   - Identify and fix the source of validation errors in core agent tests
    - Update tests to use the correct AgentConfig structure
 
-4. Improve async handling in memory components:
-   - Ensure proper initialization of Redis and Vector memory in async context
-   - Review and update async setup in test fixtures
+5. **Improve Vector Memory Implementation**
+   - Address issues with search filters and result counts
+   - Enhance error handling in vector memory operations
+   - Update integration tests for vector memory
 
-5. Align integration tests with actual behavior:
-   - Review expectations in Redis and Vector memory integration tests
-   - Update test cases to reflect the current implementation
+6. **Continuous Test Coverage Improvement**
+   - Focus on increasing coverage for files with low percentages
+   - Add more unit and integration tests for core components
 
-6. Fix API endpoint tests:
-   - Review and update mocking strategy for API tests
-   - Ensure proper setup and teardown for each API test
+## Questions and Clarifications for Next Cycle
+1. Is the Redis server consistently running and accessible during test execution?
+2. Are there any specific error messages or stack traces for the hanging tests that could provide more insight?
+3. Have there been any recent changes to the async infrastructure or event loop handling that might contribute to the deadlock issues?
 
-7. Address Vector Memory edge cases:
-   - Review and fix issues with search filters and result counts
-   - Improve error handling in vector memory operations
-
-8. Continuous test coverage improvement:
-   - Identify areas with low coverage and add targeted tests
-   - Refactor complex functions to improve testability
-
-## Questions and Clarifications
-1. Are there any known issues with the Redis server configuration that might be contributing to the connection problems?
-2. Is there a specific reason for the discrepancy between expected and actual result counts in memory search operations?
-3. Are there any performance benchmarks or requirements for the memory operations, especially when dealing with large datasets?
+## Recommendations for Next Development Cycle
+1. Start by isolating and fixing the async execution issues, particularly in the Redis memory tests.
+2. Use logging liberally to trace the execution flow and identify where hangs or deadlocks occur.
+3. Consider implementing timeouts for async operations to prevent indefinite hangs.
+4. Review the overall async architecture to ensure proper handling of concurrent operations and resource management.
+5. After resolving critical async issues, focus on fixing Redis memory operations and LLM provider configuration problems.
+6. Gradually increase test coverage while fixing identified issues, aiming for the 80% target.

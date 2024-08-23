@@ -13,13 +13,21 @@ async def redis_memory():
     await redis_mem.cleanup()
     await redis_mem.close()
 
+
 @pytest.mark.asyncio
 async def test_redis_memory_lifecycle(redis_memory):
     assert redis_memory.connection.redis is not None
+
+    # Test close
     await redis_memory.close()
     assert redis_memory.connection.redis is None
+
+    # Test re-initialize
     await redis_memory.initialize()
     assert redis_memory.connection.redis is not None
+
+    # Clean up
+    await redis_memory.close()
 
 @pytest.mark.asyncio
 async def test_redis_memory_add_and_get(redis_memory):

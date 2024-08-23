@@ -20,12 +20,6 @@ class RedisConnection:
         self.retry_delay = 1  # Initial delay in seconds
 
     async def initialize(self) -> None:
-        """
-        Initialize the Redis connection with retry logic.
-
-        Raises:
-            RedisConnectionError: If the connection cannot be established after retries.
-        """
         last_error = None
         for attempt in range(self.max_retries):
             try:
@@ -46,8 +40,18 @@ class RedisConnection:
                 await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
 
         memory_logger.error(f"Failed to initialize Redis connection after {self.max_retries} attempts")
-        await self.close()  # Ensure we close any partial connections
         raise RedisConnectionError(f"Failed to initialize Redis connection: {str(last_error)}")
+
+    async def close(self) -> None:
+        """Close the Redis connection."""
+        if self.redis:
+            try:
+                await self.redis.close()
+                self.redis = None
+                memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
+            except Exception as e:
+                memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
+                raise RedisConnectionError(f"Failed to close Redis connection: {str(e)}")
 
     @asynccontextmanager
     async def get_connection(self):
@@ -58,20 +62,11 @@ class RedisConnection:
         except (ConnectionError, TimeoutError) as e:
             memory_logger.error(f"Redis connection error: {str(e)}")
             memory_logger.error(f"Traceback: {traceback.format_exc()}")
-            await self.close()  # Close the connection before attempting to reconnect
             raise RedisConnectionError(f"Redis connection error: {str(e)}") from e
         except Exception as e:
             memory_logger.error(f"Unexpected error during Redis operation: {str(e)}")
             memory_logger.error(f"Traceback: {traceback.format_exc()}")
-            await self.close()  # Ensure we close the connection on unexpected errors
             raise RedisConnectionError(f"Unexpected error during Redis operation: {str(e)}") from e
-
-    async def close(self) -> None:
-        """Close the Redis connection."""
-        if self.redis:
-            await self.redis.aclose()
-            self.redis = None
-        memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
 
     async def ensure_connection(self) -> None:
         """
@@ -87,5 +82,4 @@ class RedisConnection:
                 await self.redis.ping()
         except Exception as e:
             memory_logger.error(f"Error ensuring Redis connection: {str(e)}")
-            await self.close()  # Ensure we close the connection on errors
             raise RedisConnectionError(f"Failed to ensure Redis connection: {str(e)}") from e

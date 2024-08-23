@@ -8,23 +8,29 @@ The test suite is organized into the following categories:
 
 ```
 tests
-├── README.md
-├── __init__.py
 ├── conftest.py
+├── fixtures
+│   ├── async_fixtures.py
+│   ├── __init__.py
+│   └── redis_fixtures.py
+├── __init__.py
 ├── integration
+│   ├── conftest.py
 │   ├── __init__.py
 │   ├── test_main.py
-│   └── test_redis_memory_integration.py
+│   ├── test_redis_memory_integration.py
+│   └── test_vector_memory_integration.py
 ├── performance
+│   ├── conftest.py
 │   ├── __init__.py
 │   └── redis_benchmark.py
+├── README.md
 └── unit
-    ├── __init__.py
     ├── api
-    │   ├── __init__.py
     │   ├── endpoints
     │   │   ├── __init__.py
     │   │   └── test_memory.py
+    │   ├── __init__.py
     │   ├── models
     │   │   ├── __init__.py
     │   │   └── test_message_models.py
@@ -32,6 +38,7 @@ tests
     │   ├── test_function.py
     │   ├── test_memory.py
     │   └── test_message.py
+    ├── conftest.py
     ├── core
     │   ├── __init__.py
     │   ├── memory
@@ -42,6 +49,7 @@ tests
     │   │   └── test_vector_memory.py
     │   ├── test_agent.py
     │   └── test_llm_provider.py
+    ├── __init__.py
     └── test_async_setup.py
 ```
 
