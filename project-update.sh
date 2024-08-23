@@ -34,5 +34,5 @@ export PYTHONPATH=${repo_home}
 #pytest -p no:warnings --verbose --capture=no --cov=app --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 #pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 #pytest -v -s --capture=no --log-cli-level=DEBUG tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
-pytest -v -s --capture=no --log-cli-level=DEBUG tests/unit tests/integration --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
-#pytest -v tests/unit/core/memory/test_redis_memory.py --cov=app/core/memory/redis_memory.py --cov-report=term-missing
+#pytest -v -s --capture=no --log-cli-level=DEBUG tests/unit tests/integration --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
+pytest -v tests/unit/core/memory/test_redis_memory.py --cov=app/core/memory/redis_memory.py --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
