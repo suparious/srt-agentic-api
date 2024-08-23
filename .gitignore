@@ -27,8 +27,11 @@ logs/
 .coverage*
 coverage.xml
 
-# Markdown file
+# AI digest Markdown files
 codebase.md
+srt-agentic-api-app.md
+srt-agentic-api-tests.md
 
 # Sphynx docs builds
 _build/
+

@@ -112,7 +112,7 @@ Welcome to our latest development cycle for the SRT Agentic API project. Please 
 
 1. Review the `srt-agent-api-app.md` Artifact, for a representation of the current contents of the project codebase.
 2. Review the `srt-agent-api-tests.md` Artifact, for a representation of the current test suite.
-3. Examine the latest pytest output within the `test_results_detailed.txt` Artifact.
+3. Examine the latest pytest output within the `test_results_detailed.txt` Artifact (this may not exist on a fresh development cycle).
 
 Our goal remains 80% code coverage with all tests passing. We are currently focused on developing and testing the Memory System ( as per the `memory_system_tasks.md` artifact). Refer to the `development_plan.md` artifact for our long-term roadmap.
 
@@ -165,3 +165,4 @@ After running the tests, I have updated the `test_results_detailed.txt` Artifact
 Looks like we need to wrap up our development cycle. Please refactor the `project_status_update.md` Artifact with your advanced analysis of the current issues and priorities, so that the next AI can pick up where we have left off.
 Thank-you for another great cycle.
 ```
+
