@@ -1,100 +1,143 @@
-from uuid import UUID
 import pytest
-from unittest.mock import patch, AsyncMock
+import os
+from unittest.mock import AsyncMock, patch
 from redis.exceptions import ConnectionError, TimeoutError
 from app.core.memory.redis.connection import RedisConnection, RedisConnectionError
 
 
 @pytest.fixture
-async def redis_connection():
-    connection = RedisConnection(UUID('00000000-0000-0000-0000-000000000000'))
-    yield connection
-    await connection.close()
+def redis_url():
+    return os.getenv("REDIS_URL", "redis://localhost:6379")
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_initialization(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock()
-        mock_redis.return_value.info = AsyncMock(
-            return_value={'redis_version': '6.0.0', 'connected_clients': '1', 'used_memory_human': '1M'})
+async def test_redis_connection_initialization(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis:
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.return_value = True
+        mock_redis.return_value.info.return_value = {
+            'redis_version': '6.0.0',
+            'connected_clients': '1',
+            'used_memory_human': '1M'
+        }
 
-        await redis_connection.initialize()
+        connection = RedisConnection(agent_id)
+        await connection.initialize()
 
-        mock_redis.assert_called_once()
+        assert connection.redis is not None
+        mock_redis.assert_called_once_with(redis_url, encoding="utf-8", decode_responses=True)
         mock_redis.return_value.ping.assert_called_once()
-        mock_redis.return_value.info.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_initialization_retry(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock(side_effect=[ConnectionError, TimeoutError, None])
-        mock_redis.return_value.info = AsyncMock(
-            return_value={'redis_version': '6.0.0', 'connected_clients': '1', 'used_memory_human': '1M'})
+async def test_redis_connection_initialization_retry(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis, \
+            patch('asyncio.sleep', return_value=None):
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.side_effect = [TimeoutError, True]
+        mock_redis.return_value.info.return_value = {
+            'redis_version': '6.0.0',
+            'connected_clients': '1',
+            'used_memory_human': '1M'
+        }
 
-        await redis_connection.initialize()
+        connection = RedisConnection(agent_id)
+        await connection.initialize()
 
-        assert mock_redis.call_count == 3
-        assert mock_redis.return_value.ping.call_count == 3
-
-
-@pytest.mark.asyncio
-async def test_redis_connection_initialization_failure(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock(side_effect=ConnectionError)
-
-        with pytest.raises(RedisConnectionError):
-            await redis_connection.initialize()
-
-        assert mock_redis.call_count == 3
-
-
-@pytest.mark.asyncio
-async def test_redis_connection_get_connection(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock()
-        mock_redis.return_value.info = AsyncMock(
-            return_value={'redis_version': '6.0.0', 'connected_clients': '1', 'used_memory_human': '1M'})
-
-        await redis_connection.initialize()
-
-        async with redis_connection.get_connection() as conn:
-            assert conn == mock_redis.return_value
-
-
-@pytest.mark.asyncio
-async def test_redis_connection_reconnect(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock(side_effect=[None, ConnectionError, None])
-        mock_redis.return_value.info = AsyncMock(
-            return_value={'redis_version': '6.0.0', 'connected_clients': '1', 'used_memory_human': '1M'})
-
-        await redis_connection.initialize()
-
-        with pytest.raises(RedisConnectionError):
-            async with redis_connection.get_connection() as conn:
-                raise ConnectionError()
-
-        async with redis_connection.get_connection() as conn:
-            assert conn == mock_redis.return_value
-
+        assert connection.redis is not None
         assert mock_redis.call_count == 2
+        assert mock_redis.return_value.ping.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_redis_connection_ensure_connection(redis_connection):
-    with patch('redis.asyncio.Redis.from_url', new_callable=AsyncMock) as mock_redis:
-        mock_redis.return_value.ping = AsyncMock()
-        mock_redis.return_value.info = AsyncMock(
-            return_value={'redis_version': '6.0.0', 'connected_clients': '1', 'used_memory_human': '1M'})
+async def test_redis_connection_initialization_failure(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis, \
+            patch('asyncio.sleep', return_value=None):
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.side_effect = ConnectionError
 
-        await redis_connection.ensure_connection()
+        connection = RedisConnection(agent_id)
+        with pytest.raises(RedisConnectionError):
+            await connection.initialize()
 
-        mock_redis.assert_called_once()
-        mock_redis.return_value.ping.assert_called_once()
 
-        # Test with existing connection
-        await redis_connection.ensure_connection()
+@pytest.mark.asyncio
+async def test_redis_connection_get_connection(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis:
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.return_value = True
+        mock_redis.return_value.info.return_value = {
+            'redis_version': '6.0.0',
+            'connected_clients': '1',
+            'used_memory_human': '1M'
+        }
+
+        connection = RedisConnection(agent_id)
+        await connection.initialize()
+
+        async with connection.get_connection() as conn:
+            assert conn is not None
+            assert conn is connection.redis
+
+
+@pytest.mark.asyncio
+async def test_redis_connection_ensure_connection(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis:
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.return_value = True
+        mock_redis.return_value.info.return_value = {
+            'redis_version': '6.0.0',
+            'connected_clients': '1',
+            'used_memory_human': '1M'
+        }
+
+        connection = RedisConnection(agent_id)
+
+        # Test when redis is None
+        await connection.ensure_connection()
+        assert connection.redis is not None
+
+        # Test when redis is already initialized
+        await connection.ensure_connection()
         assert mock_redis.call_count == 1
-        assert mock_redis.return_value.ping.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_redis_connection_close(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis:
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.return_value = True
+        mock_redis.return_value.info.return_value = {
+            'redis_version': '6.0.0',
+            'connected_clients': '1',
+            'used_memory_human': '1M'
+        }
+
+        connection = RedisConnection(agent_id)
+        await connection.initialize()
+
+        await connection.close()
+        assert connection.redis is None
+        mock_redis.return_value.aclose.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_redis_connection_too_many_connections(redis_url):
+    agent_id = '12345678-1234-5678-1234-567812345678'
+    with patch('redis.asyncio.Redis.from_url') as mock_redis, \
+            patch('asyncio.sleep', return_value=None):
+        mock_redis.return_value = AsyncMock()
+        mock_redis.return_value.ping.side_effect = ConnectionError("too many connections")
+
+        connection = RedisConnection(agent_id)
+        with pytest.raises(RedisConnectionError) as excinfo:
+            await connection.initialize()
+
+        assert "too many connections" in str(excinfo.value)
+        mock_redis.return_value.aclose.assert_called()

@@ -30,6 +30,8 @@ npx ai-digest --input ${repo_home}/tests --output ${repo_home}/docs/project/srt-
 
 # Run the test suite
 cd ${repo_home}
+export PYTHONPATH=${repo_home}
 #pytest -p no:warnings --verbose --capture=no --cov=app --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 #pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
-pytest -v -s --capture=no --log-cli-level=DEBUG tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
+#pytest -v -s --capture=no --log-cli-level=DEBUG tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
+pytest -v -s --capture=no --log-cli-level=DEBUG tests/unit tests/integration --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt

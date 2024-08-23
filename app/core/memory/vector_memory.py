@@ -101,8 +101,8 @@ class VectorMemory(MemorySystemInterface):
                 where_clause["context_type"] = query.context_type
             if query.time_range:
                 where_clause["context_timestamp"] = {
-                    "$gte": query.time_range["start"].isoformat(),
-                    "$lte": query.time_range["end"].isoformat(),
+                    "$gte": query.time_range["start"].timestamp(),
+                    "$lte": query.time_range["end"].timestamp(),
                 }
             if query.metadata_filters:
                 where_clause.update(query.metadata_filters)
@@ -204,8 +204,8 @@ class VectorMemory(MemorySystemInterface):
             results = await asyncio.to_thread(
                 self.collection.query,
                 query_texts=[""],
-                n_results=None,  # Retrieve all matching results
-                where={"context_timestamp": {"$lt": threshold.isoformat()}},
+                n_results=None,
+                where={"context_timestamp": {"$lt": threshold.timestamp()}},
             )
             memory_logger.debug(f"Retrieved {len(results['ids'][0])} old memories from ChromaDB")
 

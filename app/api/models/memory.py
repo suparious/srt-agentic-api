@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Any, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from enum import Enum
 from datetime import datetime
 
@@ -28,6 +28,7 @@ class MemoryContext(BaseModel):
 
 
 class MemoryEntry(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
     content: str = Field(..., description="The content of the memory")
     metadata: Optional[Dict[str, Any]] = Field(
         default=None, description="Optional metadata associated with the memory"
