@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
@@ -11,28 +12,12 @@ from app.api.models.memory import (
 from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory, RedisMemoryError
 from .vector_memory import VectorMemory, VectorMemoryError
-from .memory_utils import (
-    DEFAULT_CONSOLIDATION_INTERVAL,
-    DEFAULT_FORGET_AGE,
-    serialize_memory_entry,
-    deserialize_memory_entry,
-    calculate_relevance_score,
-    should_consolidate_memory,
-    should_forget_memory,
-)
 
 class MemorySystemError(Exception):
     """Base exception for MemorySystem errors."""
     pass
 
 class MemorySystem:
-    """
-    Manages both short-term and long-term memory for an agent.
-
-    This class coordinates between RedisMemory for short-term storage and
-    VectorMemory for long-term storage based on the provided configuration.
-    """
-
     def __init__(
         self,
         agent_id: uuid.UUID,
@@ -40,15 +25,6 @@ class MemorySystem:
         short_term: Optional[RedisMemory] = None,
         long_term: Optional[VectorMemory] = None,
     ):
-        """
-        Initialize the MemorySystem for an agent.
-
-        Args:
-            agent_id (UUID): The unique identifier for the agent.
-            config (MemoryConfig): Configuration settings for the memory system.
-            short_term (Optional[RedisMemory]): RedisMemory instance for short-term storage. If None, a new instance will be created.
-            long_term (Optional[VectorMemory]): VectorMemory instance for long-term storage. If None, a new instance will be created.
-        """
         self.agent_id = agent_id
         self.config = config
         self.short_term = short_term or RedisMemory(agent_id)
@@ -56,22 +32,31 @@ class MemorySystem:
         self.consolidation_queue: List[MemoryEntry] = []
         memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
 
+    async def initialize(self) -> None:
+        try:
+            await asyncio.gather(
+                self.short_term.initialize(),
+                self.long_term.initialize()
+            )
+            memory_logger.info(f"MemorySystem fully initialized for agent: {self.agent_id}")
+        except (RedisMemoryError, VectorMemoryError) as e:
+            memory_logger.error(f"Failed to initialize MemorySystem for agent {self.agent_id}: {str(e)}")
+            raise MemorySystemError("Failed to initialize MemorySystem") from e
+
+    async def close(self) -> None:
+        try:
+            await asyncio.gather(
+                self.short_term.close(),
+                self.long_term.close()
+            )
+            memory_logger.info(f"MemorySystem closed for agent: {self.agent_id}")
+        except (RedisMemoryError, VectorMemoryError) as e:
+            memory_logger.error(f"Error closing MemorySystem for agent {self.agent_id}: {str(e)}")
+            raise MemorySystemError("Failed to close MemorySystem") from e
+
     async def add(
         self, memory_type: Union[MemoryType, str], memory_entry: MemoryEntry
     ) -> str:
-        """
-        Add a memory entry to either short-term or long-term storage.
-
-        Args:
-            memory_type (MemoryType): The type of memory (SHORT_TERM or LONG_TERM).
-            memory_entry (MemoryEntry): The memory entry to be added.
-
-        Returns:
-            str: The ID of the added memory entry.
-
-        Raises:
-            MemorySystemError: If there's an error adding the memory.
-        """
         try:
             if (
                 memory_type == MemoryType.SHORT_TERM or memory_type == "SHORT_TERM"
@@ -99,19 +84,6 @@ class MemorySystem:
     async def retrieve(
         self, memory_type: Union[MemoryType, str], memory_id: str
     ) -> Optional[MemoryEntry]:
-        """
-        Retrieve a memory entry from either short-term or long-term storage.
-
-        Args:
-            memory_type (MemoryType): The type of memory (SHORT_TERM or LONG_TERM).
-            memory_id (str): The ID of the memory entry to retrieve.
-
-        Returns:
-            Optional[MemoryEntry]: The retrieved memory entry, or None if not found.
-
-        Raises:
-            MemorySystemError: If there's an error retrieving the memory.
-        """
         try:
             if (
                 memory_type == MemoryType.SHORT_TERM or memory_type == "SHORT_TERM"
@@ -130,52 +102,39 @@ class MemorySystem:
             raise MemorySystemError(f"Failed to retrieve {memory_type} memory") from e
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
-        """
-        Search for memories across both short-term and long-term storage.
-
-        Args:
-            query (AdvancedSearchQuery): The search query parameters.
-
-        Returns:
-            List[Dict[str, Any]]: A list of search results, sorted by relevance.
-
-        Raises:
-            MemorySystemError: If there's an error searching memories.
-        """
         try:
             results = []
+            search_tasks = []
+
             if (
                 query.memory_type in (None, MemoryType.SHORT_TERM, "SHORT_TERM")
                 and self.config.use_redis_cache
             ):
-                results.extend(await self.short_term.search(query))
+                search_tasks.append(self.short_term.search(query))
             if (
                 query.memory_type in (None, MemoryType.LONG_TERM, "LONG_TERM")
                 and self.config.use_long_term_memory
             ):
-                results.extend(await self.long_term.search(query))
+                search_tasks.append(self.long_term.search(query))
+
+            search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+            for result in search_results:
+                if isinstance(result, Exception):
+                    memory_logger.error(f"Error during search: {str(result)}")
+                else:
+                    results.extend(result)
 
             sorted_results = sorted(
                 results, key=lambda x: x["relevance_score"], reverse=True
             )
             return sorted_results[: query.max_results]
-        except (RedisMemoryError, VectorMemoryError) as e:
+        except Exception as e:
             memory_logger.error(
                 f"Failed to search memories for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError("Failed to search memories") from e
 
     async def delete(self, memory_type: Union[MemoryType, str], memory_id: str):
-        """
-        Delete a memory entry from either short-term or long-term storage.
-
-        Args:
-            memory_type (MemoryType): The type of memory (SHORT_TERM or LONG_TERM).
-            memory_id (str): The ID of the memory entry to delete.
-
-        Raises:
-            MemorySystemError: If there's an error deleting the memory.
-        """
         try:
             if (
                 memory_type == MemoryType.SHORT_TERM or memory_type == "SHORT_TERM"
@@ -205,20 +164,6 @@ class MemorySystem:
         memory_type: Union[MemoryType, str],
         data: Dict[str, Any],
     ) -> Any:
-        """
-        Perform a memory operation based on the given operation type.
-
-        Args:
-            operation (MemoryOperation): The type of operation to perform.
-            memory_type (MemoryType): The type of memory (SHORT_TERM or LONG_TERM).
-            data (Dict[str, Any]): The data required for the operation.
-
-        Returns:
-            Any: The result of the operation, which varies based on the operation type.
-
-        Raises:
-            MemorySystemError: If there's an error performing the operation.
-        """
         try:
             if operation == MemoryOperation.ADD or operation == "ADD":
                 return await self.add(memory_type, MemoryEntry(**data))
@@ -237,49 +182,7 @@ class MemorySystem:
             )
             raise MemorySystemError(f"Failed to perform {operation} operation") from e
 
-    async def retrieve_relevant(
-        self, context: str, limit: int = 5
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieve relevant memories based on the given context.
-
-        Args:
-            context (str): The context to use for retrieving relevant memories.
-            limit (int): The maximum number of memories to retrieve.
-
-        Returns:
-            List[Dict[str, Any]]: A list of relevant memories.
-
-        Raises:
-            MemorySystemError: If there's an error retrieving relevant memories.
-        """
-        try:
-            relevant_memories = []
-            if self.config.use_redis_cache:
-                recent_memories = await self.short_term.get_recent(limit)
-                relevant_memories.extend(recent_memories)
-
-            if self.config.use_long_term_memory:
-                long_term_results = await self.long_term.search(
-                    AdvancedSearchQuery(query=context, max_results=limit)
-                )
-                relevant_memories.extend(long_term_results)
-
-            relevant_memories.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
-            return relevant_memories[:limit]
-        except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
-                f"Error retrieving relevant memories for agent {self.agent_id}: {str(e)}"
-            )
-            raise MemorySystemError("Failed to retrieve relevant memories") from e
-
     async def consolidate_memories(self):
-        """
-        Consolidate short-term memories into long-term storage.
-
-        Raises:
-            MemorySystemError: If there's an error consolidating memories.
-        """
         try:
             threshold = datetime.now() - timedelta(hours=1)  # Consolidate memories older than 1 hour
             old_memories = await self.short_term.get_memories_older_than(threshold)
@@ -298,15 +201,6 @@ class MemorySystem:
             raise MemorySystemError("Failed to consolidate memories") from e
 
     async def forget_old_memories(self, age_limit: timedelta):
-        """
-        Forget (delete) old memories from long-term storage.
-
-        Args:
-            age_limit (timedelta): The age limit for memories to be forgotten.
-
-        Raises:
-            MemorySystemError: If there's an error forgetting old memories.
-        """
         try:
             threshold = datetime.now() - age_limit
             old_memories = await self.long_term.get_memories_older_than(threshold)
@@ -323,19 +217,8 @@ class MemorySystem:
             )
             raise MemorySystemError("Failed to forget old memories") from e
 
-    async def close(self):
-        """
-        Close connections and perform cleanup for the memory system.
-
-        Raises:
-            MemorySystemError: If there's an error closing the memory system.
-        """
-        try:
-            await self.short_term.close()
-            await self.long_term.close()
-            memory_logger.info(f"MemorySystem closed for agent: {self.agent_id}")
-        except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
-                f"Error closing MemorySystem for agent {self.agent_id}: {str(e)}"
-            )
-            raise MemorySystemError("Failed to close MemorySystem") from e
+    @classmethod
+    async def initialize_memory_systems(cls):
+        # This method is called during startup
+        # Implement any global initialization logic here if needed
+        pass

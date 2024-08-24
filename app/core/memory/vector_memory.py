@@ -10,11 +10,9 @@ from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContex
 from app.core.memory.memory_interface import MemorySystemInterface
 from app.config import settings
 
-
 class VectorMemoryError(Exception):
     """Custom exception for ChromaDB-related errors."""
     pass
-
 
 class VectorMemory(MemorySystemInterface):
     def __init__(self, collection_name: str):
@@ -22,23 +20,25 @@ class VectorMemory(MemorySystemInterface):
         self.client = None
         self.collection = None
         self.embedding_function = None
+        self._lock = asyncio.Lock()
 
     async def initialize(self) -> None:
-        try:
-            chroma_db_settings = ChromaDBSettings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
-            )
-            self.client = chromadb.PersistentClient(path=chroma_db_settings.persist_directory)
-            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=settings.EMBEDDING_MODEL)
-            self.collection = self.client.get_or_create_collection(
-                name=self.collection_name,
-                embedding_function=self.embedding_function
-            )
-            memory_logger.info(f"ChromaDB collection initialized: {self.collection_name}")
-        except Exception as e:
-            memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
-            raise VectorMemoryError(f"Initialization failed: {e}")
+        async with self._lock:
+            try:
+                chroma_db_settings = ChromaDBSettings(
+                    chroma_db_impl="duckdb+parquet",
+                    persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
+                )
+                self.client = chromadb.PersistentClient(path=chroma_db_settings.persist_directory)
+                self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=settings.EMBEDDING_MODEL)
+                self.collection = self.client.get_or_create_collection(
+                    name=self.collection_name,
+                    embedding_function=self.embedding_function
+                )
+                memory_logger.info(f"ChromaDB collection initialized: {self.collection_name}")
+            except Exception as e:
+                memory_logger.error(f"Failed to initialize ChromaDB: {str(e)}")
+                raise VectorMemoryError(f"Initialization failed: {e}")
 
     async def add(self, memory_entry: MemoryEntry) -> str:
         if not self.collection:
@@ -101,8 +101,8 @@ class VectorMemory(MemorySystemInterface):
                 where_clause["context_type"] = query.context_type
             if query.time_range:
                 where_clause["context_timestamp"] = {
-                    "$gte": query.time_range["start"].timestamp(),
-                    "$lte": query.time_range["end"].timestamp(),
+                    "$gte": query.time_range["start"].isoformat(),
+                    "$lte": query.time_range["end"].isoformat(),
                 }
             if query.metadata_filters:
                 where_clause.update(query.metadata_filters)
@@ -205,7 +205,7 @@ class VectorMemory(MemorySystemInterface):
                 self.collection.query,
                 query_texts=[""],
                 n_results=None,
-                where={"context_timestamp": {"$lt": threshold.timestamp()}},
+                where={"context_timestamp": {"$lt": threshold.isoformat()}},
             )
             memory_logger.debug(f"Retrieved {len(results['ids'][0])} old memories from ChromaDB")
 
@@ -232,9 +232,9 @@ class VectorMemory(MemorySystemInterface):
         try:
             if self.collection:
                 # Get all document IDs in the collection
-                result = self.collection.get(include=['ids'])
+                result = await asyncio.to_thread(self.collection.get, include=['ids'])
                 if result and 'ids' in result:
-                    self.collection.delete(ids=result['ids'])
+                    await asyncio.to_thread(self.collection.delete, ids=result['ids'])
                 memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
         except Exception as e:
             memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")

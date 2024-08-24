@@ -28,14 +28,31 @@ from app.core.function_manager import function_manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await MemorySystem.initialize_memory_systems()
-    # Initialize any necessary data for AgentManager and FunctionManager
-    await agent_manager.initialize()
-    await function_manager.initialize()
-    main_logger.info("AgentManager and FunctionManager initialized")
-    yield
-    # Shutdown
-    # Add any cleanup code here if needed
+    try:
+        await MemorySystem.initialize_memory_systems()
+        await agent_manager.initialize()
+        await function_manager.initialize()
+        main_logger.info("AgentManager and FunctionManager initialized")
+        yield
+    finally:
+        # Shutdown
+        main_logger.info("Starting application shutdown process")
+        shutdown_tasks = [
+            MemorySystem.close_memory_systems(),
+            agent_manager.close(),
+            function_manager.close()
+        ]
+        results = await asyncio.gather(*shutdown_tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                main_logger.error(f"Error during shutdown: {str(result)}")
+
+        # Cancel any remaining tasks
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        [task.cancel() for task in tasks]
+        main_logger.info(f"Cancelling {len(tasks)} outstanding tasks")
+        await asyncio.gather(*tasks, return_exceptions=True)
+        main_logger.info("Application shutdown complete")
 
 app = FastAPI(
     title="SolidRusT Agentic API",

@@ -45,55 +45,55 @@ class RedisMemory:
 
     async def add(self, memory_entry: MemoryEntry) -> str:
         try:
-            await self.connection.ensure_connection()
-            memory_id = await self.operations.add(memory_entry)
-            memory_logger.debug(f"Added memory {memory_id} for agent {self.agent_id}")
-            return memory_id
+            async with self.connection.get_connection() as conn:
+                memory_id = await self.operations.add(conn, memory_entry)
+                memory_logger.debug(f"Added memory {memory_id} for agent {self.agent_id}")
+                return memory_id
         except Exception as e:
             memory_logger.error(f"Error adding memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to add memory") from e
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
         try:
-            await self.connection.ensure_connection()
-            memory = await self.operations.get(memory_id)
-            return memory
+            async with self.connection.get_connection() as conn:
+                memory = await self.operations.get(conn, memory_id)
+                return memory
         except Exception as e:
             memory_logger.error(f"Error retrieving memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to retrieve memory") from e
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
         try:
-            await self.connection.ensure_connection()
-            results = await self.search.search(query)
-            return results
+            async with self.connection.get_connection() as conn:
+                results = await self.search.search(conn, query)
+                return results
         except Exception as e:
             memory_logger.error(f"Error searching memories for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to search memories") from e
 
     async def delete(self, memory_id: str) -> None:
         try:
-            await self.connection.ensure_connection()
-            await self.operations.delete(memory_id)
-            memory_logger.debug(f"Deleted memory {memory_id} for agent {self.agent_id}")
+            async with self.connection.get_connection() as conn:
+                await self.operations.delete(conn, memory_id)
+                memory_logger.debug(f"Deleted memory {memory_id} for agent {self.agent_id}")
         except Exception as e:
             memory_logger.error(f"Error deleting memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to delete memory") from e
 
     async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
         try:
-            await self.connection.ensure_connection()
-            results = await self.search.get_recent(limit)
-            return results
+            async with self.connection.get_connection() as conn:
+                results = await self.search.get_recent(conn, limit)
+                return results
         except Exception as e:
             memory_logger.error(f"Error retrieving recent memories for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to retrieve recent memories") from e
 
     async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
         try:
-            await self.connection.ensure_connection()
-            results = await self.search.get_memories_older_than(threshold)
-            return results
+            async with self.connection.get_connection() as conn:
+                results = await self.search.get_memories_older_than(conn, threshold)
+                return results
         except Exception as e:
             memory_logger.error(f"Error retrieving old memories for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to retrieve old memories") from e

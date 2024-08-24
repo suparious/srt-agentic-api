@@ -1,8 +1,10 @@
 import pytest
+import asyncio
 from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import patch, AsyncMock
-from app.core.memory.redis_memory import RedisMemory, RedisMemoryError, RedisConnectionError
+from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
+from app.core.memory.redis.connection import RedisConnectionError
 from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
 
 @pytest.mark.asyncio
@@ -46,6 +48,13 @@ async def test_redis_memory_lifecycle():
         mock_redis.ping.side_effect = None  # Reset side effect
         await redis_memory.initialize()
         assert redis_memory.connection.redis is not None
+
+        # Test concurrent operations
+        async def concurrent_operation():
+            await redis_memory.add(AsyncMock())
+
+        await asyncio.gather(*[concurrent_operation() for _ in range(10)])
+        assert mock_redis.set.call_count == 10
 
 @pytest.mark.asyncio
 async def test_redis_memory_add_and_get(redis_memory):

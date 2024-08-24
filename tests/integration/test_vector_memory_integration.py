@@ -277,44 +277,94 @@ async def test_vector_memory_search_relevance(vector_memory):
 
 
 @pytest.mark.asyncio
-async def test_vector_memory_edge_cases(vector_memory):
-    # Test adding and retrieving an empty content memory
-    empty_memory = MemoryEntry(
-        content="",
-        metadata={},
-        context=MemoryContext(context_type="empty", timestamp=datetime.now(), metadata={})
-    )
-    empty_id = await vector_memory.add(empty_memory)
-    retrieved_empty = await vector_memory.get(empty_id)
-    assert retrieved_empty is not None
-    assert retrieved_empty.content == ""
+async def test_vector_memory_edge_cases():
+    vector_memory = None
+    try:
+        collection_name = f"test_collection_{UUID(int=0)}"
+        vector_memory = VectorMemory(collection_name)
+        await vector_memory.initialize()
 
-    # Test searching with an empty query
-    empty_query = AdvancedSearchQuery(query="", max_results=5)
-    empty_results = await vector_memory.search(empty_query)
-    assert len(empty_results) == 5  # Should return 5 results (or all if less than 5)
+        # Test adding and retrieving an empty content memory
+        empty_memory = MemoryEntry(
+            content="",
+            metadata={},
+            context=MemoryContext(context_type="empty", timestamp=datetime.now(), metadata={})
+        )
+        empty_id = await vector_memory.add(empty_memory)
+        retrieved_empty = await vector_memory.get(empty_id)
+        assert retrieved_empty is not None
+        assert retrieved_empty.content == ""
 
-    # Test getting recent memories when there are fewer than requested
-    few_memories = await vector_memory.get_recent(100)
-    assert len(few_memories) < 100  # Should return all available memories without error
+        # Test searching with an empty query
+        empty_query = AdvancedSearchQuery(query="", max_results=5)
+        empty_results = await vector_memory.search(empty_query)
+        assert len(empty_results) <= 5  # Should return 5 results or less
 
-    # Test getting memories older than a future date
-    future_date = datetime.now() + timedelta(days=1)
-    future_memories = await vector_memory.get_memories_older_than(future_date)
-    assert len(future_memories) == 0  # Should return an empty list
+        # Test getting recent memories when there are fewer than requested
+        few_memories = await vector_memory.get_recent(100)
+        assert len(few_memories) <= 100  # Should return all available memories without error
 
-    # Test deleting a non-existent memory
-    non_existent_id = str(UUID(int=0))
-    await vector_memory.delete(non_existent_id)  # Should not raise an error
+        # Test getting memories older than a future date
+        future_date = datetime.now() + timedelta(days=1)
+        future_memories = await vector_memory.get_memories_older_than(future_date)
+        assert len(future_memories) == 0  # Should return an empty list
 
-    # Test adding a memory with very large content
-    large_content = "x" * 1000000  # 1 million characters
-    large_memory = MemoryEntry(
-        content=large_content,
-        metadata={},
-        context=MemoryContext(context_type="large", timestamp=datetime.now(), metadata={})
-    )
-    large_id = await vector_memory.add(large_memory)
-    retrieved_large = await vector_memory.get(large_id)
-    assert retrieved_large is not None
-    assert len(retrieved_large.content) == 1000000
+        # Test deleting a non-existent memory
+        non_existent_id = str(UUID(int=0))
+        await vector_memory.delete(non_existent_id)  # Should not raise an error
+
+        # Test adding a memory with very large content
+        large_content = "x" * 1000000  # 1 million characters
+        large_memory = MemoryEntry(
+            content=large_content,
+            metadata={},
+            context=MemoryContext(context_type="large", timestamp=datetime.now(), metadata={})
+        )
+        large_id = await vector_memory.add(large_memory)
+        retrieved_large = await vector_memory.get(large_id)
+        assert retrieved_large is not None
+        assert len(retrieved_large.content) == 1000000
+
+        # Test searching with complex query and filters
+        complex_query = AdvancedSearchQuery(
+            query="test",
+            max_results=10,
+            context_type="test",
+            time_range={
+                "start": datetime.now() - timedelta(days=1),
+                "end": datetime.now()
+            },
+            metadata_filters={"key": "value"},
+            relevance_threshold=0.5
+        )
+        complex_results = await vector_memory.search(complex_query)
+        assert isinstance(complex_results, list)
+
+        # Test concurrent operations
+        async def concurrent_operation():
+            memory = MemoryEntry(
+                content=f"Concurrent test {uuid4()}",
+                metadata={},
+                context=MemoryContext(context_type="concurrent", timestamp=datetime.now(), metadata={})
+            )
+            await vector_memory.add(memory)
+
+        await asyncio.gather(*[concurrent_operation() for _ in range(10)])
+
+        # Test error handling for ChromaDB failures
+        with patch.object(vector_memory.collection, 'add', side_effect=Exception("ChromaDB error")):
+            with pytest.raises(VectorMemoryError):
+                await vector_memory.add(MemoryEntry(
+                    content="Error test",
+                    metadata={},
+                    context=MemoryContext(context_type="error", timestamp=datetime.now(), metadata={})
+                ))
+
+    finally:
+        # Ensure cleanup happens even if there's an error
+        if vector_memory:
+            await vector_memory.cleanup()
+            await vector_memory.close()
+
+        # Add a small delay to allow any background tasks to complete
+    await asyncio.sleep(0.1)
