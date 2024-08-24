@@ -126,17 +126,36 @@ Let's maintain our focus on test-driven development and continuous improvement o
 
 ## Let's proceed
 
-Memory system focus:
+Instruct the AI proceed with the next steps, based on the review of the updated Artifacts.
 
-run `pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration --cov=app/core/memory --cov-report=term-missing | tee logs/test_results_detailed.txt`.
-run `pytest -vv tests/integration/test_vector_memory_integration.py::test_vector_memory_add`.
-run `pytest -vv tests/integration/test_vector_memory_integration.py`.
-run `PYTHONPATH=. pytest -v -s --capture=no --log-cli-level=DEBUG tests/unit tests/integration --cov=app --cov-report=term-missing`
+run `bash project-update.sh`
 
 ```plaintext
 Thank-you for these changes.
-I have updated the `srt-agentic-api-app.md` artifact with the latest codebase changes.
-I have updated the `srt-agentic-api-tests.md` artifact with the latest test suite changes.
+You are such a great AI assistant, and I love working with you.
+the current root structure looks like this:
+    ```plaintext
+    .
+    ├── app
+    ├── data
+    ├── docker-compose-replicaset.yml
+    ├── docker-compose.yml
+    ├── Dockerfile
+    ├── docs
+    ├── examples
+    ├── logs
+    ├── project-update.sh
+    ├── pytest.ini
+    ├── README.md
+    ├── requirements-docgen.txt
+    ├── requirements-testing.txt
+    ├── requirements.txt
+    ├── start-assistant.sh
+    ├── TESTING.md
+    └── tests
+    ```
+I have updated the `app.md` Artifact with the latest contents of the `app` folder.
+I have updated the `tests.md` Artifact with the latest test suite changes in the `tests` folder.
 I ran the integration and performance tests again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
 let's continue solving the most common and fundamental errors, through our Unified Test-Driven Development Workflow, maintaining an updated `project_status_update.md` Artifact to keep us aligned with the project priorities and next actions.
 ```
@@ -165,5 +184,5 @@ Thank-you for those changes.
 After running the tests, I have updated the `test_results_detailed.txt` Artifact, for your review.
 Looks like we need to wrap up our development cycle. Please refactor the `project_status_update.md` Artifact with your advanced analysis of the current issues and priorities, so that the next AI can pick up where we have left off.
 Thank-you for another great cycle.
+Please provide me with any feedback on how I can improve the manner in which I am prompting you, my custom instructions or any other relevant criticism.
 ```
-

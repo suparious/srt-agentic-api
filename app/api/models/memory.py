@@ -26,7 +26,6 @@ class MemoryContext(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-
 class MemoryEntry(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     content: str = Field(..., description="The content of the memory")
