@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 from contextlib import asynccontextmanager
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,7 +36,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     # Add any cleanup code here if needed
-
 
 app = FastAPI(
     title="SolidRusT Agentic API",
