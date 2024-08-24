@@ -232,9 +232,9 @@ class VectorMemory(MemorySystemInterface):
         try:
             if self.collection:
                 # Get all document IDs in the collection
-                result = await asyncio.to_thread(self.collection.get, include=['documents'])
+                result = self.collection.get(include=['ids'])
                 if result and 'ids' in result:
-                    await asyncio.to_thread(self.collection.delete, ids=result['ids'])
+                    self.collection.delete(ids=result['ids'])
                 memory_logger.info(f"VectorMemory cleanup completed for collection: {self.collection_name}")
         except Exception as e:
             memory_logger.error(f"Error during VectorMemory cleanup: {str(e)}")
@@ -243,10 +243,10 @@ class VectorMemory(MemorySystemInterface):
     async def close(self) -> None:
         try:
             if self.client:
-                # ChromaDB's PersistentClient doesn't have a close method
-                # We'll perform any necessary cleanup here
+                # Perform any necessary cleanup
+                if self.collection:
+                    self.collection = None
                 self.client = None
-                self.collection = None
                 self.embedding_function = None
             memory_logger.info("ChromaDB resources released")
         except Exception as e:
