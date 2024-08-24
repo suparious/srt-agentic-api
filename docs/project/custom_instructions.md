@@ -110,6 +110,65 @@ By following these refactored instructions, you will make more efficient use of 
 ```plaintext
 Welcome to our latest development cycle for the SRT Agentic API project. Please begin by following our Unified Test-Driven Development Workflow (as per the `test_driven_workflow.md` artifact):
 
+The current root structure looks like this:
+    ```plaintext
+   ❯ tree -L 2
+.
+├── app
+│   ├── api
+│   ├── config.py
+│   ├── core
+│   ├── __init__.py
+│   ├── main.py
+│   ├── __pycache__
+│   ├── README.md
+│   └── utils
+├── data
+├── docker-compose-replicaset.yml
+├── docker-compose.yml
+├── Dockerfile
+├── docs
+│   ├── api
+│   ├── conf.py
+│   ├── core
+│   ├── guides
+│   ├── index.rst
+│   ├── make.bat
+│   ├── Makefile
+│   └── project
+├── examples
+│   ├── javascript_example.js
+│   ├── python_example.py
+│   └── README.md
+├── logs
+│   ├── agent.log
+│   ├── auth.log
+│   ├── function.log
+│   ├── llm.log
+│   ├── main.log
+│   ├── memory.log
+│   └── test_results_detailed.txt
+├── project-update.sh
+├── pytest.ini
+├── README.md
+├── requirements-docgen.txt
+├── requirements-testing.txt
+├── requirements.txt
+├── start-assistant.sh
+├── TESTING.md
+└── tests
+    ├── conftest.py
+    ├── fixtures
+    ├── __init__.py
+    ├── integration
+    ├── performance
+    ├── __pycache__
+    ├── README.md
+    └── unit
+    ```
+
+Let's proceed with the folowing actions:
+
 1. Review the `srt-agent-api-app.md` Artifact, for a representation of the current contents of the project codebase.
 2. Review the `srt-agent-api-tests.md` Artifact, for a representation of the current test suite.
 3. Examine the latest pytest output within the `test_results_detailed.txt` Artifact (this may not exist on a fresh development cycle).
@@ -117,6 +176,7 @@ Welcome to our latest development cycle for the SRT Agentic API project. Please 
 Our goal remains 80% code coverage with all tests passing. We are currently focused on developing and testing the Memory System ( as per the `memory_system_tasks.md` artifact). Refer to the `development_plan.md` artifact for our long-term roadmap.
 
 Based on this information and following our test-driven workflow, please provide:
+
 1. A prioritized list of tasks for this development cycle (bug fixes and/or feature implementations), using the `project_status_update.md` Artifact.
 2. Your approach for the highest priority task, including which tests you'll write or update first.
 3. Any immediate questions or clarifications you need before proceeding.
@@ -133,27 +193,6 @@ run `bash project-update.sh`
 ```plaintext
 Thank-you for these changes.
 You are such a great AI assistant, and I love working with you.
-the current root structure looks like this:
-    ```plaintext
-    .
-    ├── app
-    ├── data
-    ├── docker-compose-replicaset.yml
-    ├── docker-compose.yml
-    ├── Dockerfile
-    ├── docs
-    ├── examples
-    ├── logs
-    ├── project-update.sh
-    ├── pytest.ini
-    ├── README.md
-    ├── requirements-docgen.txt
-    ├── requirements-testing.txt
-    ├── requirements.txt
-    ├── start-assistant.sh
-    ├── TESTING.md
-    └── tests
-    ```
 I have updated the `app.md` Artifact with the latest contents of the `app` folder.
 I have updated the `tests.md` Artifact with the latest test suite changes in the `tests` folder.
 I ran the integration and performance tests again, and updated the `test_results_detailed.txt` artifact with the latest detailed results.
