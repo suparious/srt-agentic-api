@@ -1,33 +1,51 @@
 import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
-from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
+from unittest.mock import patch, AsyncMock
+from app.core.memory.redis_memory import RedisMemory, RedisMemoryError, RedisConnectionError
 from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
 
-@pytest.fixture
-async def redis_memory():
-    agent_id = UUID('12345678-1234-5678-1234-567812345678')
-    redis_mem = RedisMemory(agent_id)
-    await redis_mem.initialize()
-    yield redis_mem
-    await redis_mem.cleanup()
-    await redis_mem.close()
-
-
 @pytest.mark.asyncio
-async def test_redis_memory_lifecycle(redis_memory):
-    assert redis_memory.connection.redis is not None
+async def test_redis_memory_lifecycle():
+    with patch('app.core.memory.redis.connection.Redis') as MockRedis:
+        # Set up the mock
+        mock_redis = AsyncMock()
+        MockRedis.from_url.return_value = mock_redis
 
-    # Test close
-    await redis_memory.close()
-    assert redis_memory.connection.redis is None
+        # Test successful initialization
+        redis_memory = RedisMemory(agent_id='test-agent')
+        await redis_memory.initialize()
+        assert redis_memory.connection.redis is not None
+        mock_redis.ping.assert_called_once()
 
-    # Test re-initialize
-    await redis_memory.initialize()
-    assert redis_memory.connection.redis is not None
+        # Test successful close
+        await redis_memory.close()
+        assert redis_memory.connection.redis is None
+        mock_redis.close.assert_called_once()
 
-    # Clean up
-    await redis_memory.close()
+        # Test re-initialization
+        await redis_memory.initialize()
+        assert redis_memory.connection.redis is not None
+        assert mock_redis.ping.call_count == 2
+
+        # Test initialization failure
+        mock_redis.ping.side_effect = RedisConnectionError("Connection failed")
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.initialize()
+
+        # Test cleanup
+        mock_redis.ping.side_effect = None  # Reset side effect
+        await redis_memory.cleanup()
+        # Add assertions for cleanup operations
+
+        # Test operation after cleanup
+        with pytest.raises(RedisMemoryError):
+            await redis_memory.add(AsyncMock())  # This should fail as the connection is closed
+
+        # Test reconnection after failure
+        mock_redis.ping.side_effect = None  # Reset side effect
+        await redis_memory.initialize()
+        assert redis_memory.connection.redis is not None
 
 @pytest.mark.asyncio
 async def test_redis_memory_add_and_get(redis_memory):

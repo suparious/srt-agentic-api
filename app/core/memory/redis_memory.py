@@ -1,4 +1,3 @@
-import asyncio
 from uuid import UUID
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -19,7 +18,6 @@ class RedisMemory:
         self.connection = RedisConnection(agent_id)
         self.operations = RedisMemoryOperations(self.connection)
         self.search = RedisSearch(self.connection)
-        self.loop = asyncio.get_event_loop()
 
     async def initialize(self) -> None:
         try:
@@ -47,6 +45,7 @@ class RedisMemory:
 
     async def add(self, memory_entry: MemoryEntry) -> str:
         try:
+            await self.connection.ensure_connection()
             memory_id = await self.operations.add(memory_entry)
             memory_logger.debug(f"Added memory {memory_id} for agent {self.agent_id}")
             return memory_id
@@ -56,6 +55,7 @@ class RedisMemory:
 
     async def get(self, memory_id: str) -> Optional[MemoryEntry]:
         try:
+            await self.connection.ensure_connection()
             memory = await self.operations.get(memory_id)
             return memory
         except Exception as e:
@@ -64,6 +64,7 @@ class RedisMemory:
 
     async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
         try:
+            await self.connection.ensure_connection()
             results = await self.search.search(query)
             return results
         except Exception as e:
@@ -72,6 +73,7 @@ class RedisMemory:
 
     async def delete(self, memory_id: str) -> None:
         try:
+            await self.connection.ensure_connection()
             await self.operations.delete(memory_id)
             memory_logger.debug(f"Deleted memory {memory_id} for agent {self.agent_id}")
         except Exception as e:
@@ -80,6 +82,7 @@ class RedisMemory:
 
     async def get_recent(self, limit: int) -> List[Dict[str, Any]]:
         try:
+            await self.connection.ensure_connection()
             results = await self.search.get_recent(limit)
             return results
         except Exception as e:
@@ -88,6 +91,7 @@ class RedisMemory:
 
     async def get_memories_older_than(self, threshold: datetime) -> List[MemoryEntry]:
         try:
+            await self.connection.ensure_connection()
             results = await self.search.get_memories_older_than(threshold)
             return results
         except Exception as e:

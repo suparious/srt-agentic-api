@@ -17,6 +17,7 @@ async def redis_memory():
     redis_mem = RedisMemory(agent_id)
     await redis_mem.initialize()
     yield redis_mem
+    await redis_mem.cleanup()
     await redis_mem.close()
 
 @pytest.fixture(autouse=True)
