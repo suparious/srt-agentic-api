@@ -1,5 +1,5 @@
 import asyncio
-from redis.asyncio import Redis
+from redis.asyncio import Redis, ConnectionPool
 from redis.exceptions import ConnectionError, TimeoutError
 from contextlib import asynccontextmanager
 import traceback
@@ -15,7 +15,7 @@ class RedisConnectionError(Exception):
 class RedisConnection:
     def __init__(self, agent_id: UUID):
         self.agent_id = agent_id
-        self.redis: Optional[Redis] = None
+        self.pool: Optional[ConnectionPool] = None
         self.max_retries = 3
         self.retry_delay = 1  # Initial delay in seconds
         self._lock = asyncio.Lock()
@@ -29,11 +29,13 @@ class RedisConnection:
             last_error = None
             for attempt in range(self.max_retries):
                 try:
-                    memory_logger.debug(f"Attempting to initialize Redis connection for agent: {self.agent_id} (Attempt {attempt + 1})")
-                    self.redis = Redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
-                    await self.redis.ping()  # Test the connection
-                    info = await self.redis.info()
-                    memory_logger.info(f"Redis connection established for agent: {self.agent_id}")
+                    memory_logger.debug(f"Attempting to initialize Redis connection pool for agent: {self.agent_id} (Attempt {attempt + 1})")
+                    self.pool = ConnectionPool.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+                    # Test the connection
+                    async with Redis(connection_pool=self.pool) as redis:
+                        await redis.ping()
+                        info = await redis.info()
+                    memory_logger.info(f"Redis connection pool established for agent: {self.agent_id}")
                     memory_logger.debug(f"Redis version: {info['redis_version']}")
                     memory_logger.debug(f"Connected clients: {info['connected_clients']}")
                     memory_logger.debug(f"Used memory: {info['used_memory_human']}")
@@ -41,33 +43,30 @@ class RedisConnection:
                     return
                 except (ConnectionError, TimeoutError) as e:
                     last_error = e
-                    memory_logger.warning(f"Failed to initialize Redis connection (Attempt {attempt + 1}): {str(e)}")
+                    memory_logger.warning(f"Failed to initialize Redis connection pool (Attempt {attempt + 1}): {str(e)}")
                     if attempt == self.max_retries - 1:
                         break
                     await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
 
-            memory_logger.error(f"Failed to initialize Redis connection after {self.max_retries} attempts")
-            raise RedisConnectionError(f"Failed to initialize Redis connection: {str(last_error)}")
+            memory_logger.error(f"Failed to initialize Redis connection pool after {self.max_retries} attempts")
+            raise RedisConnectionError(f"Failed to initialize Redis connection pool: {str(last_error)}")
 
     async def close(self) -> None:
-        """Close the Redis connection."""
+        """Close the Redis connection pool."""
         async with self._lock:
-            if self.redis:
-                try:
-                    await self.redis.close()
-                    self.redis = None
-                    self._initialized.clear()
-                    memory_logger.info(f"Redis connection closed for agent: {self.agent_id}")
-                except Exception as e:
-                    memory_logger.error(f"Error closing Redis connection for agent {self.agent_id}: {str(e)}")
-                    raise RedisConnectionError(f"Failed to close Redis connection: {str(e)}")
+            if self.pool:
+                await self.pool.disconnect(inuse_connections=True)
+                self.pool = None
+                self._initialized.clear()
+                memory_logger.info(f"Redis connection pool closed for agent: {self.agent_id}")
 
     @asynccontextmanager
     async def get_connection(self):
         if not self._initialized.is_set():
             await self.initialize()
         try:
-            yield self.redis
+            async with Redis(connection_pool=self.pool) as redis:
+                yield redis
         except (ConnectionError, TimeoutError) as e:
             memory_logger.error(f"Redis connection error: {str(e)}")
             memory_logger.error(f"Traceback: {traceback.format_exc()}")
@@ -79,17 +78,22 @@ class RedisConnection:
 
     async def ensure_connection(self) -> None:
         """
-        Ensure that the Redis connection is initialized and working.
+        Ensure that the Redis connection pool is initialized and working.
 
         Raises:
-            RedisConnectionError: If the connection cannot be established or is not working.
+            RedisConnectionError: If the connection pool cannot be established or is not working.
         """
         if not self._initialized.is_set():
             await self.initialize()
         else:
             try:
-                await self.redis.ping()
+                async with Redis(connection_pool=self.pool) as redis:
+                    await redis.ping()
             except Exception as e:
                 memory_logger.error(f"Error ensuring Redis connection: {str(e)}")
                 self._initialized.clear()
                 await self.initialize()
+
+    def __del__(self):
+        if self.pool:
+            asyncio.create_task(self.close())
