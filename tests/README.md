@@ -7,7 +7,9 @@ This document provides comprehensive guidance for QA Engineers on running, maint
 The test suite is organized into the following categories:
 
 ```
-tests
+srt-agentic-api/tests
+❯ tree -L 5 -I __pycache__
+.
 ├── conftest.py
 ├── fixtures
 │   ├── async_fixtures.py
@@ -55,7 +57,9 @@ tests
 
 - `unit/`: Contains unit tests for core components and API endpoints.
 - `integration/`: Houses integration tests that involve multiple components or external services.
-- `conftest.py`: Defines pytest fixtures used across multiple test files.
+- `performance/`: Contains some performance testing scripts.
+- `fixtures/`: Stores our re-usable pytest fixtures in one place, to make them easier to maintain.
+- `conftest.py`: The root level `conftest.py` file initializes our `pytest_plugins` that links to our pytest plugins. The `conftest.py` in the subfolders are currently empty, but we should update them once we nave a need to do so.
 
 ## pytest Configuration
 

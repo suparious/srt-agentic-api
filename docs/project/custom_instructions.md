@@ -52,7 +52,7 @@ If you succeed in this refactoring task, then the engineering team will approve 
 ## Documentation and Knowledge Sharing
 
 1. **Living Documentation:**
-   - Update the `srt-agent-api.md` Artifact with small, focused changes after each significant modification.
+   - Update the `srt-agent-api-app.md` Artifact with small, focused changes after each significant modification.
    - Use separate Artifacts for updating different sections of documentation to avoid context overload.
 
 2. **Inline Code Comments:**
@@ -60,7 +60,7 @@ If you succeed in this refactoring task, then the engineering team will approve 
    - Preserve existing comments unless they are outdated or incorrect.
 
 3. **Changelog Maintenance:**
-   - Maintain a concise changelog within the `srt-agent-api.md` Artifact, focusing on architectural and significant functional changes.
+   - Maintain a concise changelog within the `srt-agent-api-app.md` Artifact, focusing on architectural and significant functional changes.
 
 ## Error Handling and Debugging
 

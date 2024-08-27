@@ -20,72 +20,57 @@ SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, manag
 The application code is currently organized into the following structure:
 
 ```plaintext
-srt-agentic-api/
-├── Dockerfile
-├── README.md
-├── TESTING.md
-├── app
-│   ├── __init__.py
-│   ├── api
-│   │   ├── __init__.py
-│   │   ├── endpoints
-│   │   │   ├── __init__.py
-│   │   │   ├── agent.py
-│   │   │   ├── function.py
-│   │   │   ├── memory
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── add.py
-│   │   │   │   ├── delete.py
-│   │   │   │   ├── operate.py
-│   │   │   │   ├── retrieve.py
-│   │   │   │   ├── search.py
-│   │   │   │   └── utils.py
-│   │   │   ├── memory.py
-│   │   │   └── message.py
-│   │   └── models
-│   │       ├── __init__.py
-│   │       ├── agent.py
-│   │       ├── function.py
-│   │       ├── memory.py
-│   │       └── message.py
-│   ├── config.py
-│   ├── core
-│   │   ├── __init__.py
+srt-agentic-api/app
+❯ tree -L 5 -I __pycache__
+.
+├── api
+│   ├── endpoints
 │   │   ├── agent.py
-│   │   ├── agent_manager.py
-│   │   ├── function_manager.py
-│   │   ├── llm_provider.py
-│   │   └── memory
-│   │       ├── __init__.py
-│   │       ├── memory_operations.py
-│   │       ├── memory_system.py
-│   │       ├── memory_utils.py
-│   │       ├── redis
-│   │       │   ├── __init__.py
-│   │       │   ├── cleanup.py
-│   │       │   ├── connection.py
-│   │       │   ├── memory_operations.py
-│   │       │   └── search.py
-│   │       ├── redis_memory.py
-│   │       └── vector_memory.py
-│   ├── main.py
-│   └── utils
+│   │   ├── function.py
+│   │   ├── __init__.py
+│   │   ├── memory
+│   │   │   ├── add.py
+│   │   │   ├── delete.py
+│   │   │   ├── __init__.py
+│   │   │   ├── operate.py
+│   │   │   ├── retrieve.py
+│   │   │   ├── search.py
+│   │   │   └── utils.py
+│   │   ├── memory.py
+│   │   └── message.py
+│   ├── __init__.py
+│   └── models
+│       ├── agent.py
+│       ├── function.py
 │       ├── __init__.py
-│       ├── auth.py
-│       └── logging.py
-├── docker-compose.yml
-├── examples
-│   ├── README.md
-│   ├── javascript_example.js
-│   └── python_example.py
-├── logs
-│   ├── agent.log
-│   ├── auth.log
-│   ├── function.log
-│   ├── llm.log
-│   ├── main.log
-│   ├── memory.log
-│   └── test_results_detailed.txt
-├── pytest.ini
-└── requirements.txt
+│       ├── memory.py
+│       └── message.py
+├── config.py
+├── core
+│   ├── agent_manager.py
+│   ├── agent.py
+│   ├── function_manager.py
+│   ├── __init__.py
+│   ├── llm_provider.py
+│   └── memory
+│       ├── __init__.py
+│       ├── memory_interface.py
+│       ├── memory_operations.py
+│       ├── memory_system.py
+│       ├── memory_utils.py
+│       ├── redis
+│       │   ├── cleanup.py
+│       │   ├── connection.py
+│       │   ├── __init__.py
+│       │   ├── memory_operations.py
+│       │   └── search.py
+│       ├── redis_memory.py
+│       └── vector_memory.py
+├── __init__.py
+├── main.py
+├── README.md
+└── utils
+    ├── auth.py
+    ├── __init__.py
+    └── logging.py
 ```
