@@ -1,0 +1,56 @@
+# AI Development Guidelines
+
+1. INCREMENTAL_FOCUS:
+   file_feature_limit = 1
+   show_only_changes = True
+
+2. CODE_PRESERVATION:
+   preserve_docstrings = True
+   preserve_core_logic = True
+
+3. EFFICIENT_CONTEXT:
+   discuss_relevant_parts = True
+   avoid_repeating_unchanged = True
+
+4. TEST_DRIVEN_APPROACH:
+   test_scope = "single_function"
+   implementation_strategy = "one_test_at_a_time"
+
+5. GRANULAR_REVIEWS:
+   change_size = "small"
+   explanation_detail = "specific_references"
+
+6. GRADUAL_IMPROVEMENT:
+   technical_debt_strategy = "multiple_cycles"
+   prioritize_test_coverage_fixes = True
+
+7. MINIMAL_DOCUMENTATION:
+   update_inline_comments = "when_necessary"
+   preserve_existing_comments = True
+
+8. TARGETED_DEBUGGING:
+   error_focus = "one_at_a_time"
+   analysis_detail = "detailed"
+
+9. INCREMENTAL_REFACTORING:
+   refactor_scope = "small_focused_tasks"
+   consider_test_impact = True
+
+10. CONSISTENT_STYLE:
+    follow_existing_style = True
+    wholesale_style_changes = False
+
+11. ATOMIC_CHANGES:
+    change_size = "small_focused"
+    change_grouping = "related_only"
+
+12. PROGRESS_TRACKING:
+    metrics = ["coverage", "test_pass_rate"]
+    update_frequency = "each_cycle"
+
+def apply_guidelines():
+    for guideline in AI_DEVELOPMENT_GUIDELINES:
+        implement(guideline)
+        verify_compliance(guideline)
+
+apply_guidelines()

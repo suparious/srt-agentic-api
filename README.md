@@ -19,27 +19,32 @@ SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, manag
 ## Setup Instructions
 
 1. Clone the repository:
-   ```
+
+   ```bash
    git clone https://github.com/SolidRusT/srt-agentic-api.git
    cd srt-agentic-api
    ```
 
 2. Create and activate a virtual environment:
-   ```
+
+   ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
    ```
 
 3. Install the required dependencies:
-   ```
+
+   ```bash
    pip install -r requirements.txt
    pip install -r requirements-dev.txt  # For development and testing
    ```
 
 4. Copy the `.env.example` file to `.env` and update the values:
-   ```
+
+   ```bash
    cp .env.example .env
    ```
+
    Edit the `.env` file with your specific configuration values.
 
 5. Set up the databases:
@@ -51,6 +56,7 @@ SolidRusT Agentic API is a cutting-edge, highly scalable API for creating, manag
 SolidRusT Agentic API supports multiple LLM providers with an intelligent fallback mechanism. Configure your agents to use multiple providers in priority order for enhanced reliability.
 
 Supported providers:
+
 - OpenAI
 - vLLM
 - LlamaCpp
@@ -94,7 +100,7 @@ Example configuration:
 
 To run the application locally:
 
-```
+```bash
 uvicorn app.main:app --reload
 ```
 
@@ -106,7 +112,7 @@ Access the API at `http://localhost:8000` and the API documentation at `http://l
 
 Execute the comprehensive test suite:
 
-```
+```bash
 pytest --verbose --capture=no --cov=app --cov-report=term-missing
 ```
 
@@ -114,7 +120,7 @@ pytest --verbose --capture=no --cov=app --cov-report=term-missing
 
 Maintain code quality using pre-commit hooks:
 
-```
+```bash
 pre-commit install
 pre-commit run --all-files
 ```
@@ -123,7 +129,7 @@ pre-commit run --all-files
 
 Run load tests and profile memory usage:
 
-```
+```bash
 locust -f tests/performance/locustfile.py
 ```
 
@@ -139,7 +145,7 @@ locust -f tests/performance/locustfile.py
 
 Build and run the Docker container:
 
-```
+```bash
 docker-compose up --build
 ```
 

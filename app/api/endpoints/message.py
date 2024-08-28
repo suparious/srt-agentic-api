@@ -13,9 +13,10 @@ def get_agent_manager():
 
 @router.post("/send", response_model=AgentMessageResponse)
 async def send_message_to_agent(
-    request: AgentMessageRequest, api_key: str = Depends(get_api_key)
+    request: AgentMessageRequest,
+    agent_manager: AgentManager = Depends(get_agent_manager),
+    api_key: str = Depends(get_api_key)
 ):
-    agent_manager: AgentManager = Depends(get_agent_manager)
     try:
         agent_logger.info(f"Received message for agent: {request.agent_id}")
         response, function_calls = await agent_manager.process_message(

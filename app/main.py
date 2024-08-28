@@ -14,9 +14,11 @@ print("Initializing FastAPI app")
 
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
 from app.api.endpoints import agent, message, function, memory
+from app.api.endpoints import agent_router, message_router, function_router, memory_router
 from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
 from app.config import settings
@@ -98,6 +100,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# TrustedHostMiddleware setup
+app.add_middleware(
+    TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS
+)
 
 # Dependency to get AgentManager
 def get_agent_manager():

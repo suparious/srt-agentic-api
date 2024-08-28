@@ -1,0 +1,41 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# macOS directory metadata
+.DS_Store
+
+# Git metadata directory
+.git/
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python bytecode cache
+__pycache__/
+
+# pytest cache
+.pytest_cache/
+
+# JetBrains IDE settings
+.idea/
+
+# Data directory
+data/
+chroma/
+
+# Logs directory
+logs/
+
+# Documentation directory
+#docs/_build/
+#docs/project/custom_instructions.md
+docs/
+
+# Coverage data
+.coverage*
+coverage.xml
+
+# Tests
+tests/
+
+# Markdown file
+codebase.md
