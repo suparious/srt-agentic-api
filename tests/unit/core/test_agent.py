@@ -6,7 +6,8 @@ from app.core.agent import Agent
 from app.core.models.agent import AgentConfig
 from app.core.models.memory import MemoryConfig
 from app.core.models.llm import LLMProviderConfig
-from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext, MemoryOperation
+from app.api.models.memory import MemoryType, MemoryOperation
+from app.core.models import MemoryEntry, MemoryContext
 from app.core.llm_provider import LLMProvider
 from app.core.function_manager import FunctionManager
 from app.core.memory import MemorySystem

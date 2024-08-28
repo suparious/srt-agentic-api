@@ -3,11 +3,14 @@ from typing import Dict, Any, Tuple, List, Optional
 from datetime import datetime
 from app.core.models.agent import AgentConfig
 from app.core.models.function import FunctionDefinition
-from app.core.memory import MemorySystem
 from app.core.llm_provider import LLMProvider
 from app.utils.logging import agent_logger
 from app.core.function_manager import function_manager
 
+# Lazy import for MemorySystem
+def get_memory_system():
+    from app.core.memory.memory_system import MemorySystem
+    return MemorySystem
 
 class Agent:
     """
@@ -19,7 +22,6 @@ class Agent:
         agent_id: UUID,
         name: str,
         config: AgentConfig,
-        memory_system: MemorySystem,
         llm_provider: LLMProvider
     ):
         """
@@ -34,8 +36,8 @@ class Agent:
         self.id = agent_id
         self.name = name
         self.config = config
-        self.memory = memory_system
         self.llm_provider = llm_provider
+        self.memory = get_memory_system()(agent_id, config.memory_config)
         self.conversation_history = []
         self.available_function_ids: List[str] = []
         agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized")

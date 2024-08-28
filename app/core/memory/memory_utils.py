@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
-from app.api.models.memory import MemoryEntry, MemoryContext
+from app.core.models.memory import MemoryEntry, MemoryContext
 
 # Constants
 DEFAULT_MEMORY_TTL = 3600  # Default time-to-live for short-term memories (in seconds)

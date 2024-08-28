@@ -9,9 +9,9 @@ from app.api.models.memory import (
     AdvancedSearchQuery,
     MemoryOperation,
 )
-from app.utils.logging import memory_logger
 from .redis_memory import RedisMemory, RedisMemoryError
 from .vector_memory import VectorMemory, VectorMemoryError
+from .logger import get_memory_logger
 
 class MemorySystemError(Exception):
     """Base exception for MemorySystem errors."""
@@ -30,7 +30,7 @@ class MemorySystem:
         self.short_term = short_term or RedisMemory(agent_id)
         self.long_term = long_term or VectorMemory(f"agent_{agent_id}")
         self.consolidation_queue: List[MemoryEntry] = []
-        memory_logger.info(f"MemorySystem initialized for agent: {agent_id}")
+        get_memory_logger().info(f"MemorySystem initialized for agent: {agent_id}")
 
     async def initialize(self) -> None:
         try:
@@ -38,9 +38,9 @@ class MemorySystem:
                 self.short_term.initialize(),
                 self.long_term.initialize()
             )
-            memory_logger.info(f"MemorySystem fully initialized for agent: {self.agent_id}")
+            get_memory_logger().info(f"MemorySystem fully initialized for agent: {self.agent_id}")
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(f"Failed to initialize MemorySystem for agent {self.agent_id}: {str(e)}")
+            get_memory_logger().error(f"Failed to initialize MemorySystem for agent {self.agent_id}: {str(e)}")
             raise MemorySystemError("Failed to initialize MemorySystem") from e
 
     async def close(self) -> None:
@@ -49,9 +49,9 @@ class MemorySystem:
                 self.short_term.close(),
                 self.long_term.close()
             )
-            memory_logger.info(f"MemorySystem closed for agent: {self.agent_id}")
+            get_memory_logger().info(f"MemorySystem closed for agent: {self.agent_id}")
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(f"Error closing MemorySystem for agent {self.agent_id}: {str(e)}")
+            get_memory_logger().error(f"Error closing MemorySystem for agent {self.agent_id}: {str(e)}")
             raise MemorySystemError("Failed to close MemorySystem") from e
 
     async def add(
@@ -63,7 +63,7 @@ class MemorySystem:
             ) and self.config.use_redis_cache:
                 memory_id = await self.short_term.add(memory_entry)
                 self.consolidation_queue.append(memory_entry)
-                memory_logger.info(
+                get_memory_logger().info(
                     f"Short-term memory added for agent: {self.agent_id}"
                 )
                 return memory_id
@@ -71,12 +71,12 @@ class MemorySystem:
                 memory_type == MemoryType.LONG_TERM or memory_type == "LONG_TERM"
             ) and self.config.use_long_term_memory:
                 memory_id = await self.long_term.add(memory_entry)
-                memory_logger.info(f"Long-term memory added for agent: {self.agent_id}")
+                get_memory_logger().info(f"Long-term memory added for agent: {self.agent_id}")
                 return memory_id
             else:
                 raise MemorySystemError(f"Invalid memory type or configuration: {memory_type}")
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to add {memory_type} memory for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError(f"Failed to add {memory_type} memory") from e
@@ -96,7 +96,7 @@ class MemorySystem:
             else:
                 raise MemorySystemError(f"Invalid memory type or configuration: {memory_type}")
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to retrieve {memory_type} memory for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError(f"Failed to retrieve {memory_type} memory") from e
@@ -120,7 +120,7 @@ class MemorySystem:
             search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
             for result in search_results:
                 if isinstance(result, Exception):
-                    memory_logger.error(f"Error during search: {str(result)}")
+                    get_memory_logger().error(f"Error during search: {str(result)}")
                 else:
                     results.extend(result)
 
@@ -129,7 +129,7 @@ class MemorySystem:
             )
             return sorted_results[: query.max_results]
         except Exception as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to search memories for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError("Failed to search memories") from e
@@ -140,20 +140,20 @@ class MemorySystem:
                 memory_type == MemoryType.SHORT_TERM or memory_type == "SHORT_TERM"
             ) and self.config.use_redis_cache:
                 await self.short_term.delete(memory_id)
-                memory_logger.info(
+                get_memory_logger().info(
                     f"Short-term memory deleted for agent: {self.agent_id}"
                 )
             elif (
                 memory_type == MemoryType.LONG_TERM or memory_type == "LONG_TERM"
             ) and self.config.use_long_term_memory:
                 await self.long_term.delete(memory_id)
-                memory_logger.info(
+                get_memory_logger().info(
                     f"Long-term memory deleted for agent: {self.agent_id}"
                 )
             else:
                 raise MemorySystemError(f"Invalid memory type or configuration: {memory_type}")
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to delete {memory_type} memory for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError(f"Failed to delete {memory_type} memory") from e
@@ -177,7 +177,7 @@ class MemorySystem:
             else:
                 raise MemorySystemError(f"Invalid memory operation: {operation}")
         except Exception as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to perform {operation} operation for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError(f"Failed to perform {operation} operation") from e
@@ -191,11 +191,11 @@ class MemorySystem:
                 await self.long_term.add(memory)
                 await self.short_term.delete(memory.id)
 
-            memory_logger.info(
+            get_memory_logger().info(
                 f"Consolidated {len(old_memories)} memories for agent: {self.agent_id}"
             )
         except (RedisMemoryError, VectorMemoryError) as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to consolidate memories for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError("Failed to consolidate memories") from e
@@ -208,11 +208,11 @@ class MemorySystem:
             for memory in old_memories:
                 await self.long_term.delete(memory.id)
 
-            memory_logger.info(
+            get_memory_logger().info(
                 f"Forgot {len(old_memories)} old memories for agent: {self.agent_id}"
             )
         except VectorMemoryError as e:
-            memory_logger.error(
+            get_memory_logger().error(
                 f"Failed to forget old memories for agent: {self.agent_id}. Error: {str(e)}"
             )
             raise MemorySystemError("Failed to forget old memories") from e
