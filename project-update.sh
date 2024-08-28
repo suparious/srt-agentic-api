@@ -7,7 +7,7 @@ repo_home=$(pwd)
 
 # Cleanup
 ## Remove old generated files
-rm -rf ${repo_home}/docs/_build
+rm -rf "${repo_home}/docs/_build"
 rm ${repo_home}/logs/*
 rm ${repo_home}/.coverage*
 
@@ -25,12 +25,12 @@ set -e
 
 # Generate codebase summary
 #npx ai-digest --input ${repo_home} --output ${HOME}/codebase/srt-agentic-api.md
-npx ai-digest --input ${repo_home}/app --output ${repo_home}/docs/project/srt-agentic-api-app.md
-npx ai-digest --input ${repo_home}/tests --output ${repo_home}/docs/project/srt-agentic-api-tests.md
+npx ai-digest --input "${repo_home}/app" --output "${repo_home}/docs/project/srt-agentic-api-app.md"
+npx ai-digest --input "${repo_home}/tests" --output "${repo_home}/docs/project/srt-agentic-api-tests.md"
 
 # Run the test suite
-cd ${repo_home}
-export PYTHONPATH=${repo_home}
+cd "${repo_home}"
+export PYTHONPATH="${repo_home}"
 #pytest -p no:warnings --verbose --capture=no --cov=app --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 #pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit/core/memory tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 #pytest -v -s --capture=no --log-cli-level=DEBUG tests/integration tests/performance --cov=app/core/memory --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt

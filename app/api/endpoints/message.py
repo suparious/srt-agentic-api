@@ -3,12 +3,9 @@ from app.api.models.agent import AgentMessageRequest, AgentMessageResponse
 from app.core.agent_manager import AgentManager
 from app.utils.auth import get_api_key
 from app.utils.logging import agent_logger
+from app.dependencies import get_agent_manager, get_function_manager
 
 router = APIRouter()
-
-
-def get_agent_manager():
-    return AgentManager()
 
 
 @router.post("/send", response_model=AgentMessageResponse)

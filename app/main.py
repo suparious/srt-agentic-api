@@ -17,7 +17,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
-from app.api.endpoints import agent, message, function, memory
 from app.api.endpoints import agent_router, message_router, function_router, memory_router
 from app.utils.auth import get_api_key
 from app.utils.logging import main_logger
@@ -25,6 +24,7 @@ from app.config import settings
 from app.core.memory import MemorySystem
 from app.core.agent_manager import agent_manager
 from app.core.function_manager import function_manager
+from app.dependencies import get_agent_manager, get_function_manager
 
 
 @asynccontextmanager
@@ -105,37 +105,27 @@ app.add_middleware(
     TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS
 )
 
-# Dependency to get AgentManager
-def get_agent_manager():
-    return agent_manager
-
-
-# Dependency to get FunctionManager
-def get_function_manager():
-    return function_manager
-
-
 # Include routers
 app.include_router(
-    agent.router,
+    agent_router.router,
     prefix="/agent",
     tags=["Agents"],
     dependencies=[Depends(get_agent_manager), Depends(get_function_manager)],
 )
 app.include_router(
-    message.router,
+    message_router.router,
     prefix="/message",
     tags=["Messages"],
     dependencies=[Depends(get_agent_manager)],
 )
 app.include_router(
-    function.router,
+    function_router.router,
     prefix="/function",
     tags=["Functions"],
     dependencies=[Depends(get_function_manager)],
 )
 app.include_router(
-    memory.router,
+    memory_router.router,
     prefix="/memory",
     tags=["Memory"],
     dependencies=[Depends(get_agent_manager)],

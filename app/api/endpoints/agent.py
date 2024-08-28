@@ -12,12 +12,9 @@ from app.api.models.function import FunctionDefinition
 from app.core.agent_manager import AgentManager
 from app.utils.auth import get_api_key
 from app.utils.logging import agent_logger
+from app.dependencies import get_agent_manager, get_function_manager
 
 router = APIRouter()
-
-
-def get_agent_manager():
-    return AgentManager()
 
 
 @router.post("/create", response_model=AgentCreationResponse, status_code=201)
