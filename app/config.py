@@ -2,12 +2,7 @@ import os
 from typing import List, Dict, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, Field
-
-class LLMProviderConfig(BaseSettings):
-    provider_type: str
-    model_name: str
-    api_base: Optional[str] = None
-    api_key: Optional[str] = None
+from app.core.models.llm import LLMProviderConfig
 
 class Settings(BaseSettings):
     API_KEY: str

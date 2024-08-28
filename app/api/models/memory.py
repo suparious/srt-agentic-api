@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID, uuid4
 from enum import Enum
 from datetime import datetime
+from app.core.models.llm import MemoryEntry
 
 
 class MemoryType(str, Enum):
@@ -15,26 +16,6 @@ class MemoryOperation(str, Enum):
     RETRIEVE = "retrieve"
     SEARCH = "search"
     DELETE = "delete"
-
-
-class MemoryContext(BaseModel):
-    context_type: str = Field(..., description="The type of context for the memory")
-    timestamp: datetime = Field(..., description="The timestamp of the memory context")
-    metadata: Optional[Dict[str, Any]] = Field(
-        default=None, description="Additional metadata for the context"
-    )
-
-    model_config = ConfigDict(extra="forbid")
-
-class MemoryEntry(BaseModel):
-    id: UUID = Field(default_factory=uuid4)
-    content: str = Field(..., description="The content of the memory")
-    metadata: Optional[Dict[str, Any]] = Field(
-        default=None, description="Optional metadata associated with the memory"
-    )
-    context: MemoryContext = Field(..., description="The context of the memory entry")
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class AdvancedSearchQuery(BaseModel):

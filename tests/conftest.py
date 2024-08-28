@@ -15,7 +15,8 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="session")
 def test_settings():
-    from app.config import Settings, LLMProviderConfig
+    from app.config import Settings
+    from app.core.models.llm import LLMProviderConfig
     return Settings(
         API_KEY="your_api_key_here",
         ALLOWED_ORIGINS=["http://testserver", "http://localhost"],

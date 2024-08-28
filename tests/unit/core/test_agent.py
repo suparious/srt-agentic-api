@@ -3,12 +3,13 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from app.core.agent import Agent
-from app.core.models import AgentConfig, MemoryConfig, LLMProviderConfig
+from app.core.models.agent import AgentConfig
+from app.core.models.memory import MemoryConfig
+from app.core.models.llm import LLMProviderConfig
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext, MemoryOperation
 from app.core.llm_provider import LLMProvider
 from app.core.function_manager import FunctionManager
 from app.core.memory import MemorySystem
-from app.config import LLMProviderConfig
 
 pytestmark = pytest.mark.asyncio
 
