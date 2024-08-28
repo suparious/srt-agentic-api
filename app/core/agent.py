@@ -1,12 +1,9 @@
 from uuid import UUID
 from typing import Dict, Any, Tuple, List, Optional
 from datetime import datetime
-from app.api.models.agent import AgentConfig, MemoryConfig
-from app.api.models.function import FunctionDefinition
-from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext
-from app.core.llm_provider import create_llm_provider
+from app.core.models import AgentConfig
+from app.core.models import FunctionDefinition
 from app.core.memory import MemorySystem
-from app.core.function_manager import FunctionManager
 from app.core.llm_provider import LLMProvider
 from app.utils.logging import agent_logger
 from app.core.function_manager import function_manager

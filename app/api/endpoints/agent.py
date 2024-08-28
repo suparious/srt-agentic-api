@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from uuid import UUID
 from typing import List
-from app.api.models.agent import (
+from app.core.models import (
     AgentCreationRequest,
     AgentCreationResponse,
     AgentInfoResponse,

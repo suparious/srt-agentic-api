@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional, Tuple
-from app.api.models.agent import AgentConfig, MemoryConfig, AgentInfoResponse, AgentCreationRequest
+from app.core.models import AgentConfig, MemoryConfig, AgentInfoResponse, AgentCreationRequest
 from app.core.agent import Agent
 from app.utils.logging import agent_logger
 from fastapi import HTTPException

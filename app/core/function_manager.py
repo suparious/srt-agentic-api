@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional
-from app.api.models.function import FunctionDefinition
+from app.core.models import FunctionDefinition
 from app.utils.logging import agent_logger
 
 class FunctionManager:

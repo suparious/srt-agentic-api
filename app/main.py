@@ -106,31 +106,33 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(
-    agent_router.router,
-    prefix="/agent",
-    tags=["Agents"],
-    dependencies=[Depends(get_agent_manager), Depends(get_function_manager)],
-)
-app.include_router(
-    message_router.router,
-    prefix="/message",
-    tags=["Messages"],
-    dependencies=[Depends(get_agent_manager)],
-)
-app.include_router(
-    function_router.router,
-    prefix="/function",
-    tags=["Functions"],
-    dependencies=[Depends(get_function_manager)],
-)
-app.include_router(
-    memory_router.router,
-    prefix="/memory",
-    tags=["Memory"],
-    dependencies=[Depends(get_agent_manager)],
-)
+def include_routers(app: FastAPI):
+    app.include_router(
+        agent_router.router,
+        prefix="/agent",
+        tags=["Agents"],
+        dependencies=[Depends(get_agent_manager), Depends(get_function_manager)],
+    )
+    app.include_router(
+        message_router.router,
+        prefix="/message",
+        tags=["Messages"],
+        dependencies=[Depends(get_agent_manager)],
+    )
+    app.include_router(
+        function_router.router,
+        prefix="/function",
+        tags=["Functions"],
+        dependencies=[Depends(get_function_manager)],
+    )
+    app.include_router(
+        memory_router.router,
+        prefix="/memory",
+        tags=["Memory"],
+        dependencies=[Depends(get_agent_manager)],
+    )
 
+include_routers(app)
 
 @app.get("/", tags=["Root"])
 async def root():
