@@ -2,7 +2,7 @@ import asyncio
 import uuid
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
-from app.api.models.agent import MemoryConfig
+from app.core.models import MemoryConfig
 from app.api.models.memory import (
     MemoryType,
     MemoryEntry,

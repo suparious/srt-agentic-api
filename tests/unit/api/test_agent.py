@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
-from app.api.models.agent import AgentConfig, MemoryConfig, AgentCreationRequest
+from app.core.models import AgentConfig, MemoryConfig, AgentCreationRequest
 from app.core.agent_manager import AgentManager
 from app.core.memory import MemorySystem
 from app.core.llm_provider import LLMProvider

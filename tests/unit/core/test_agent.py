@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from app.core.agent import Agent
-from app.api.models.agent import AgentConfig, MemoryConfig, LLMProviderConfig
+from app.core.models import AgentConfig, MemoryConfig, LLMProviderConfig
 from app.api.models.memory import MemoryType, MemoryEntry, MemoryContext, MemoryOperation
 from app.core.llm_provider import LLMProvider
 from app.core.function_manager import FunctionManager
