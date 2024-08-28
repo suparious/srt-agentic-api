@@ -1,7 +1,8 @@
 from uuid import UUID
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from app.api.models.memory import MemoryEntry, AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry
 from app.core.memory.redis.connection import RedisConnection, RedisConnectionError
 from app.core.memory.redis.memory_operations import RedisMemoryOperations
 from app.core.memory.redis.search import RedisSearch

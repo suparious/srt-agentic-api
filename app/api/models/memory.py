@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID, uuid4
 from enum import Enum
 from datetime import datetime
-from app.core.models.llm import MemoryEntry
+from app.core.models import MemoryEntry
 
 
 class MemoryType(str, Enum):

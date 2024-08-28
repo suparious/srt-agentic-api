@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, AsyncMock
 from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
 from app.core.memory.redis.connection import RedisConnectionError
-from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
-
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 @pytest.mark.asyncio
 async def test_redis_memory_lifecycle():
     with patch('app.core.memory.redis.connection.Redis') as MockRedis:

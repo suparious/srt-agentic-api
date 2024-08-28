@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Any, List, Optional, Callable
 from uuid import UUID, uuid4
-
+from app.core.models import FunctionDefinition
 
 class FunctionRegistrationRequest(BaseModel):
     """

@@ -6,7 +6,8 @@ import chromadb
 from chromadb.config import Settings as ChromaDBSettings
 from chromadb.utils import embedding_functions
 from app.utils.logging import memory_logger
-from app.api.models.memory import AdvancedSearchQuery, MemoryEntry, MemoryContext
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 from app.core.memory.memory_interface import MemorySystemInterface
 from app.config import settings
 

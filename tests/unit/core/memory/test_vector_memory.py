@@ -3,7 +3,8 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from unittest.mock import patch, AsyncMock
 from app.core.memory.vector_memory import VectorMemory, VectorMemoryError
-from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 
 @pytest.fixture
 async def vector_memory():

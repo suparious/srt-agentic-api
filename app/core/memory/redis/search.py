@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from datetime import datetime
-from app.api.models.memory import AdvancedSearchQuery, MemoryEntry
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry
 from app.core.memory.redis.connection import RedisConnection
 from app.utils.logging import memory_logger
 

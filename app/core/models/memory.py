@@ -1,8 +1,8 @@
-import datetime
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional
+from datetime import datetime
 from uuid import UUID, uuid4
-from enum import Enum
+
 
 class MemoryConfig(BaseModel):
     use_long_term_memory: bool = Field(..., description="Whether to use long-term memory storage for the agent")

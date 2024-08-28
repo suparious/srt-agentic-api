@@ -2,7 +2,8 @@ import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
 from app.core.memory.redis_memory import RedisMemory, RedisMemoryError
-from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 
 @pytest.fixture(scope="module")
 async def redis_memory():

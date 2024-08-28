@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from datetime import datetime, timedelta
 from app.core.memory.memory_system import MemorySystem, MemorySystemError
-from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 from app.core.models import MemoryConfig
 
 

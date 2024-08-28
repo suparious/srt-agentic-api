@@ -4,7 +4,8 @@ import psutil
 import traceback
 from uuid import UUID
 from app.core.memory.redis_memory import RedisMemory
-from app.api.models.memory import MemoryEntry, MemoryContext, AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery
+from app.core.models import MemoryEntry, MemoryContext
 from app.utils.logging import memory_logger
 from app.config import settings
 

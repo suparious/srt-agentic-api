@@ -12,9 +12,9 @@ from .memory import (
     MemoryConfig,
     MemoryEntry,
     MemoryContext,
-    AdvancedSearchQuery,
-    MemoryType,
-    MemoryOperation
+    #AdvancedSearchQuery,
+    #MemoryType,
+    #MemoryOperation
 )
 from .llm import LLMProviderConfig
 
@@ -29,8 +29,8 @@ __all__ = [
     "MemoryConfig",
     "MemoryEntry",
     "MemoryContext",
-    "AdvancedSearchQuery",
-    "MemoryType",
-    "MemoryOperation",
+    #"AdvancedSearchQuery",
+    #"MemoryType",
+    #"MemoryOperation",
     "LLMProviderConfig"
 ]
