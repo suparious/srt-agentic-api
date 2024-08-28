@@ -22,6 +22,7 @@ class RedisConnection:
         self._initialized = asyncio.Event()
 
     async def initialize(self) -> None:
+        """Initialize the Redis connection pool."""
         async with self._lock:
             if self._initialized.is_set():
                 return
@@ -55,10 +56,14 @@ class RedisConnection:
         """Close the Redis connection pool."""
         async with self._lock:
             if self.pool:
-                await self.pool.disconnect(inuse_connections=True)
-                self.pool = None
-                self._initialized.clear()
-                get_memory_logger().info(f"Redis connection pool closed for agent: {self.agent_id}")
+                try:
+                    await self.pool.disconnect(inuse_connections=True)
+                except Exception as e:
+                    get_memory_logger().error(f"Error while closing Redis connection pool: {str(e)}")
+                finally:
+                    self.pool = None
+                    self._initialized.clear()
+                    get_memory_logger().info(f"Redis connection pool closed for agent: {self.agent_id}")
 
     @asynccontextmanager
     async def get_connection(self):
@@ -96,4 +101,8 @@ class RedisConnection:
 
     def __del__(self):
         if self.pool:
-            asyncio.create_task(self.close())
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.close())
+            else:
+                get_memory_logger().warning(f"Unable to close Redis connection pool for agent: {self.agent_id} (no running event loop)")

@@ -32,7 +32,7 @@ class RedisMemory:
         try:
             await self.connection.close()
             memory_logger.info(f"Redis memory closed for agent: {self.agent_id}")
-        except Exception as e:
+        except RedisConnectionError as e:
             memory_logger.error(f"Error closing Redis memory for agent {self.agent_id}: {str(e)}")
             raise RedisMemoryError("Failed to close Redis memory") from e
 
