@@ -3,7 +3,7 @@ import aiohttp
 from typing import Dict, Any, List, Optional, Union
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
-from app.core.models.llm import LLMProviderConfig
+from app.core.models import LLMProviderConfig
 from tenacity import (
     retry,
     stop_after_attempt,

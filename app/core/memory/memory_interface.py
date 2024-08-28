@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from uuid import UUID
-from app.api.models.memory import MemoryEntry, AdvancedSearchQuery
+from app.core.models import MemoryEntry
+from app.api.models.memory import AdvancedSearchQuery
 
 class MemorySystemInterface(ABC):
     @abstractmethod

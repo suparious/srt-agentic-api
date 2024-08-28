@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 from typing import Dict, Any, List, Optional, Tuple
-from app.core.models.agent import AgentConfig, AgentInfoResponse, AgentCreationRequest
-from app.core.models.memory import MemoryConfig
+from app.core.models import AgentConfig, AgentInfoResponse, AgentCreationRequest
+from app.core.models import MemoryConfig
 from app.core.agent import Agent
 from app.utils.logging import agent_logger
 from fastapi import HTTPException
