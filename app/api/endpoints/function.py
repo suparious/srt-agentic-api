@@ -14,11 +14,11 @@ from app.api.models.function import (
     FunctionAssignmentRequest,
     FunctionAssignmentResponse,
 )
-from app.core.agent_manager import AgentManager
-from app.core.function_manager import function_manager
+from app.core import AgentManager
+from app.core import function_manager
 from app.utils.auth import get_api_key
 from app.utils.logging import function_logger
-from app.dependencies import get_agent_manager, get_function_manager
+from app.dependencies import get_agent_manager
 
 router = APIRouter()
 

@@ -11,7 +11,7 @@ from app.api.models.memory import (
 )
 from app.utils.auth import get_api_key
 from app.utils.logging import memory_logger
-from .utils import get_memory_system
+from app.utils import get_memory_system
 
 router = APIRouter()
 
