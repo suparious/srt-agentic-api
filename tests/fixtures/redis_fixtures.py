@@ -2,7 +2,8 @@ import pytest
 import asyncio
 from uuid import UUID
 from unittest.mock import AsyncMock, MagicMock
-from app.core.memory import RedisMemory, RedisConnection
+from app.core.memory.redis_memory import RedisMemory
+from app.core.memory.redis.connection import RedisConnection
 
 @pytest.fixture(scope="session")
 async def redis_connection(test_settings):

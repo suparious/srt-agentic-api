@@ -1,36 +1,11 @@
-from .agent import (
-    AgentConfig,
-    AgentCreationRequest,
-    AgentCreationResponse,
-    AgentInfoResponse,
-    AgentUpdateRequest,
-    AgentUpdateResponse
-)
+from .agent import AgentConfig, AgentCreationRequest, AgentCreationResponse, AgentInfoResponse, AgentUpdateRequest, AgentUpdateResponse
 from .function import FunctionDefinition
-
-from .memory import (
-    MemoryConfig,
-    MemoryEntry,
-    MemoryContext,
-    #AdvancedSearchQuery,
-    #MemoryType,
-    #MemoryOperation
-)
+from .memory import MemoryConfig, MemoryEntry, MemoryContext
 from .llm import LLMProviderConfig
 
 __all__ = [
-    "AgentConfig",
-    "AgentCreationRequest",
-    "AgentCreationResponse",
-    "AgentInfoResponse",
-    "AgentUpdateRequest",
-    "AgentUpdateResponse",
+    "AgentConfig", "AgentCreationRequest", "AgentCreationResponse", "AgentInfoResponse", "AgentUpdateRequest", "AgentUpdateResponse",
     "FunctionDefinition",
-    "MemoryConfig",
-    "MemoryEntry",
-    "MemoryContext",
-    #"AdvancedSearchQuery",
-    #"MemoryType",
-    #"MemoryOperation",
+    "MemoryConfig", "MemoryEntry", "MemoryContext",
     "LLMProviderConfig"
 ]

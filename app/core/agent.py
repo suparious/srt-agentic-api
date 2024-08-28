@@ -1,7 +1,8 @@
 from uuid import UUID
 from typing import Dict, Any, Tuple, List, Optional
 from datetime import datetime
-from app.core.models import AgentConfig, FunctionDefinition
+from app.core.models.agent import AgentConfig
+from app.core.models.function import FunctionDefinition
 from app.core.memory import MemorySystem
 from app.core.llm_provider import LLMProvider
 from app.utils.logging import agent_logger

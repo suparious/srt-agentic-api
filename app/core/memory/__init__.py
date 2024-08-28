@@ -2,7 +2,6 @@ from .memory_system import MemorySystem
 from .redis_memory import RedisMemory
 from .vector_memory import VectorMemory
 from .memory_operations import (
-    get_memory_system,
     add_to_memory,
     retrieve_from_memory,
     search_memory,
@@ -10,8 +9,6 @@ from .memory_operations import (
     perform_memory_operation,
     consolidate_agent_memories,
     forget_agent_old_memories,
-    initialize_memory_systems,
-    close_memory_systems,
 )
 from .memory_utils import (
     DEFAULT_MEMORY_TTL,
@@ -29,13 +26,9 @@ from .memory_utils import (
 )
 
 __all__ = [
-    # Core classes
     "MemorySystem",
     "RedisMemory",
     "VectorMemory",
-
-    # Memory operations
-    "get_memory_system",
     "add_to_memory",
     "retrieve_from_memory",
     "search_memory",
@@ -43,10 +36,6 @@ __all__ = [
     "perform_memory_operation",
     "consolidate_agent_memories",
     "forget_agent_old_memories",
-    "initialize_memory_systems",
-    "close_memory_systems",
-
-    # Memory utilities
     "DEFAULT_MEMORY_TTL",
     "DEFAULT_CONSOLIDATION_INTERVAL",
     "DEFAULT_FORGET_AGE",
