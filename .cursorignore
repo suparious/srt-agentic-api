@@ -21,3 +21,4 @@ docker-compose-replicaset.yml
 project-update.sh
 start-assistant.sh
 .aidigestignore
+.idea/
