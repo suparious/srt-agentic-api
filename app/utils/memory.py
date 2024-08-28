@@ -1,9 +1,13 @@
+from typing import Dict
 from uuid import UUID
+from app.core.models import MemoryConfig
 from app.core.memory import MemorySystem
-from app.core.agent import Agent
+
+# Global dictionary to store active memory systems
+memory_systems: Dict[UUID, MemorySystem] = {}
 
 
-async def get_memory_system(agent_id: UUID) -> MemorySystem:
+async def get_memory_system(agent_id: UUID, config: MemoryConfig) -> MemorySystem:
     """
     Retrieve or create a MemorySystem for the given agent_id.
 
@@ -16,7 +20,6 @@ async def get_memory_system(agent_id: UUID) -> MemorySystem:
     Raises:
         ValueError: If the agent is not found.
     """
-    agent = await Agent.get(agent_id)
-    if agent is None:
-        raise ValueError(f"Agent with ID {agent_id} not found")
-    return agent.memory
+    if agent_id not in memory_systems:
+        memory_systems[agent_id] = MemorySystem(agent_id, config)
+    return memory_systems[agent_id]

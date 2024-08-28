@@ -1,6 +1,7 @@
 import pytest
 import asyncio
 from uuid import UUID
+from unittest.mock import AsyncMock, MagicMock
 from app.core.memory.redis_memory import RedisMemory
 from app.core.memory.redis.connection import RedisConnection
 
@@ -30,3 +31,7 @@ async def redis_isolation(request, redis_connection):
             await conn.flushdb()
     else:
         yield
+
+@pytest.fixture
+def mock_redis_memory():
+    return AsyncMock(spec=RedisMemory)
