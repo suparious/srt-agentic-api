@@ -1,41 +1,23 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
-# macOS directory metadata
-.DS_Store
-
-# Git metadata directory
-.git/
-
-# Python virtual environment
-.venv/
-venv/
-
-# Python bytecode cache
-__pycache__/
-
-# pytest cache
-.pytest_cache/
-
-# JetBrains IDE settings
-.idea/
-
-# Data directory
-data/
-chroma/
-
-# Logs directory
-logs/
 
 # Documentation directory
-#docs/_build/
+docs/_build/
 #docs/project/custom_instructions.md
-docs/
+docs/api/
+docs/core/
+docs/guides/
+docs/project/srt-agentic*
+docs/conf.py
+docs/index.rst
+docs/make.bat
+docs/Makefile
 
-# Coverage data
-.coverage*
-coverage.xml
+# Docker stuff
+Dockerfile
+docker-compose.yml
+docker-compose-replicaset.yml
 
-# Tests
-tests/
-
-# Markdown file
-codebase.md
+# workflow stuff
+project-update.sh
+start-assistant.sh
+.aidigestignore
