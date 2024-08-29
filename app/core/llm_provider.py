@@ -13,6 +13,7 @@ from tenacity import (
 from app.utils.logging import llm_logger
 from cachetools import TTLCache
 from asyncio import Semaphore
+from app.config import settings
 
 request_cache = TTLCache(maxsize=1000, ttl=300)
 rate_limiter = Semaphore(10)
