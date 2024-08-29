@@ -4,6 +4,14 @@ from unittest.mock import AsyncMock, MagicMock
 from app.core.agent import Agent
 from app.core.models import AgentConfig, MemoryConfig
 from app.core.function_manager import FunctionManager
+from app.core.memory import MemorySystem
+
+@pytest.fixture
+def mock_factory():
+    class MockFactory:
+        def create_mock(self, cls):
+            return MagicMock(spec=cls)
+    return MockFactory()
 
 @pytest.fixture
 def test_agent_id():
@@ -21,12 +29,14 @@ def test_agent_config():
 @pytest.fixture
 async def test_agent(test_agent_id, test_agent_config, mock_factory, mock_llm_provider):
     mock_function_manager = mock_factory.create_mock(FunctionManager)
+    mock_memory_system = mock_factory.create_mock(MemorySystem)
     agent = Agent(
         agent_id=test_agent_id,
         name="Test Agent",
         config=test_agent_config,
         function_manager=mock_function_manager,
-        llm_provider=mock_llm_provider
+        llm_provider=mock_llm_provider,
+        memory=mock_memory_system
     )
     await agent.initialize()
     yield agent
