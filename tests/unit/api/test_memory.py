@@ -56,7 +56,7 @@ async def test_advanced_search(async_client: AsyncClient, auth_headers, test_age
 
 async def test_add_memory(async_client: AsyncClient, auth_headers, test_agent):
     memory_data = {
-        "agent_id": str(test_agent),
+        "agent_id": test_agent,
         "operation": MemoryOperation.ADD,
         "data": {
             "content": "Test memory content",

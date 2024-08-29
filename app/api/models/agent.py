@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 from enum import Enum
+from app.api.models.memory import MemoryType
 
 
 class AgentMessageRequest(BaseModel):
@@ -63,6 +64,9 @@ class AgentMemoryRequest(BaseModel):
     )
     operation: MemoryOperation = Field(
         ..., description="The type of memory operation to perform"
+    )
+    memory_type: MemoryType = Field(
+        ..., description="The type of memory to operate on (SHORT_TERM or LONG_TERM)"
     )
     data: Optional[Dict[str, Any]] = Field(
         None, description="The data to be added or retrieved in memory operations"

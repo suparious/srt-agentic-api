@@ -257,10 +257,16 @@ async def test_add_memory(memory_system):
     memory_entry = MemoryEntry(
         content="Test memory content",
         metadata={"key": "value"},
-        context=MemoryContext(context_type="test", timestamp=datetime.now())
+        context=MemoryContext(
+            context_type="test",
+            timestamp=datetime.now(),
+            metadata={}
+        )
     )
     memory_id = await memory_system.add(MemoryType.SHORT_TERM, memory_entry)
     assert isinstance(memory_id, str)
+    retrieved_memory = await memory_system.retrieve(MemoryType.SHORT_TERM, memory_id)
+    assert retrieved_memory.content == "Test memory content"
 
 @pytest.mark.asyncio
 async def test_retrieve_memory(memory_system):

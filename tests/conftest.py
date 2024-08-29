@@ -51,7 +51,6 @@ def auth_headers(test_settings):
 pytest_plugins = [
     "tests.fixtures.redis_fixtures",
     "tests.fixtures.async_fixtures",
-    # TODO: make these fixtures, after the app code is ready.
-    # "tests.fixtures.agent_fixtures",
-    # "tests.fixtures.llm_fixtures",
+    "tests.fixtures.agent_fixtures",
+    "tests.fixtures.llm_fixtures",
 ]
