@@ -26,6 +26,7 @@ def mock_llm_provider():
 def mock_function_manager(mock_factory):
     return mock_factory.create_mock(FunctionManager)
 
+@pytest.fixture
 async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_manager):
     agent_data = AgentCreationRequest(
         agent_name="Test Agent",
@@ -59,6 +60,7 @@ async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_
 
     mock_agent_manager.create_agent.assert_called_once_with(agent_data)
 
+@pytest.fixture
 async def test_create_agent_validation_error(async_client: AsyncClient, auth_headers, mock_agent_manager):
     invalid_agent_data = {
         "agent_name": "Test Agent",
@@ -70,6 +72,7 @@ async def test_create_agent_validation_error(async_client: AsyncClient, auth_hea
     response = await async_client.post("/agent/create", json=invalid_agent_data, headers=auth_headers)
     assert response.status_code == 422  # Unprocessable Entity
 
+@pytest.fixture
 async def test_create_agent_internal_error(async_client: AsyncClient, auth_headers, mock_agent_manager):
     agent_data = AgentCreationRequest(
         agent_name="Test Agent",
@@ -100,6 +103,7 @@ async def test_create_agent_internal_error(async_client: AsyncClient, auth_heade
     assert response.status_code == 500
     assert "Failed to create agent" in response.json()["detail"]
 
+@pytest.fixture
 async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)
     assert response.status_code == 200
@@ -109,6 +113,7 @@ async def test_get_agent(async_client: AsyncClient, auth_headers, test_agent):
     assert "llm_providers" in agent["config"]
     assert isinstance(agent["config"]["llm_providers"], list)
 
+@pytest.fixture
 async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent):
     update_data = {
         "agent_config": {
@@ -133,6 +138,7 @@ async def test_update_agent(async_client: AsyncClient, auth_headers, test_agent)
     assert agent["config"]["temperature"] == 0.8
     assert agent["config"]["llm_providers"][0]["model_name"] == "gpt-4"
 
+@pytest.fixture
 async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent):
     response = await async_client.delete(f"/agent/{test_agent}", headers=auth_headers)
     assert response.status_code == 204
@@ -141,6 +147,7 @@ async def test_delete_agent(async_client: AsyncClient, auth_headers, test_agent)
     response = await async_client.get(f"/agent/{test_agent}", headers=auth_headers)
     assert response.status_code == 404
 
+@pytest.fixture
 async def test_list_agents(async_client: AsyncClient, auth_headers, test_agent):
     # Create a second agent to ensure we have at least two
     await test_create_agent(async_client, auth_headers)

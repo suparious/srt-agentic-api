@@ -3,8 +3,7 @@ from unittest.mock import AsyncMock, patch
 from datetime import datetime, timedelta
 from app.core.memory.memory_system import MemorySystem, MemorySystemError
 from app.api.models.memory import AdvancedSearchQuery, MemoryType
-from app.core.models import MemoryEntry, MemoryContext
-from app.core.models import MemoryConfig
+from app.core.models import MemoryEntry, MemoryContext, MemoryConfig
 
 
 @pytest.fixture
@@ -32,6 +31,8 @@ async def test_memory_system_initialization(memory_config):
         system = MemorySystem(agent_id='test-agent', config=memory_config)
         await system.initialize()
 
+        MockRedisMemory.assert_called_once_with('test-agent')
+        MockVectorMemory.assert_called_once_with('test-agent')
         mock_redis.initialize.assert_called_once()
         mock_vector.initialize.assert_called_once()
 

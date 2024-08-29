@@ -36,11 +36,11 @@ async def test_agent(test_agent_id, test_agent_config, mock_factory, mock_llm_pr
         config=test_agent_config,
         function_manager=mock_function_manager,
         llm_provider=mock_llm_provider,
-        memory=mock_memory_system
+        memory_system=mock_memory_system
     )
     await agent.initialize()
     yield agent
-    await agent.cleanup()
+    await agent.cleanup
 
 @pytest.fixture
 def mock_agent():
