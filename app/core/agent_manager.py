@@ -1,12 +1,16 @@
+from __future__ import annotations
+from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.agent import Agent
+
 from uuid import UUID, uuid4
-from typing import Dict, Any, List, Optional, Tuple
 from app.core.models.agent import AgentConfig, AgentInfoResponse, AgentCreationRequest
 from app.core.models.memory import MemoryConfig
-from app.core.agent import Agent
 from app.utils.logging import agent_logger
-from fastapi import HTTPException
 from app.core.memory import MemorySystem
 from app.core.llm_provider import create_llm_provider
+
 
 
 class AgentManager:

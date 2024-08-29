@@ -6,7 +6,7 @@ from app.core.models.function import FunctionDefinition
 from app.core.llm_provider import LLMProvider
 from app.utils.logging import agent_logger
 from app.core.function_manager import function_manager
-from app.dependencies import get_function_manager
+
 
 # Lazy import for MemorySystem
 def get_memory_system():
@@ -23,7 +23,7 @@ class Agent:
         agent_id: UUID,
         name: str,
         config: AgentConfig,
-        function_manager: get_function_manager,
+        function_manager: function_manager,
         llm_provider: LLMProvider
     ):
         """
