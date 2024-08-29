@@ -6,7 +6,7 @@ This document provides comprehensive guidance for QA Engineers on running, maint
 
 The test suite is organized into the following categories:
 
-```
+```plaintext
 srt-agentic-api/tests
 ❯ tree -L 5 -I __pycache__
 .
@@ -102,11 +102,13 @@ pytest
 ### Specific Test Categories
 
 Run unit tests only:
+
 ```bash
 pytest tests/unit
 ```
 
 Run integration tests only:
+
 ```bash
 pytest tests/integration
 ```
@@ -114,11 +116,13 @@ pytest tests/integration
 ### Individual Test Files
 
 To run tests in a specific file:
+
 ```bash
 pytest tests/path/to/test_file.py
 ```
 
 Example:
+
 ```bash
 pytest tests/unit/api/test_agent.py
 ```
@@ -126,6 +130,7 @@ pytest tests/unit/api/test_agent.py
 ### Test Selection by Markers
 
 Use pytest markers to run specific types of tests:
+
 ```bash
 pytest -m "integration"
 ```
@@ -143,16 +148,19 @@ pytest -m "integration"
 When encountering test failures or unexpected behavior:
 
 1. Run the failing test(s) with increased verbosity:
+
    ```bash
    pytest -vv path/to/failing_test.py
    ```
 
 2. Use the `--pdb` flag to drop into the debugger on test failures:
+
    ```bash
    pytest --pdb path/to/failing_test.py
    ```
 
 3. Generate a detailed test report:
+
    ```bash
    pytest --verbose --capture=no --cov=app --cov-report=term-missing > test_results_detailed.txt
    # pytest -p no:warnings --verbose --capture=no --cov=app --cov-report=term-missing | tee logs/test_results_detailed.txt
@@ -190,6 +198,7 @@ filterwarnings =
 - Unit tests should be fast and not depend on external services.
 - Integration tests may be slower due to external dependencies.
 - Use the `--durations=N` flag to identify slow tests:
+
   ```bash
   pytest --durations=10
   ```

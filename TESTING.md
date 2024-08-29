@@ -2,7 +2,7 @@
 
 Setup your python `3.12` virtual environment, update pip, then install the requirements.
 
-   ```
+   ```bash
    python -m pip install -U pip
    pip install -r requirements.txt
    pip install -r requirements-testing.txt
@@ -12,7 +12,7 @@ Setup your python `3.12` virtual environment, update pip, then install the requi
 
 Run all the tests and generate a shitload of output:
 
-   ```
+   ```bash
    pytest --verbose --capture=no --cov=app --cov-report=term-missing > logs/test_results_detailed.txt
    #pytest --verbose --capture=no > logs/test_results_detailed.txt
    ```
@@ -62,8 +62,6 @@ pytest -v -s --capture=no --log-cli-level=DEBUG -k "memory or Memory" tests/unit
 ```
 
 Let's break down this command:
-
-
 
 1. `-v`: Verbose mode, provides more detailed output.
 2. `-s`: Allows print statements in tests to be displayed in the console.
