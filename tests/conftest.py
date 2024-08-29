@@ -1,12 +1,24 @@
 import os
 import pytest
 from dotenv import load_dotenv
+from unittest.mock import AsyncMock, MagicMock
 
 # Set the TESTING environment variable
 os.environ["TESTING"] = "true"
 
 # Load the test environment variables
 load_dotenv('.env.test')
+
+class MockFactory:
+    def create_async_mock(self, spec):
+        return AsyncMock(spec=spec)
+
+    def create_mock(self, spec):
+        return MagicMock(spec=spec)
+
+@pytest.fixture
+def mock_factory():
+    return MockFactory()
 
 def pytest_configure(config):
     config.addinivalue_line(

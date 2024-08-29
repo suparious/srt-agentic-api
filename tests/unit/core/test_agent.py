@@ -32,7 +32,7 @@ def test_agent_config():
 
 @pytest.fixture
 def mock_function_manager(mock_factory):
-    return mock_factory.create_async_mock(FunctionManager)
+    return mock_factory.create_mock(FunctionManager)
 
 @pytest.fixture
 def mock_memory_system(mock_factory):

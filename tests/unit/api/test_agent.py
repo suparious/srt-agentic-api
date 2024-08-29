@@ -6,6 +6,7 @@ from app.core.models import AgentConfig, MemoryConfig, AgentCreationRequest
 from app.core.agent_manager import AgentManager
 from app.core.memory import MemorySystem
 from app.core.llm_provider import LLMProvider
+from app.core.function_manager import FunctionManager
 
 pytestmark = pytest.mark.asyncio
 
@@ -20,6 +21,10 @@ def mock_memory_system():
 @pytest.fixture
 def mock_llm_provider():
     return AsyncMock(spec=LLMProvider)
+
+@pytest.fixture
+def mock_function_manager(mock_factory):
+    return mock_factory.create_mock(FunctionManager)
 
 async def test_create_agent(async_client: AsyncClient, auth_headers, mock_agent_manager):
     agent_data = AgentCreationRequest(

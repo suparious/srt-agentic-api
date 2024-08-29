@@ -3,6 +3,7 @@ from uuid import UUID
 from unittest.mock import AsyncMock, MagicMock
 from app.core.agent import Agent
 from app.core.models import AgentConfig, MemoryConfig
+from app.core.function_manager import FunctionManager
 
 @pytest.fixture
 def test_agent_id():
@@ -18,7 +19,8 @@ def test_agent_config():
     )
 
 @pytest.fixture
-async def test_agent(test_agent_id, test_agent_config, mock_function_manager, mock_llm_provider):
+async def test_agent(test_agent_id, test_agent_config, mock_factory, mock_llm_provider):
+    mock_function_manager = mock_factory.create_mock(FunctionManager)
     agent = Agent(
         agent_id=test_agent_id,
         name="Test Agent",

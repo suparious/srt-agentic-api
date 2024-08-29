@@ -33,16 +33,28 @@ class Agent:
             agent_id (UUID): The unique identifier for the agent.
             name (str): The name of the agent.
             config (AgentConfig): The configuration for the agent's language model.
-            memory_config (MemoryConfig): The configuration for the agent's memory system.
+            function_manager (function_manager): The function manager for the agent.
+            llm_provider (LLMProvider): The language model provider for the agent.
         """
         self.id = agent_id
         self.name = name
         self.config = config
+        self.function_manager = function_manager
         self.llm_provider = llm_provider
         self.memory = get_memory_system()(agent_id, config.memory_config)
         self.conversation_history = []
         self.available_function_ids: List[str] = []
         agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized")
+
+    async def initialize(self):
+        """
+        Perform any necessary initialization for the agent.
+        """
+        agent_logger.info(f"Initializing Agent {self.name} (ID: {self.id})")
+        await self.memory.initialize()
+        self.available_function_ids = await self.function_manager.get_available_functions(self.id)
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) initialized with {len(self.available_function_ids)} available functions")
+
 
     async def process_message(self, message: str) -> str:
         """
@@ -200,3 +212,11 @@ class Agent:
                         f"Error parsing function call for Agent {self.name} (ID: {self.id}): {str(e)}"
                     )
         return response, function_calls
+
+    async def cleanup(self):
+        """
+        Perform any necessary cleanup for the agent.
+        """
+        agent_logger.info(f"Cleaning up Agent {self.name} (ID: {self.id})")
+        await self.memory.cleanup()
+        agent_logger.info(f"Agent {self.name} (ID: {self.id}) cleaned up")
