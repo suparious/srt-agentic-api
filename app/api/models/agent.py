@@ -10,7 +10,7 @@ class AgentMessageRequest(BaseModel):
         ..., description="The unique identifier of the agent to send the message to"
     )
     message: str = Field(..., description="The message content to send to the agent")
-
+    
     model_config = ConfigDict(extra="forbid")
 
 

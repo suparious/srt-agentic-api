@@ -18,8 +18,14 @@ def test_agent_config():
     )
 
 @pytest.fixture
-async def test_agent(test_agent_id, test_agent_config):
-    agent = Agent(agent_id=test_agent_id, config=test_agent_config)
+async def test_agent(test_agent_id, test_agent_config, mock_function_manager, mock_llm_provider):
+    agent = Agent(
+        agent_id=test_agent_id,
+        name="Test Agent",
+        config=test_agent_config,
+        function_manager=mock_function_manager,
+        llm_provider=mock_llm_provider
+    )
     await agent.initialize()
     yield agent
     await agent.cleanup()

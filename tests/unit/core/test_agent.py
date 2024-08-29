@@ -40,11 +40,15 @@ def mock_memory_system(mock_factory):
 
 @pytest.fixture
 def test_agent(test_agent_config, mock_function_manager, mock_memory_system, mock_llm_provider):
-    with pytest.MonkeyPatch().context() as m:
-        m.setattr("app.core.agent.create_llm_provider", lambda: mock_llm_provider)
-        agent = Agent(UUID('12345678-1234-5678-1234-567812345678'), "Test Agent", test_agent_config, mock_function_manager)
-        agent.memory = mock_memory_system
-        return agent
+    agent = Agent(
+        UUID('12345678-1234-5678-1234-567812345678'),
+        "Test Agent",
+        test_agent_config,
+        mock_function_manager,
+        mock_llm_provider
+    )
+    agent.memory = mock_memory_system
+    return agent
 
 async def test_advanced_search(test_agent, mock_memory_system):
     # Mock memory system's advanced search method
