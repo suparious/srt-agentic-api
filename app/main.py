@@ -100,33 +100,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# TrustedHostMiddleware setup
-app.add_middleware(
-    TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS
-)
+# TrustedHostMiddleware setup (conditional)
+if settings.ALLOWED_HOSTS:
+    app.add_middleware(
+        TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS
+    )
 
 # Include routers
 def include_routers(app: FastAPI):
     app.include_router(
-        agent_router.router,
+        agent_router,
         prefix="/agent",
         tags=["Agents"],
         dependencies=[Depends(get_agent_manager), Depends(get_function_manager)],
     )
     app.include_router(
-        message_router.router,
+        message_router,
         prefix="/message",
         tags=["Messages"],
         dependencies=[Depends(get_agent_manager)],
     )
     app.include_router(
-        function_router.router,
+        function_router,
         prefix="/function",
         tags=["Functions"],
         dependencies=[Depends(get_function_manager)],
     )
     app.include_router(
-        memory_router.router,
+        memory_router,
         prefix="/memory",
         tags=["Memory"],
         dependencies=[Depends(get_agent_manager)],

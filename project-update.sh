@@ -38,3 +38,4 @@ export PYTHONPATH="${repo_home}"
 #pytest -v tests/unit/core/memory/test_redis_memory.py --cov=app/core/memory/redis_memory.py --cov-report=term-missing | tee ${repo_home}/logs/test_results_detailed.txt
 pytest -v --tb=short --show-capture=no --cov=app --cov-report=term-missing | grep -E "^(FAILED|ERROR|===)" | tee "${repo_home}/logs/test_results_detailed.txt"
 #pytest --cov=app --cov-report=term-missing:skip-covered
+#pytest -v --tb=long --show-capture=all | tee logs/test_results_detailed.txt

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from datetime import datetime, timedelta
 from app.core.memory.memory_system import MemorySystem, MemorySystemError
-from app.api.models.memory import AdvancedSearchQuery
+from app.api.models.memory import AdvancedSearchQuery, MemoryType
 from app.core.models import MemoryEntry, MemoryContext
 from app.core.models import MemoryConfig
 
@@ -251,3 +251,37 @@ async def test_memory_system_partial_search_success(memory_system):
 
     memory_system.short_term.search.assert_called_once()
     memory_system.long_term.search.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_add_memory(memory_system):
+    memory_entry = MemoryEntry(
+        content="Test memory content",
+        metadata={"key": "value"},
+        context=MemoryContext(context_type="test", timestamp=datetime.now())
+    )
+    memory_id = await memory_system.add(MemoryType.SHORT_TERM, memory_entry)
+    assert isinstance(memory_id, str)
+
+@pytest.mark.asyncio
+async def test_retrieve_memory(memory_system):
+    memory_entry = MemoryEntry(
+        content="Test memory content",
+        metadata={"key": "value"},
+        context=MemoryContext(context_type="test", timestamp=datetime.now())
+    )
+    memory_id = await memory_system.add(MemoryType.SHORT_TERM, memory_entry)
+    retrieved_memory = await memory_system.retrieve(MemoryType.SHORT_TERM, memory_id)
+    assert retrieved_memory.content == "Test memory content"
+    assert retrieved_memory.metadata == {"key": "value"}
+
+@pytest.mark.asyncio
+async def test_search_memory(memory_system):
+    memory_entry = MemoryEntry(
+        content="Test memory content",
+        metadata={"key": "value"},
+        context=MemoryContext(context_type="test", timestamp=datetime.now())
+    )
+    await memory_system.add(MemoryType.SHORT_TERM, memory_entry)
+    search_results = await memory_system.search(AdvancedSearchQuery(query="test", memory_type=MemoryType.SHORT_TERM))
+    assert len(search_results) > 0
+    assert search_results[0].content == "Test memory content"

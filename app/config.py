@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     ALLOWED_ORIGINS: List[str] = ["*"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
 
     # Database settings
     REDIS_URL: str = "redis://localhost:6379"

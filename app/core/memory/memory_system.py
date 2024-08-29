@@ -101,7 +101,7 @@ class MemorySystem:
             )
             raise MemorySystemError(f"Failed to retrieve {memory_type} memory") from e
 
-    async def search(self, query: AdvancedSearchQuery) -> List[Dict[str, Any]]:
+    async def search(self, query: AdvancedSearchQuery) -> List[MemoryEntry]:
         try:
             results = []
             search_tasks = []
@@ -125,7 +125,7 @@ class MemorySystem:
                     results.extend(result)
 
             sorted_results = sorted(
-                results, key=lambda x: x["relevance_score"], reverse=True
+                results, key=lambda x: x.relevance_score, reverse=True
             )
             return sorted_results[: query.max_results]
         except Exception as e:
@@ -143,7 +143,7 @@ class MemorySystem:
                 get_memory_logger().info(
                     f"Short-term memory deleted for agent: {self.agent_id}"
                 )
-            elif (
+            elif (      
                 memory_type == MemoryType.LONG_TERM or memory_type == "LONG_TERM"
             ) and self.config.use_long_term_memory:
                 await self.long_term.delete(memory_id)
